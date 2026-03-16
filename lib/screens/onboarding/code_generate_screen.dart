@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/outline_button.dart';
 
 class CodeGenerateScreen extends StatefulWidget {
   const CodeGenerateScreen({super.key});
