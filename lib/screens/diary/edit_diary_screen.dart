@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../../theme/colors.dart';
 import '../../widgets/image_pick_helper.dart';
 
@@ -363,7 +365,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                         child: Image.file(
                                           _pickedImage!,
                                           width: double.infinity,
-                                          height: 280,
+                                          height: 360,
                                           fit: BoxFit.cover,
                                         ),
                                       ),
@@ -687,6 +689,8 @@ class _ImageCropSheet extends StatefulWidget {
 
 class _ImageCropSheetState extends State<_ImageCropSheet> {
   final TransformationController _controller = TransformationController();
+  final GlobalKey _repaintKey = GlobalKey();
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -694,11 +698,34 @@ class _ImageCropSheetState extends State<_ImageCropSheet> {
     super.dispose();
   }
 
+  Future<void> _captureAndReturn() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final boundary = _repaintKey.currentContext!.findRenderObject()
+          as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = byteData!.buffer.asUint8List();
+      final file = File(
+        '${Directory.systemTemp.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes);
+      if (mounted) {
+        Navigator.of(context).pop();
+        widget.onCropped(file);
+      }
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     return Container(
-      height: screenHeight * 0.75,
+      height: screenHeight * 0.85,
       decoration: const BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -746,13 +773,18 @@ class _ImageCropSheetState extends State<_ImageCropSheet> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: InteractiveViewer(
-                  transformationController: _controller,
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: Image.file(
-                    widget.imageFile,
-                    fit: BoxFit.contain,
+                child: RepaintBoundary(
+                  key: _repaintKey,
+                  child: InteractiveViewer(
+                    transformationController: _controller,
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Image.file(
+                      widget.imageFile,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
                   ),
                 ),
               ),
@@ -794,23 +826,32 @@ class _ImageCropSheetState extends State<_ImageCropSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: _captureAndReturn,
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
-                        child: Text(
-                          '확인',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: AppColors.white,
-                          ),
-                        ),
+                      child: Center(
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.white,
+                                ),
+                              )
+                            : const Text(
+                                '확인',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: AppColors.white,
+                                ),
+                              ),
                       ),
                     ),
                   ),
