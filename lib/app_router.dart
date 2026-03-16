@@ -25,6 +25,7 @@ import 'screens/todo/todo_list_screen.dart';
 import 'screens/legal/terms_detail_screen.dart';
 import 'screens/legal/delete_account_screen.dart';
 import 'screens/onboarding/app_guide_screen.dart';
+import 'screens/onboarding/manage_diary_screen.dart';
 
 class AppRouter {
   // 탭 전환 시 푸터 애니메이션 없이 즉시 전환
@@ -62,6 +63,9 @@ class AppRouter {
         return MaterialPageRoute(
             settings: settings,
             builder: (_) => const CreateDiaryScreen(isEdit: true));
+      case '/manage-diary':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const ManageDiaryScreen());
       case '/group-list':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const GroupListScreen());

@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../../theme/colors.dart';
 import '../../widgets/image_pick_helper.dart';
 
@@ -56,6 +58,27 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  void _showImageCropSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ImageCropSheet(
+        imageFile: _pickedImage!,
+        onCropped: (file) {
+          setState(() => _pickedImage = file);
+        },
+        onReplace: () async {
+          Navigator.of(context).pop();
+          final file = await pickImage(this.context);
+          if (file != null) {
+            setState(() => _pickedImage = file);
+          }
+        },
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -342,10 +365,49 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                         child: Image.file(
                                           _pickedImage!,
                                           width: double.infinity,
-                                          height: 200,
+                                          height: 360,
                                           fit: BoxFit.cover,
                                         ),
                                       ),
+                                      // 편집 버튼
+                                      Positioned(
+                                        top: 8,
+                                        left: 8,
+                                        child: GestureDetector(
+                                          onTap: () => _showImageCropSheet(),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.black.withValues(alpha: 0.5),
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.crop,
+                                                  size: 14,
+                                                  color: AppColors.white,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  '편집',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: AppColors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // 삭제 버튼
                                       Positioned(
                                         top: 8,
                                         right: 8,
@@ -355,8 +417,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                           child: Container(
                                             width: 24,
                                             height: 24,
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.gray700,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.black.withValues(alpha: 0.5),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
@@ -371,7 +433,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                   )
                                 : SizedBox(
                                     width: double.infinity,
-                                    height: 160,
+                                    height: 200,
                                     child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -539,7 +601,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
               children: [
                 Column(
                   children: List.generate(
-                    12,
+                    13,
                     (i) => Container(
                       height: 44,
                       decoration: const BoxDecoration(
@@ -608,4 +670,197 @@ class _WeatherOption {
   final Color color;
 
   const _WeatherOption({required this.icon, required this.color});
+}
+
+class _ImageCropSheet extends StatefulWidget {
+  final File imageFile;
+  final void Function(File) onCropped;
+  final VoidCallback onReplace;
+
+  const _ImageCropSheet({
+    required this.imageFile,
+    required this.onCropped,
+    required this.onReplace,
+  });
+
+  @override
+  State<_ImageCropSheet> createState() => _ImageCropSheetState();
+}
+
+class _ImageCropSheetState extends State<_ImageCropSheet> {
+  final TransformationController _controller = TransformationController();
+  final GlobalKey _repaintKey = GlobalKey();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _captureAndReturn() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final boundary = _repaintKey.currentContext!.findRenderObject()
+          as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = byteData!.buffer.asUint8List();
+      final file = File(
+        '${Directory.systemTemp.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes);
+      if (mounted) {
+        Navigator.of(context).pop();
+        widget.onCropped(file);
+      }
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Container(
+      height: screenHeight * 0.85,
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.gray200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            '사진 편집',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '핀치로 확대/축소, 드래그로 위치 조정',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 13,
+              color: AppColors.gray500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gray200),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: RepaintBoundary(
+                  key: _repaintKey,
+                  child: InteractiveViewer(
+                    transformationController: _controller,
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Image.file(
+                      widget.imageFile,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              MediaQuery.of(context).padding.bottom + 16,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: widget.onReplace,
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.gray200),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          '다른 사진',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: AppColors.gray700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _captureAndReturn,
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.white,
+                                ),
+                              )
+                            : const Text(
+                                '확인',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: AppColors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

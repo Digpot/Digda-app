@@ -467,7 +467,8 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 ),
               ),
             ),
-            alignment: Alignment.centerLeft,
+            alignment: Alignment.bottomLeft,
+            padding: const EdgeInsets.only(bottom: 6),
             child: Text(
               line,
               style: const TextStyle(

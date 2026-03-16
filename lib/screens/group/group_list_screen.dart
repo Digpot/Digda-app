@@ -310,7 +310,7 @@ class _InviteCodeBottomSheetState extends State<_InviteCodeBottomSheet> {
                 child: GestureDetector(
                   onTap: () {
                     Share.share(
-                      'Digda에서 함께 일기를 써요!\n초대 코드: $_generatedCode\n\n앱에서 바로 참여하기 👉 digda://invite?code=$_generatedCode',
+                      'Digda에서 함께 일기를 써요!\n\n초대 코드: $_generatedCode\n\nDigda 앱을 열고 초대 코드를 입력해주세요 🙌',
                     );
                   },
                   child: Container(

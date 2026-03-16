@@ -182,8 +182,8 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
     super.dispose();
   }
 
-  // 목데이터: 유효한 초대 코드 목록 (나중에 API로 교체)
-  static const _validCodes = {'A3X9K2', 'B7Y2M5', 'C4Z8N1'};
+  // 목데이터: 유효하지 않은 초대 코드 목록 (나중에 API로 교체)
+  static const _invalidCodes = {'111111'};
 
   String get _enteredCode =>
       _controllers.map((c) => c.text).join();
@@ -199,11 +199,11 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
 
   void _onSubmit() {
     final code = _enteredCode;
-    if (_validCodes.contains(code)) {
+    if (_invalidCodes.contains(code)) {
+      _showInvalidCodeDialog();
+    } else {
       Navigator.of(context).pop(); // 바텀시트 닫기
       Navigator.of(context).pushReplacementNamed('/group-home');
-    } else {
-      _showInvalidCodeDialog();
     }
   }
 

@@ -450,6 +450,50 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                         );
                       }).toList(),
                     ),
+                    // 다이어리 관리 버튼 (수정 모드에서만 표시)
+                    if (widget.isEdit) ...[
+                      const SizedBox(height: 28),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pushNamed('/manage-diary'),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.gray50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.gray100),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.tune_rounded,
+                                size: 20,
+                                color: AppColors.gray700,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                '다이어리 관리',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: AppColors.gray900,
+                                ),
+                              ),
+                              Spacer(),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 14,
+                                color: AppColors.gray400,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     // 초대 코드 섹션 (생성 모드에서만 표시)
                     if (!widget.isEdit) ...[
                       const SizedBox(height: 28),

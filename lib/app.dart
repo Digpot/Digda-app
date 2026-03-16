@@ -1,5 +1,6 @@
+import 'dart:async';
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
 import 'theme/colors.dart';
@@ -13,34 +14,35 @@ class DigdaApp extends StatefulWidget {
 
 class _DigdaAppState extends State<DigdaApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
-  static const _channel = MethodChannel('app.channel.shared.data');
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSub;
 
   @override
   void initState() {
     super.initState();
+    _appLinks = AppLinks();
     _initDeepLink();
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _initDeepLink() async {
     // 앱이 종료 상태에서 딥링크로 시작된 경우
     try {
-      final initialLink = await _channel.invokeMethod<String>('getInitialLink');
-      if (initialLink != null) {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
         Future.delayed(const Duration(milliseconds: 500), () {
-          _handleDeepLink(Uri.parse(initialLink));
+          _handleDeepLink(initialUri);
         });
       }
     } catch (_) {}
 
     // 앱이 실행 중일 때 딥링크 수신
-    _channel.setMethodCallHandler((call) async {
-      if (call.method == 'onNewLink') {
-        final link = call.arguments as String?;
-        if (link != null) {
-          _handleDeepLink(Uri.parse(link));
-        }
-      }
-    });
+    _linkSub = _appLinks.uriLinkStream.listen(_handleDeepLink);
   }
 
   void _handleDeepLink(Uri uri) {
