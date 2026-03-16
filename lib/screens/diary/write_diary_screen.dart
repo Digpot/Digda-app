@@ -641,7 +641,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     ),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.only(top: 10),
+                    contentPadding: EdgeInsets.zero,
                     counterText: '',
                   ),
                   onChanged: (_) => setState(() {}),

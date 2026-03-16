@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
-import '../../widgets/outline_button.dart';
 
 class CodeGenerateScreen extends StatefulWidget {
   const CodeGenerateScreen({super.key});
@@ -127,20 +126,10 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
             // 하단 버튼 2개
             Padding(
               padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPadding + 16),
-              child: Column(
-                children: [
-                  PrimaryButton(
-                    text: '그룹방으로 이동하기',
-                    onPressed: () => Navigator.of(context)
-                        .pushReplacementNamed('/group-home'),
-                  ),
-                  const SizedBox(height: 12),
-                  AppOutlineButton(
-                    text: '새 다이어리 만들기',
-                    onPressed: () => Navigator.of(context)
-                        .pushReplacementNamed('/create-diary'),
-                  ),
-                ],
+              child: PrimaryButton(
+                text: '그룹방으로 이동하기',
+                onPressed: () => Navigator.of(context)
+                    .pushReplacementNamed('/group-home'),
               ),
             ),
           ],
