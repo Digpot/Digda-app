@@ -389,7 +389,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _showMemberRemovedConfirm(memberName);
+              _showMemberRemoveFinalConfirm(memberName);
             },
             child: const Text(
               '삭제',
@@ -406,7 +406,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     );
   }
 
-  void _showMemberRemovedConfirm(String memberName) {
+  void _showMemberRemoveFinalConfirm(String memberName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -415,7 +415,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         title: const Text(
-          '삭제 완료',
+          '정말 내보내시겠어요?',
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w700,
@@ -424,7 +424,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: Text(
-          '$memberName님이 다이어리에서 삭제되었어요.',
+          '$memberName님은 이 다이어리의 모든\n기록에 접근할 수 없게 됩니다.',
           style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
@@ -436,7 +436,22 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
-              '확인',
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // TODO: API 연동 시 실제 삭제 로직
+            },
+            child: const Text(
+              '내보내기',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w600,
