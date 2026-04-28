@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../theme/colors.dart';
+import '../onboarding/empty_state_screen.dart';
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
@@ -13,7 +15,7 @@ class MyPageScreen extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 children: [
                   GestureDetector(
@@ -24,13 +26,13 @@ class MyPageScreen extends StatelessWidget {
                       color: AppColors.gray900,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 16),
                   const Text(
                     '마이페이지',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
-                      fontSize: 17,
+                      fontSize: 20,
                       color: AppColors.gray900,
                     ),
                   ),
@@ -114,6 +116,24 @@ class MyPageScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     // 기타 section
                     _buildSectionLabel('기타'),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.menu_book_outlined,
+                      label: '앱 사용 가이드',
+                      onTap: () => Navigator.of(context).pushNamed('/app-guide', arguments: true),
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.description_outlined,
+                      label: '이용약관',
+                      onTap: () => Navigator.of(context).pushNamed('/terms-detail', arguments: 'terms'),
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.shield_outlined,
+                      label: '개인정보처리방침',
+                      onTap: () => Navigator.of(context).pushNamed('/terms-detail', arguments: 'privacy'),
+                    ),
                     _buildMenuItem(
                       context,
                       icon: Icons.info_outline,
@@ -386,8 +406,10 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
                   focusNode: _focusNodes[index],
                   maxLength: 1,
                   textAlign: TextAlign.center,
-                  keyboardType: TextInputType.text,
-                  textCapitalization: TextCapitalization.characters,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,

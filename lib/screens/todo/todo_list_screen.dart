@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme/colors.dart';
-import '../../widgets/center_title_header.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({super.key});
@@ -107,9 +106,30 @@ class _TodoListScreenState extends State<TodoListScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            CenterTitleHeader(
-              title: '투두리스트',
-              onBack: () => Navigator.of(context).pop(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      size: 20,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text(
+                    '투두리스트',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: ListView(
@@ -241,13 +261,11 @@ class _TodoListScreenState extends State<TodoListScreen> {
             ),
             // 하단 입력 바
             Container(
-              padding: EdgeInsets.only(
+              padding: const EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 12,
-                bottom: MediaQuery.of(context).viewInsets.bottom > 0
-                    ? 12
-                    : MediaQuery.of(context).padding.bottom + 12,
+                bottom: 12,
               ),
               decoration: BoxDecoration(
                 color: AppColors.white,

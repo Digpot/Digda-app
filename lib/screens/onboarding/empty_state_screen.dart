@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../theme/colors.dart';
-import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/outline_button.dart';
 
@@ -39,22 +39,40 @@ class EmptyStateScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications_outlined,
-                      size: 24,
-                      color: AppColors.gray700,
-                    ),
-                    onPressed: () =>
+                  GestureDetector(
+                    onTap: () =>
                         Navigator.of(context).pushNamed('/notifications'),
+                    child: Stack(
+                      children: [
+                        const Icon(
+                          Icons.notifications_outlined,
+                          size: 22,
+                          color: AppColors.gray700,
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.adjust_outlined,
-                      size: 24,
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () =>
+                        Navigator.of(context).pushNamed('/my-page'),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      size: 22,
                       color: AppColors.gray700,
                     ),
-                    onPressed: () {},
                   ),
                 ],
               ),
@@ -133,7 +151,6 @@ class EmptyStateScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
     );
   }
 }
@@ -165,6 +182,12 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
     super.dispose();
   }
 
+  // 목데이터: 유효하지 않은 초대 코드 목록 (나중에 API로 교체)
+  static const _invalidCodes = {'111111'};
+
+  String get _enteredCode =>
+      _controllers.map((c) => c.text).join();
+
   void _onChanged(String value, int index) {
     if (value.length == 1 && index < _codeLength - 1) {
       _focusNodes[index + 1].requestFocus();
@@ -172,6 +195,60 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
       _focusNodes[index - 1].requestFocus();
     }
     setState(() {});
+  }
+
+  void _onSubmit() {
+    final code = _enteredCode;
+    if (_invalidCodes.contains(code)) {
+      _showInvalidCodeDialog();
+    } else {
+      Navigator.of(context).pop(); // 바텀시트 닫기
+      Navigator.of(context).pushReplacementNamed('/group-home');
+    }
+  }
+
+  void _showInvalidCodeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          '초대 코드 오류',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: const Text(
+          '유효하지 않은 초대 코드예요.\n코드를 다시 확인해주세요.',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -233,8 +310,10 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
                   focusNode: _focusNodes[index],
                   maxLength: 1,
                   textAlign: TextAlign.center,
-                  keyboardType: TextInputType.text,
-                  textCapitalization: TextCapitalization.characters,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,
@@ -271,12 +350,7 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
           const SizedBox(height: 32),
           PrimaryButton(
             text: '참여하기',
-            onPressed: _isFilled
-                ? () {
-                    Navigator.of(context).pop(); // 바텀시트 닫기
-                    Navigator.of(context).pushReplacementNamed('/group-home');
-                  }
-                : null,
+            onPressed: _isFilled ? _onSubmit : null,
           ),
         ],
       ),

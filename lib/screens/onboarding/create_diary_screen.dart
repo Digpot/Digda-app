@@ -21,6 +21,9 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
 
   File? _pickedImage;
 
+  // 목데이터: 현재 참여 중인 멤버 수 (나중에 API로 교체)
+  static const int _currentMemberCount = 7;
+
   bool get _canCreate => _nameController.text.trim().isNotEmpty;
 
   @override
@@ -45,9 +48,67 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
   }
 
   void _decrement() {
+    if (widget.isEdit && _maxMembers - 1 < _currentMemberCount) {
+      _showMemberLimitDialog();
+      return;
+    }
     setState(() {
       if (_maxMembers > 2) _maxMembers--;
     });
+  }
+
+  void _setMaxMembers(int value) {
+    if (widget.isEdit && value < _currentMemberCount) {
+      _showMemberLimitDialog();
+      return;
+    }
+    setState(() {
+      _maxMembers = value;
+    });
+  }
+
+  void _showMemberLimitDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          '인원 변경 불가',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: Text(
+          '현재 $_currentMemberCount명이 참여 중이에요.\n참여 인원보다 적게 설정할 수 없어요.',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -57,33 +118,26 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 헤더 - 중앙 정렬
-            SizedBox(
-              height: 52,
-              child: Stack(
-                alignment: Alignment.center,
+            // 헤더
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Icon(
-                          Icons.arrow_back_ios,
-                          size: 14,
-                          color: AppColors.gray900,
-                        ),
-                      ),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      size: 14,
+                      color: AppColors.gray900,
                     ),
                   ),
+                  const SizedBox(width: 16),
                   const Text(
                     '다이어리',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
-                      fontSize: 17,
-                      height: 1.3,
+                      fontSize: 20,
                       color: AppColors.gray900,
                     ),
                   ),
@@ -362,9 +416,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                           padding: const EdgeInsets.only(right: 8),
                           child: GestureDetector(
                             onTap: () {
-                              setState(() {
-                                _maxMembers = preset ?? 99;
-                              });
+                              _setMaxMembers(preset ?? 99);
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -398,6 +450,50 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                         );
                       }).toList(),
                     ),
+                    // 다이어리 관리 버튼 (수정 모드에서만 표시)
+                    if (widget.isEdit) ...[
+                      const SizedBox(height: 28),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pushNamed('/manage-diary'),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.gray50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.gray100),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.tune_rounded,
+                                size: 20,
+                                color: AppColors.gray700,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                '다이어리 관리',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: AppColors.gray900,
+                                ),
+                              ),
+                              Spacer(),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 14,
+                                color: AppColors.gray400,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     // 초대 코드 섹션 (생성 모드에서만 표시)
                     if (!widget.isEdit) ...[
                       const SizedBox(height: 28),

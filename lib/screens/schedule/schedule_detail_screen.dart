@@ -187,30 +187,25 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             Column(
               children: [
                 // Header
-                SizedBox(
-                  height: 52,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                     child: Row(
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.of(context).pop(),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Icon(
-                              Icons.arrow_back_ios,
-                              size: 14,
-                              color: AppColors.gray900,
-                            ),
+                          child: const Icon(
+                            Icons.arrow_back_ios,
+                            size: 14,
+                            color: AppColors.gray900,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         const Text(
                           '일정 상세',
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w700,
-                            fontSize: 17,
+                            fontSize: 20,
                             color: AppColors.gray900,
                           ),
                         ),
@@ -229,7 +224,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                         ),
                       ],
                     ),
-                  ),
                 ),
                 // Content
                 Expanded(
@@ -283,16 +277,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                                 text: '1일 전에 알림이 도착합니다.',
                               ),
                               const SizedBox(height: 20),
-                              _buildInfoRow(
-                                icon: Icons.calendar_today_outlined,
-                                text: '모임',
-                              ),
-                              const SizedBox(height: 20),
-                              _buildInfoRow(
-                                icon: Icons.label_outline,
-                                text: '소프트 바이올렛',
-                              ),
-                              const SizedBox(height: 20),
                               // Participants row - 탭 시 popup
                               GestureDetector(
                                 onTap: _showParticipantPopup,
@@ -321,11 +305,13 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                         _buildTimeline(),
                         const SizedBox(height: 24),
                         _buildComments(),
-                        const SizedBox(height: 80),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
                 ),
+                // 댓글 입력 바
+                _buildBottomCommentBar(),
               ],
             ),
             // Dropdown menu overlay - 모던한 스타일
@@ -343,8 +329,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           ],
         ),
       ),
-      // 댓글 입력 바 - 텍스트 입력 + 전송 아이콘만
-      bottomNavigationBar: _buildBottomCommentBar(),
     );
   }
 
@@ -639,9 +623,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     );
   }
 
-  // 댓글 입력 바 - 입력 필드 + 전송 아이콘만
   Widget _buildBottomCommentBar() {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -653,13 +635,8 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           ),
         ],
       ),
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 10,
-        bottom: MediaQuery.of(context).viewInsets.bottom > 0
-            ? 10
-            : bottomPadding + 10,
+      padding: EdgeInsets.fromLTRB(
+        16, 10, 16, MediaQuery.of(context).padding.bottom + 10,
       ),
       child: Row(
         children: [

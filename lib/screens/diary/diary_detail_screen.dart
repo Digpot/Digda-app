@@ -373,13 +373,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                               ),
                               const Spacer(),
                               Material(
-                                color: AppColors.gray50,
+                                color: AppColors.primary,
                                 borderRadius: BorderRadius.circular(20),
                                 child: InkWell(
                                   onTap: _onEditTap,
                                   borderRadius: BorderRadius.circular(20),
-                                  splashColor: AppColors.primary.withValues(alpha: 0.3),
-                                  highlightColor: AppColors.primary.withValues(alpha: 0.15),
+                                  splashColor: AppColors.white.withValues(alpha: 0.3),
+                                  highlightColor: AppColors.white.withValues(alpha: 0.15),
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 14,
@@ -391,7 +391,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                                         fontFamily: 'Inter',
                                         fontWeight: FontWeight.w500,
                                         fontSize: 13,
-                                        color: AppColors.gray700,
+                                        color: AppColors.white,
                                       ),
                                     ),
                                   ),
@@ -467,8 +467,8 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 ),
               ),
             ),
-            padding: const EdgeInsets.only(bottom: 6),
             alignment: Alignment.bottomLeft,
+            padding: const EdgeInsets.only(bottom: 6),
             child: Text(
               line,
               style: const TextStyle(

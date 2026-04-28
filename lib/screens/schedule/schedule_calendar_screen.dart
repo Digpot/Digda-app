@@ -285,7 +285,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 color: AppColors.eventHoliday.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),
               ),
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.center,
               child: Text(
                 holidayName,
                 style: const TextStyle(

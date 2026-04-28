@@ -68,11 +68,93 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ];
 
   void _markAllRead() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '모두 읽음 처리',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: const Text(
+          '모든 알림을 읽음 처리하시겠습니까?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                for (final n in _today) {
+                  n['isRead'] = true;
+                }
+                for (final n in _yesterday) {
+                  n['isRead'] = true;
+                }
+                for (final n in _earlier) {
+                  n['isRead'] = true;
+                }
+              });
+            },
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onNotificationTap(Map<String, dynamic> notification) {
+    if (notification['isRead'] == true) return;
     setState(() {
-      for (final n in _today) {
-        n['isRead'] = true;
-      }
+      notification['isRead'] = true;
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          '읽음 처리되었습니다',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        backgroundColor: AppColors.gray800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
@@ -84,7 +166,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 children: [
                   GestureDetector(
@@ -95,13 +177,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       color: AppColors.gray900,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   const Text(
                     '알림',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
-                      fontSize: 17,
+                      fontSize: 20,
                       color: AppColors.gray900,
                     ),
                   ),
@@ -127,15 +209,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 children: [
                   if (_today.isNotEmpty) ...[
                     _buildSectionLabel('오늘'),
-                    ..._today.map((n) => _buildNotificationItem(n)),
+                    ..._today.map((n) => GestureDetector(
+                      onTap: () => _onNotificationTap(n),
+                      child: _buildNotificationItem(n),
+                    )),
                   ],
                   if (_yesterday.isNotEmpty) ...[
                     _buildSectionLabel('어제'),
-                    ..._yesterday.map((n) => _buildNotificationItem(n)),
+                    ..._yesterday.map((n) => GestureDetector(
+                      onTap: () => _onNotificationTap(n),
+                      child: _buildNotificationItem(n),
+                    )),
                   ],
                   if (_earlier.isNotEmpty) ...[
                     _buildSectionLabel('이전'),
-                    ..._earlier.map((n) => _buildNotificationItem(n)),
+                    ..._earlier.map((n) => GestureDetector(
+                      onTap: () => _onNotificationTap(n),
+                      child: _buildNotificationItem(n),
+                    )),
                   ],
                   const SizedBox(height: 24),
                 ],

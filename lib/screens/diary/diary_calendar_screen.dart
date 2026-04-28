@@ -606,11 +606,21 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         onPressed: pickerSelectedDay != null
                             ? () {
                                 final selected = pickerSelectedDay!;
-                                Navigator.of(context).pop();
-                                Navigator.of(context).pushNamed(
-                                  '/write-diary',
-                                  arguments: selected,
+                                final selectedUtc = DateTime.utc(
+                                  selected.year,
+                                  selected.month,
+                                  selected.day,
                                 );
+                                if (_getDiariesForDay(selectedUtc).isNotEmpty) {
+                                  Navigator.of(context).pop();
+                                  _showDuplicateDiaryDialog();
+                                } else {
+                                  Navigator.of(context).pop();
+                                  Navigator.of(context).pushNamed(
+                                    '/write-diary',
+                                    arguments: selected,
+                                  );
+                                }
                               }
                             : null,
                         style: ElevatedButton.styleFrom(
@@ -645,6 +655,49 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
           },
         );
       },
+    );
+  }
+
+  void _showDuplicateDiaryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          '일기가 이미 있어요',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: const Text(
+          '해당 날짜에 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

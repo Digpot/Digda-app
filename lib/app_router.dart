@@ -22,6 +22,10 @@ import 'screens/mypage/notification_settings_screen.dart';
 import 'screens/mypage/privacy_settings_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/todo/todo_list_screen.dart';
+import 'screens/legal/terms_detail_screen.dart';
+import 'screens/legal/delete_account_screen.dart';
+import 'screens/onboarding/app_guide_screen.dart';
+import 'screens/onboarding/manage_diary_screen.dart';
 
 class AppRouter {
   // 탭 전환 시 푸터 애니메이션 없이 즉시 전환
@@ -59,12 +63,21 @@ class AppRouter {
         return MaterialPageRoute(
             settings: settings,
             builder: (_) => const CreateDiaryScreen(isEdit: true));
+      case '/manage-diary':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const ManageDiaryScreen());
       case '/group-list':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const GroupListScreen());
       case '/group-home':
+        final groupArgs = settings.arguments;
+        final groupName = groupArgs is Map<String, dynamic>
+            ? groupArgs['name'] as String? ?? '대학 친구들'
+            : groupArgs is String
+                ? groupArgs
+                : '대학 친구들';
         return _tabRoute(GroupHomeScreen(
-          groupName: settings.arguments as String? ?? '대학 친구들',
+          groupName: groupName,
         ), settings);
       case '/schedule':
         return _tabRoute(const ScheduleCalendarScreen(), settings);
@@ -108,8 +121,23 @@ class AppRouter {
         return MaterialPageRoute(
             settings: settings, builder: (_) => const TodoListScreen());
       case '/code-input':
+        final code = settings.arguments as String?;
         return MaterialPageRoute(
-            settings: settings, builder: (_) => const CodeInputScreen());
+            settings: settings,
+            builder: (_) => CodeInputScreen(initialCode: code));
+      case '/terms-detail':
+        final type = settings.arguments as String? ?? 'terms';
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => TermsDetailScreen(type: type));
+      case '/delete-account':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const DeleteAccountScreen());
+      case '/app-guide':
+        final isFromMyPage = settings.arguments as bool? ?? false;
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => AppGuideScreen(isFromMyPage: isFromMyPage));
       default:
         return MaterialPageRoute(
           settings: settings,

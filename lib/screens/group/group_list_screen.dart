@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../theme/colors.dart';
 import '../../widgets/group_list_tile.dart';
 
@@ -9,7 +10,7 @@ class GroupListScreen extends StatelessWidget {
   static const _groups = [
     _GroupData(
       name: '대학 친구들',
-      memberCount: '4명 참여 중',
+      members: 4,
       icon: Icons.image_outlined,
       bgColor: Color(0xFFFFEAEA),
       iconColor: AppColors.primary,
@@ -17,7 +18,7 @@ class GroupListScreen extends StatelessWidget {
     ),
     _GroupData(
       name: '여행 모임',
-      memberCount: '6명 참여 중',
+      members: 6,
       icon: Icons.diamond_outlined,
       bgColor: Color(0xFFEAEEFF),
       iconColor: Color(0xFF6B82F0),
@@ -25,7 +26,7 @@ class GroupListScreen extends StatelessWidget {
     ),
     _GroupData(
       name: '회사 동기',
-      memberCount: '2명 참여 중',
+      members: 2,
       icon: Icons.coffee_outlined,
       bgColor: Color(0xFFFFF3E0),
       iconColor: Color(0xFFF0A050),
@@ -55,7 +56,7 @@ class GroupListScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   const Text(
-                    '내 그룹',
+                    '내 다이어리',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
@@ -65,20 +66,22 @@ class GroupListScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    icon: Stack(
+                  GestureDetector(
+                    onTap: () =>
+                        Navigator.of(context).pushNamed('/notifications'),
+                    child: Stack(
                       children: [
                         const Icon(
                           Icons.notifications_outlined,
-                          size: 24,
+                          size: 22,
                           color: AppColors.gray700,
                         ),
                         Positioned(
                           right: 0,
                           top: 0,
                           child: Container(
-                            width: 8,
-                            height: 8,
+                            width: 6,
+                            height: 6,
                             decoration: const BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
@@ -87,17 +90,16 @@ class GroupListScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed('/notifications'),
                   ),
-                  IconButton(
-                    icon: const Icon(
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () =>
+                        Navigator.of(context).pushNamed('/my-page'),
+                    child: const Icon(
                       Icons.settings_outlined,
-                      size: 24,
+                      size: 22,
                       color: AppColors.gray700,
                     ),
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed('/my-page'),
                   ),
                 ],
               ),
@@ -139,13 +141,13 @@ class GroupListScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: GroupListTile(
                 name: g.name,
-                memberCount: g.memberCount,
+                memberCount: '${g.members}명 참여 중',
                 groupIcon: g.icon,
                 groupIconBg: g.bgColor,
                 groupIconColor: g.iconColor,
                 showActions: g.showActions,
                 onTap: () => Navigator.of(context).pushNamed('/group-home',
-                    arguments: g.name),
+                    arguments: {'name': g.name, 'members': g.members}),
                 onShare: () => _showInviteCodeSheet(context),
                 onSettings: () =>
                     Navigator.of(context).pushNamed('/update-diary'),
@@ -186,7 +188,7 @@ class GroupListScreen extends StatelessWidget {
 
 class _GroupData {
   final String name;
-  final String memberCount;
+  final int members;
   final IconData icon;
   final Color bgColor;
   final Color iconColor;
@@ -194,7 +196,7 @@ class _GroupData {
 
   const _GroupData({
     required this.name,
-    required this.memberCount,
+    required this.members,
     required this.icon,
     required this.bgColor,
     required this.iconColor,
@@ -306,7 +308,11 @@ class _InviteCodeBottomSheetState extends State<_InviteCodeBottomSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Share.share(
+                      'Digda에서 함께 일기를 써요!\n\n초대 코드: $_generatedCode\n\nDigda 앱을 열고 초대 코드를 입력해주세요 🙌',
+                    );
+                  },
                   child: Container(
                     height: 48,
                     decoration: BoxDecoration(

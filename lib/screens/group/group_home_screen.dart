@@ -17,9 +17,20 @@ class GroupHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // S3-Group_List에서 전달된 그룹 이름 동적으로 받기
-    final dynamicName =
-        ModalRoute.of(context)?.settings.arguments as String? ?? groupName;
+    // S3-Group_List에서 전달된 그룹 정보 동적으로 받기
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final String dynamicName;
+    final int memberCount;
+    if (args is Map<String, dynamic>) {
+      dynamicName = args['name'] as String? ?? groupName;
+      memberCount = args['members'] as int? ?? 7;
+    } else if (args is String) {
+      dynamicName = args;
+      memberCount = 7;
+    } else {
+      dynamicName = groupName;
+      memberCount = 7;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -27,86 +38,66 @@ class GroupHomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // 헤더 - 좌측 뒤로가기 + 그룹명(정중앙) + 우측 아이콘
-            SizedBox(
-              height: 52,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // 좌측: 뒤로가기
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          size: 14,
-                          color: AppColors.gray900,
-                        ),
-                      ),
+            // 헤더 - 좌측 뒤로가기 + 그룹명 + 우측 아이콘
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      size: 14,
+                      color: AppColors.gray900,
                     ),
-                    // 중앙: 그룹명
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 60),
-                      child: Text(
-                        dynamicName,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 17,
-                          height: 1.3,
-                          color: AppColors.gray900,
-                        ),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      dynamicName,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        color: AppColors.gray900,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    // 우측: 알림 + 설정
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pushNamed('/notifications'),
-                            child: Stack(
-                              children: [
-                                const Icon(
-                                  Icons.notifications_outlined,
-                                  size: 22,
-                                  color: AppColors.gray700,
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  child: Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/notifications'),
+                    child: Stack(
+                      children: [
+                        const Icon(
+                          Icons.notifications_outlined,
+                          size: 22,
+                          color: AppColors.gray700,
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pushNamed('/my-page'),
-                            child: const Icon(
-                              Icons.settings_outlined,
-                              size: 22,
-                              color: AppColors.gray700,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/my-page'),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      size: 22,
+                      color: AppColors.gray700,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -116,7 +107,7 @@ class GroupHomeScreen extends StatelessWidget {
                   children: [
                     const SizedBox(height: 16),
                     // 멤버 아바타
-                    _buildMemberSection(),
+                    _buildMemberSection(memberCount),
                     // 버튼을 아래로 이동 - 여백 증가
                     const SizedBox(height: 60),
                     // 기능 카드들
@@ -211,10 +202,9 @@ class GroupHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMemberSection() {
-    const totalMembers = 7;
-    const displayCount = 4;
-    const extraCount = totalMembers - displayCount;
+  Widget _buildMemberSection(int totalMembers) {
+    final displayCount = totalMembers > 4 ? 4 : totalMembers;
+    final extraCount = totalMembers - displayCount;
 
     return Column(
       children: [
@@ -222,8 +212,10 @@ class GroupHomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ...List.generate(displayCount, (i) => _buildAvatar(i)),
-            const SizedBox(width: 8),
-            _buildExtraAvatar(extraCount),
+            if (extraCount > 0) ...[
+              const SizedBox(width: 8),
+              _buildExtraAvatar(extraCount),
+            ],
           ],
         ),
         const SizedBox(height: 10),
@@ -233,9 +225,9 @@ class GroupHomeScreen extends StatelessWidget {
             color: AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Text(
-            '7명 참여 중',
-            style: TextStyle(
+          child: Text(
+            '$totalMembers명 참여 중',
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w500,
               fontSize: 12,
