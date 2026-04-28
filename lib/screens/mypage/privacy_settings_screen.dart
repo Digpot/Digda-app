@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
 import '../../theme/colors.dart';
 
 class PrivacySettingsScreen extends StatelessWidget {
@@ -377,9 +378,18 @@ class PrivacySettingsScreen extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              Navigator.of(context).pushReplacementNamed('/login');
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              try {
+                await Di.authSession.signOut();
+                navigator.pushNamedAndRemoveUntil('/login', (_) => false);
+              } catch (_) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('로그아웃에 실패했습니다. 다시 시도해주세요.')),
+                );
+              }
             },
             child: const Text(
               '로그아웃',
