@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:world_holidays/world_holidays.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/schedule/models/schedule_models.dart' as api;
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 
 class _Schedule {
+  final String? id;
   final String title;
   final Color color;
   final DateTime start;
@@ -12,12 +16,36 @@ class _Schedule {
   final String? time;
 
   const _Schedule({
+    this.id,
     required this.title,
     required this.color,
     required this.start,
     DateTime? end,
     this.time,
   }) : end = end ?? start;
+
+  /// 서버 Schedule → 화면용 _Schedule.
+  factory _Schedule.fromApi(api.Schedule s) {
+    final cleaned = s.color.replaceAll('#', '');
+    final argb = int.tryParse('FF$cleaned', radix: 16);
+    final color = argb != null ? Color(argb) : AppColors.primary;
+    String? time;
+    if (s.allDay) {
+      time = '종일';
+    } else if (s.startTime != null) {
+      time = s.endTime != null
+          ? '${s.startTime} - ${s.endTime}'
+          : s.startTime;
+    }
+    return _Schedule(
+      id: s.id,
+      title: s.title,
+      color: color,
+      start: DateTime.utc(s.startDate.year, s.startDate.month, s.startDate.day),
+      end: DateTime.utc(s.endDate.year, s.endDate.month, s.endDate.day),
+      time: time,
+    );
+  }
 
   bool get isMultiDay =>
       start.year != end.year ||
@@ -50,10 +78,57 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   /// 공휴일 맵: 날짜(utc normalized) → 공휴일명
   final Map<DateTime, String> _holidays = {};
 
+  bool _loadingSchedules = false;
+  String? _scheduleError;
+
   @override
   void initState() {
     super.initState();
     _loadHolidays();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSchedules());
+  }
+
+  Future<void> _loadSchedules() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) {
+      setState(() {
+        _schedules = [];
+        _loadingSchedules = false;
+      });
+      return;
+    }
+    final start = DateTime.utc(_focusedDay.year, _focusedDay.month, 1);
+    final end = DateTime.utc(_focusedDay.year, _focusedDay.month + 1, 0);
+    setState(() {
+      _loadingSchedules = true;
+      _scheduleError = null;
+    });
+    try {
+      final list = await Di.scheduleRepository.list(
+        groupId,
+        startDate: start,
+        endDate: end,
+      );
+      if (!mounted) return;
+      setState(() {
+        _schedules = list.map(_Schedule.fromApi).toList();
+        _loadingSchedules = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSchedules = false;
+        _scheduleError = errorMessageOf(e);
+      });
+    }
+  }
+
+  void _changeMonth(DateTime newMonth) {
+    setState(() {
+      _focusedDay = newMonth;
+      _selectedDay = null;
+    });
+    _loadSchedules();
   }
 
   Future<void> _loadHolidays() async {
@@ -78,8 +153,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return _holidays[key];
   }
 
-  // 일정 데이터 — start/end로 다일 이벤트 지원
-  final List<_Schedule> _schedules = [
+  // 일정 데이터 — API 로드 결과로 채워짐
+  List<_Schedule> _schedules = [
     _Schedule(
       title: '야근',
       color: AppColors.primary,
@@ -189,10 +264,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       },
     );
     if (picked != null) {
-      setState(() {
-        _focusedDay = picked;
-        _selectedDay = null;
-      });
+      _changeMonth(picked);
     }
   }
 
@@ -205,13 +277,21 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       builder: (context) => _DayDetailBottomSheet(
         day: day,
         schedules: userSchedules,
-        onAddSchedule: () {
+        onAddSchedule: () async {
           Navigator.of(context).pop();
-          Navigator.of(context).pushNamed('/add-schedule');
+          await Navigator.of(context).pushNamed(
+            '/add-schedule',
+            arguments: {'date': day.toIso8601String()},
+          );
+          _loadSchedules();
         },
-        onScheduleTap: () {
+        onScheduleTap: (id) async {
           Navigator.of(context).pop();
-          Navigator.of(context).pushNamed('/schedule-detail');
+          await Navigator.of(context).pushNamed(
+            '/schedule-detail',
+            arguments: id,
+          );
+          _loadSchedules();
         },
       ),
     ).then((_) {
@@ -488,12 +568,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   GestureDetector(
-                    onTap: () => setState(() {
-                      _focusedDay = DateTime(
-                        _focusedDay.year,
-                        _focusedDay.month - 1,
-                      );
-                    }),
+                    onTap: () => _changeMonth(DateTime(
+                      _focusedDay.year,
+                      _focusedDay.month - 1,
+                    )),
                     child: const Icon(
                       Icons.chevron_left,
                       size: 20,
@@ -519,12 +597,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                   ),
                   const SizedBox(width: 4),
                   GestureDetector(
-                    onTap: () => setState(() {
-                      _focusedDay = DateTime(
-                        _focusedDay.year,
-                        _focusedDay.month + 1,
-                      );
-                    }),
+                    onTap: () => _changeMonth(DateTime(
+                      _focusedDay.year,
+                      _focusedDay.month + 1,
+                    )),
                     child: const Icon(
                       Icons.chevron_right,
                       size: 20,
@@ -694,7 +770,7 @@ class _DayDetailBottomSheet extends StatelessWidget {
   final DateTime day;
   final List<_Schedule> schedules;
   final VoidCallback onAddSchedule;
-  final VoidCallback onScheduleTap;
+  final ValueChanged<String?> onScheduleTap;
 
   const _DayDetailBottomSheet({
     required this.day,
@@ -808,7 +884,7 @@ class _DayDetailBottomSheet extends StatelessWidget {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: GestureDetector(
-                              onTap: onScheduleTap,
+                              onTap: () => onScheduleTap(schedule.id),
                               child: Container(
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(

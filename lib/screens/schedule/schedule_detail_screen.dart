@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
 import '../../theme/colors.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
@@ -11,6 +13,14 @@ class ScheduleDetailScreen extends StatefulWidget {
 class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   bool _showMenu = false;
   final TextEditingController _commentController = TextEditingController();
+  String? _scheduleId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) _scheduleId = args;
+  }
 
   @override
   void dispose() {
@@ -20,14 +30,38 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
 
   void _onEditTap() {
     setState(() => _showMenu = false);
-    Navigator.of(context).pushNamed('/add-schedule');
+    Navigator.of(context)
+        .pushNamed('/add-schedule', arguments: _scheduleId);
+  }
+
+  Future<void> _submitComment() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final scheduleId = _scheduleId;
+    final text = _commentController.text.trim();
+    if (groupId == null || scheduleId == null || text.isEmpty) return;
+    try {
+      await Di.commentRepository.writeOnSchedule(
+        groupRoomId: groupId,
+        scheduleId: scheduleId,
+        text: text,
+      );
+      _commentController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('댓글을 작성했어요')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
   }
 
   void _onDeleteTap() {
     setState(() => _showMenu = false);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           '일정 삭제',
@@ -49,7 +83,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -61,9 +95,23 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final groupId = Di.activeGroup.groupRoomId;
+              final scheduleId = _scheduleId;
+              if (groupId == null || scheduleId == null) {
+                Navigator.of(context).pop();
+                return;
+              }
+              try {
+                await Di.scheduleRepository.delete(groupId, scheduleId);
+                if (!mounted) return;
+                Navigator.of(context).pop();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(errorMessageOf(e))));
+              }
             },
             child: const Text(
               '삭제',
@@ -670,9 +718,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () {
-              _commentController.clear();
-            },
+            onTap: _submitComment,
             child: Container(
               width: 40,
               height: 40,

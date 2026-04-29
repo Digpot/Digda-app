@@ -6,6 +6,7 @@ import '../features/auth/state/auth_session.dart';
 import '../features/user/data/user_repository.dart';
 import '../features/user/state/user_session.dart';
 import '../features/group_room/data/group_room_repository.dart';
+import '../features/group_room/state/active_group_session.dart';
 import '../features/invite/data/invite_repository.dart';
 import '../features/membership/data/membership_repository.dart';
 import '../features/schedule/data/schedule_repository.dart';
@@ -37,6 +38,7 @@ class Di {
   static late final UploadRepository uploadRepository;
   static late final AuthSession authSession;
   static late final UserSession userSession;
+  static late final ActiveGroupSession activeGroup;
 
   /// `main()` 의 `runApp` 직전에 호출.
   static void bootstrap() {
@@ -57,5 +59,6 @@ class Di {
     uploadRepository = UploadRepository(apiClient: apiClient);
     authSession = AuthSession(repository: authRepository, api: apiClient);
     userSession = UserSession(repository: userRepository);
+    activeGroup = ActiveGroupSession();
   }
 }

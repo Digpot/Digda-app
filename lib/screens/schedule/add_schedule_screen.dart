@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
 
@@ -16,6 +19,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   TimeOfDay _startTime = const TimeOfDay(hour: 14, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
   Color _selectedColor = AppColors.primary;
+  bool _allDay = false;
+  bool _saving = false;
+  String? _editingScheduleId;
 
   final List<Map<String, dynamic>> _allParticipants = [
     {
@@ -61,7 +67,71 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     const Color(0xFFFBBF24),
   ];
 
-  bool get _canSave => _titleController.text.trim().isNotEmpty;
+  bool get _canSave =>
+      _titleController.text.trim().isNotEmpty && !_saving;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) {
+      _editingScheduleId = args;
+    } else if (args is Map<String, dynamic>) {
+      final dateStr = args['date'] as String?;
+      if (dateStr != null) {
+        final d = DateTime.tryParse(dateStr);
+        if (d != null) {
+          _startDate = d;
+          _endDate = d;
+        }
+      }
+    }
+  }
+
+  String _hexFromColor(Color c) {
+    final r = (c.r * 255).round() & 0xff;
+    final g = (c.g * 255).round() & 0xff;
+    final b = (c.b * 255).round() & 0xff;
+    return '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'.toUpperCase();
+  }
+
+  String _formatTime24(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _save() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _saving = true);
+    try {
+      final body = ScheduleWriteRequest.create(
+        title: _titleController.text.trim(),
+        color: _hexFromColor(_selectedColor),
+        startDate: _startDate,
+        endDate: _endDate,
+        allDay: _allDay,
+        startTime: _allDay ? null : _formatTime24(_startTime),
+        endTime: _allDay ? null : _formatTime24(_endTime),
+        participantIds: _allParticipants
+            .where((p) => p['selected'] as bool)
+            .map((p) => (p['id'] as String?) ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList(),
+      );
+      if (_editingScheduleId != null) {
+        await Di.scheduleRepository.update(
+            groupId, _editingScheduleId!, body);
+      } else {
+        await Di.scheduleRepository.create(groupId, body);
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
 
   @override
   void dispose() {
@@ -269,8 +339,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: PrimaryButton(
-                text: '일정 저장하기',
-                onPressed: _canSave ? () => Navigator.of(context).pop() : null,
+                text: _saving ? '저장 중...' : '일정 저장하기',
+                onPressed: _canSave ? _save : null,
               ),
             ),
             const SizedBox(height: 16),

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/notification/models/notification_models.dart';
 import '../../theme/colors.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -9,70 +12,44 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final List<Map<String, dynamic>> _today = [
-    {
-      'groupName': '대학 친구들',
-      'message': '지수님이 새 일정을 등록했습니다',
-      'time': '3분 전',
-      'icon': '📅',
-      'isRead': false,
-    },
-    {
-      'groupName': '여행 모임',
-      'message': '민호님이 일기에 댓글을 남겼습니다',
-      'time': '28분 전',
-      'icon': '✏️',
-      'isRead': false,
-    },
-    {
-      'groupName': '대학 친구들',
-      'message': '새 퀴즈가 등록되었습니다',
-      'time': '1시간 전',
-      'icon': '🎮',
-      'isRead': false,
-    },
-  ];
+  bool _loading = true;
+  String? _errorMessage;
+  List<AppNotification> _items = const [];
 
-  final List<Map<String, dynamic>> _yesterday = [
-    {
-      'groupName': '회사 동기',
-      'message': '수진님이 일정을 수정했습니다',
-      'time': '어제 오후 6:30',
-      'icon': '📅',
-      'isRead': true,
-    },
-    {
-      'groupName': '대학 친구들',
-      'message': '지수님이 새 일기를 작성했습니다',
-      'time': '어제 오후 3:15',
-      'icon': '📔',
-      'isRead': true,
-    },
-    {
-      'groupName': '여행 모임',
-      'message': '새 멤버 현우님이 참여했습니다',
-      'time': '어제 오전 11:00',
-      'icon': '👋',
-      'isRead': true,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
 
-  final List<Map<String, dynamic>> _earlier = [
-    {
-      'groupName': '회사 동기',
-      'message': '영희님의 생일이 다가옵니다',
-      'time': '2월 6일',
-      'icon': '🎂',
-      'isRead': true,
-    },
-  ];
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await Di.notificationRepository.list();
+      if (!mounted) return;
+      setState(() {
+        _items = result.notifications;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
+    }
+  }
 
   void _markAllRead() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           '모두 읽음 처리',
           style: TextStyle(
@@ -93,7 +70,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -105,19 +82,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                for (final n in _today) {
-                  n['isRead'] = true;
-                }
-                for (final n in _yesterday) {
-                  n['isRead'] = true;
-                }
-                for (final n in _earlier) {
-                  n['isRead'] = true;
-                }
-              });
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await Di.notificationRepository.markAllRead();
+                _load();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(errorMessageOf(e))));
+              }
             },
             child: const Text(
               '확인',
@@ -134,27 +108,83 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _onNotificationTap(Map<String, dynamic> notification) {
-    if (notification['isRead'] == true) return;
-    setState(() {
-      notification['isRead'] = true;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          '읽음 처리되었습니다',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          ),
-        ),
-        backgroundColor: AppColors.gray800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 1),
-      ),
+  Future<void> _onNotificationTap(AppNotification n) async {
+    if (!n.isRead) {
+      try {
+        await Di.notificationRepository.markRead(n.id);
+      } catch (_) {
+        // 읽음 처리 실패는 무시 (탭 액션은 진행)
+      }
+      if (!mounted) return;
+      setState(() {
+        _items = _items
+            .map((it) => it.id == n.id
+                ? AppNotification(
+                    id: it.id,
+                    type: it.type,
+                    title: it.title,
+                    message: it.message,
+                    groupRoomId: it.groupRoomId,
+                    groupRoomName: it.groupRoomName,
+                    relatedId: it.relatedId,
+                    relatedType: it.relatedType,
+                    isRead: true,
+                    createdAt: it.createdAt,
+                  )
+                : it)
+            .toList();
+      });
+    }
+    if (!mounted) return;
+    // 관련 화면으로 딥링크.
+    Di.activeGroup.enter(
+      groupRoomId: n.groupRoomId,
+      groupRoomName: n.groupRoomName,
+      isOwner: Di.activeGroup.isOwner,
     );
+    if (n.relatedType == 'schedule' && n.relatedId != null) {
+      Navigator.of(context)
+          .pushNamed('/schedule-detail', arguments: n.relatedId);
+    } else if (n.relatedType == 'diary' && n.relatedId != null) {
+      Navigator.of(context)
+          .pushNamed('/diary-detail', arguments: n.relatedId);
+    } else {
+      Navigator.of(context).pushNamed(
+        '/group-home',
+        arguments: {'name': n.groupRoomName},
+      );
+    }
+  }
+
+  String _formatRelativeTime(DateTime t) {
+    final now = DateTime.now();
+    final diff = now.difference(t);
+    if (diff.inMinutes < 1) return '방금';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return '${t.month}월 ${t.day}일';
+  }
+
+  String _iconFor(String type) {
+    switch (type) {
+      case 'schedule_created':
+      case 'schedule_updated':
+        return '📅';
+      case 'diary_written':
+        return '📔';
+      case 'comment_on_schedule':
+      case 'comment_on_diary':
+        return '✏️';
+      case 'member_joined':
+        return '👋';
+      case 'member_removed':
+        return '🚪';
+      case 'group_delete_scheduled':
+        return '🗑️';
+      default:
+        return '🔔';
+    }
   }
 
   @override
@@ -164,7 +194,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
@@ -188,49 +217,61 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: _markAllRead,
-                    child: const Text(
-                      '모두 읽음',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 14,
-                        color: AppColors.primary,
+                  if (_items.any((n) => !n.isRead))
+                    GestureDetector(
+                      onTap: _markAllRead,
+                      child: const Text(
+                        '모두 읽음',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w400,
+                          fontSize: 14,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
-            // List
             Expanded(
-              child: ListView(
-                children: [
-                  if (_today.isNotEmpty) ...[
-                    _buildSectionLabel('오늘'),
-                    ..._today.map((n) => GestureDetector(
-                      onTap: () => _onNotificationTap(n),
-                      child: _buildNotificationItem(n),
-                    )),
-                  ],
-                  if (_yesterday.isNotEmpty) ...[
-                    _buildSectionLabel('어제'),
-                    ..._yesterday.map((n) => GestureDetector(
-                      onTap: () => _onNotificationTap(n),
-                      child: _buildNotificationItem(n),
-                    )),
-                  ],
-                  if (_earlier.isNotEmpty) ...[
-                    _buildSectionLabel('이전'),
-                    ..._earlier.map((n) => GestureDetector(
-                      onTap: () => _onNotificationTap(n),
-                      child: _buildNotificationItem(n),
-                    )),
-                  ],
-                  const SizedBox(height: 24),
-                ],
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? _buildError()
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: _items.isEmpty
+                              ? ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  children: const [
+                                    SizedBox(height: 80),
+                                    Center(
+                                      child: Text(
+                                        '아직 알림이 없어요',
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                          color: AppColors.gray500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  itemCount: _items.length,
+                                  itemBuilder: (context, i) {
+                                    final n = _items[i];
+                                    return GestureDetector(
+                                      onTap: () => _onNotificationTap(n),
+                                      child: _buildItem(n),
+                                    );
+                                  },
+                                ),
+                        ),
             ),
           ],
         ),
@@ -238,30 +279,55 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildSectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-          color: AppColors.gray400,
-        ),
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline,
+              size: 48, color: AppColors.gray400),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _errorMessage ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _load,
+            child: const Text(
+              '다시 시도',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildNotificationItem(Map<String, dynamic> notification) {
-    final isRead = notification['isRead'] as bool;
+  Widget _buildItem(AppNotification n) {
+    final isRead = n.isRead;
     return Container(
-      color: isRead ? AppColors.white : AppColors.primary.withValues(alpha: 0.03),
+      color: isRead
+          ? AppColors.white
+          : AppColors.primary.withValues(alpha: 0.03),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Unread indicator
           Container(
             width: 8,
             height: 8,
@@ -272,7 +338,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          // Icon
           Container(
             width: 44,
             height: 44,
@@ -282,19 +347,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             child: Center(
               child: Text(
-                notification['icon'] as String,
+                _iconFor(n.type),
                 style: const TextStyle(fontSize: 22),
               ),
             ),
           ),
           const SizedBox(width: 12),
-          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  notification['groupName'] as String,
+                  n.groupRoomName,
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: isRead ? FontWeight.w400 : FontWeight.w700,
@@ -304,7 +368,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  notification['message'] as String,
+                  n.message,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w400,
@@ -314,7 +378,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  notification['time'] as String,
+                  _formatRelativeTime(n.createdAt),
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w400,

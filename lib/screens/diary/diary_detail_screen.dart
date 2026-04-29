@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
 import '../../theme/colors.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
@@ -10,10 +12,39 @@ class DiaryDetailScreen extends StatefulWidget {
 
 class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   bool _showMenu = false;
+  String? _diaryId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) _diaryId = args;
+  }
 
   void _onEditTap() {
     setState(() => _showMenu = false);
-    Navigator.of(context).pushNamed('/edit-diary');
+    Navigator.of(context).pushNamed('/edit-diary', arguments: _diaryId);
+  }
+
+  Future<void> _confirmDelete() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final diaryId = _diaryId;
+    if (groupId == null || diaryId == null) {
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      return;
+    }
+    try {
+      await Di.diaryRepository.delete(groupId, diaryId);
+      if (!mounted) return;
+      Navigator.of(context).pop(); // 시트 닫기
+      Navigator.of(context).pop(); // detail 닫기
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
   }
 
   void _onDeleteTap() {
@@ -104,10 +135,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   child: SizedBox(
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).pop();
-                      },
+                      onPressed: _confirmDelete,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         elevation: 0,

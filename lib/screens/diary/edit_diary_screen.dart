@@ -2,6 +2,10 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/diary/models/diary_models.dart';
+import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/image_pick_helper.dart';
 
@@ -26,6 +30,54 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
   int _selectedMood = 1;
   File? _pickedImage;
   DateTime _selectedDate = DateTime(2026, 2, 8);
+  bool _saving = false;
+  String? _diaryId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) _diaryId = args;
+  }
+
+  Future<void> _save() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final diaryId = _diaryId;
+    if (groupId == null || diaryId == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      String? imageId;
+      if (_pickedImage != null) {
+        final uploaded = await Di.uploadRepository.uploadImage(
+          filePath: _pickedImage!.path,
+          purpose: UploadPurpose.diary,
+        );
+        imageId = uploaded.id;
+      }
+      await Di.diaryRepository.update(
+        groupId,
+        diaryId,
+        DiaryWriteRequest(
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          date: _selectedDate,
+          weather: _selectedWeather,
+          mood: _selectedMood,
+          imageId: imageId ?? DiaryWriteRequest.unset,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
 
   // Mock: 이미 일기가 있는 날짜 목록
   final Set<DateTime> _existingDiaryDates = {
@@ -42,7 +94,8 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
 
   bool get _canSave =>
       _titleController.text.trim().isNotEmpty &&
-      _contentController.text.trim().isNotEmpty;
+      _contentController.text.trim().isNotEmpty &&
+      !_saving;
 
   final List<_WeatherOption> _weatherOptions = const [
     _WeatherOption(icon: Icons.wb_sunny_outlined, color: Color(0xFFFBBF24)),
@@ -123,9 +176,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     color: _canSave ? AppColors.primary : AppColors.gray200,
                     borderRadius: BorderRadius.circular(8),
                     child: InkWell(
-                      onTap: _canSave
-                          ? () => Navigator.of(context).pop()
-                          : null,
+                      onTap: _canSave ? _save : null,
                       borderRadius: BorderRadius.circular(8),
                       splashColor: AppColors.white.withValues(alpha: 0.3),
                       highlightColor: AppColors.white.withValues(alpha: 0.15),
