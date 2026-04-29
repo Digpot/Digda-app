@@ -4,9 +4,14 @@ import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/feature_card.dart';
 
 class GroupHomeScreen extends StatelessWidget {
-  const GroupHomeScreen({super.key, this.groupName = '대학 친구들'});
+  const GroupHomeScreen({
+    super.key,
+    this.groupName = '대학 친구들',
+    this.isOwner = true,
+  });
 
   final String groupName;
+  final bool isOwner;
 
   static const _memberColors = [
     AppColors.primary,
@@ -21,15 +26,19 @@ class GroupHomeScreen extends StatelessWidget {
     final args = ModalRoute.of(context)?.settings.arguments;
     final String dynamicName;
     final int memberCount;
+    final bool dynamicIsOwner;
     if (args is Map<String, dynamic>) {
       dynamicName = args['name'] as String? ?? groupName;
       memberCount = args['members'] as int? ?? 7;
+      dynamicIsOwner = args['isOwner'] as bool? ?? isOwner;
     } else if (args is String) {
       dynamicName = args;
       memberCount = 7;
+      dynamicIsOwner = isOwner;
     } else {
       dynamicName = groupName;
       memberCount = 7;
+      dynamicIsOwner = isOwner;
     }
 
     return Scaffold(
@@ -191,6 +200,23 @@ class GroupHomeScreen extends StatelessWidget {
                       onTap: () =>
                           Navigator.of(context).pushNamed('/todo'),
                     ),
+                    if (dynamicIsOwner) ...[
+                      const SizedBox(height: 12),
+                      FeatureCard(
+                        icon: Icons.swap_horiz_rounded,
+                        iconBgColor:
+                            AppColors.purple.withValues(alpha: 0.15),
+                        iconColor: AppColors.purple,
+                        cardBgColor:
+                            AppColors.purple.withValues(alpha: 0.06),
+                        title: '방장 양도',
+                        subtitle: '다른 멤버에게 방장을 넘겨요',
+                        onTap: () => Navigator.of(context).pushNamed(
+                          '/transfer-owner',
+                          arguments: dynamicName,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                   ],
                 ),
