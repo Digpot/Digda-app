@@ -8,6 +8,7 @@ import 'screens/onboarding/create_diary_screen.dart';
 import 'screens/onboarding/code_input_screen.dart';
 import 'screens/group/group_list_screen.dart';
 import 'screens/group/group_home_screen.dart';
+import 'screens/group/transfer_owner_screen.dart';
 import 'screens/schedule/schedule_calendar_screen.dart';
 import 'screens/schedule/schedule_detail_screen.dart';
 import 'screens/schedule/add_schedule_screen.dart';
@@ -79,6 +80,9 @@ class AppRouter {
         return _tabRoute(GroupHomeScreen(
           groupName: groupName,
         ), settings);
+      case '/transfer-owner':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const TransferOwnerScreen());
       case '/schedule':
         return _tabRoute(const ScheduleCalendarScreen(), settings);
       case '/schedule-detail':
