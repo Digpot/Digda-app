@@ -85,6 +85,24 @@ class ApiClient {
     return _dio.delete<T>(path, data: body, queryParameters: query, options: options);
   }
 
+  /// Multipart form-data POST. 12번 Upload 도메인 등에서 사용.
+  Future<Response<T>> postMultipart<T>(
+    String path, {
+    required FormData formData,
+    Map<String, dynamic>? query,
+    Options? options,
+  }) {
+    final merged = (options ?? Options()).copyWith(
+      contentType: 'multipart/form-data',
+    );
+    return _dio.post<T>(
+      path,
+      data: formData,
+      queryParameters: query,
+      options: merged,
+    );
+  }
+
   Future<bool> _refreshTokens() async {
     final refresh = await _tokenStorage.readRefreshToken();
     if (refresh == null) return false;
