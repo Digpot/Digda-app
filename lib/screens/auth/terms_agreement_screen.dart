@@ -1,4 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/api_exception.dart';
+import '../../features/auth/models/auth_models.dart';
 import '../../theme/colors.dart';
 import '../../theme/text_styles.dart';
 import '../../widgets/primary_button.dart';
@@ -14,6 +18,7 @@ class TermsAgreementScreen extends StatefulWidget {
 
 class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
   bool _checkAll = false;
+  bool _submitting = false;
   List<bool> _checks = [false, false, false, false, false];
 
   bool get _allRequiredChecked => _checks[0] && _checks[1] && _checks[2];
@@ -30,6 +35,39 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
       _checks[index] = value ?? false;
       _checkAll = _checks.every((e) => e);
     });
+  }
+
+  Future<void> _submit() async {
+    if (!_allRequiredChecked || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await Di.authSession.agreeTerms(TermsAgreement(
+        termsOfService: _checks[0],
+        privacyPolicy: _checks[1],
+        ageConfirmation: _checks[2],
+        marketingConsent: _checks[3],
+        pushConsent: _checks[4],
+      ));
+      if (!mounted) return;
+      if (widget.loginType == 'naver') {
+        Navigator.of(context).pushReplacementNamed('/group-list');
+      } else if (widget.loginType == 'apple') {
+        Navigator.of(context).pushReplacementNamed('/app-guide');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      String message = '약관 동의 처리 중 오류가 발생했습니다.';
+      if (e is DioException && e.error is ApiException) {
+        message = (e.error as ApiException).message;
+      } else if (e is ApiException) {
+        message = e.message;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -68,21 +106,8 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
               const Spacer(),
               Center(
                 child: PrimaryButton(
-                  text: '동의하고 시작하기',
-                  onPressed: _allRequiredChecked
-                      ? () {
-                          if (widget.loginType == 'naver') {
-                            Navigator.of(context)
-                                .pushReplacementNamed('/group-list');
-                          } else if (widget.loginType == 'apple') {
-                            Navigator.of(context)
-                                .pushReplacementNamed('/app-guide');
-                          } else {
-                            Navigator.of(context)
-                                .pushReplacementNamed('/home');
-                          }
-                        }
-                      : null,
+                  text: _submitting ? '처리 중...' : '동의하고 시작하기',
+                  onPressed: (_allRequiredChecked && !_submitting) ? _submit : null,
                 ),
               ),
               const SizedBox(height: 48),

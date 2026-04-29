@@ -1,14 +1,45 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../features/auth/data/auth_repository.dart';
 import '../../theme/colors.dart';
 
-class TermsDetailScreen extends StatelessWidget {
+class TermsDetailScreen extends StatefulWidget {
   const TermsDetailScreen({super.key, this.type = 'terms'});
 
   final String type;
 
-  String get _title {
-    switch (type) {
+  @override
+  State<TermsDetailScreen> createState() => _TermsDetailScreenState();
+}
+
+class _TermsDetailScreenState extends State<TermsDetailScreen> {
+  late Future<TermsDocument> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<TermsDocument> _load() async {
+    final type = TermsType.fromKey(widget.type);
+    try {
+      return await Di.authRepository.fetchTerms(type);
+    } catch (_) {
+      // 네트워크 실패 시 임베디드 텍스트로 폴백.
+      return TermsDocument(
+        title: _fallbackTitle,
+        content: _fallbackContent,
+        version: 'local',
+        updatedAt: '',
+      );
+    }
+  }
+
+  String get _fallbackTitle {
+    switch (widget.type) {
       case 'privacy':
+      case 'privacy-policy':
         return '개인정보처리방침';
       case 'marketing':
         return '마케팅 정보 수신 동의';
@@ -17,9 +48,10 @@ class TermsDetailScreen extends StatelessWidget {
     }
   }
 
-  String get _content {
-    switch (type) {
+  String get _fallbackContent {
+    switch (widget.type) {
       case 'privacy':
+      case 'privacy-policy':
         return _privacyPolicy;
       case 'marketing':
         return _marketingTerms;
@@ -33,50 +65,62 @@ class TermsDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      size: 14,
-                      color: AppColors.gray900,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    _title,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 20,
-                      color: AppColors.gray900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  _content,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    height: 1.8,
-                    color: AppColors.gray700,
+        child: FutureBuilder<TermsDocument>(
+          future: _future,
+          builder: (context, snap) {
+            final title = snap.data?.title.isNotEmpty == true
+                ? snap.data!.title
+                : _fallbackTitle;
+            final body = snap.connectionState == ConnectionState.waiting
+                ? null
+                : snap.data?.content ?? _fallbackContent;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          size: 14,
+                          color: AppColors.gray900,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
+                          color: AppColors.gray900,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ),
-          ],
+                Expanded(
+                  child: body == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            body,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w400,
+                              fontSize: 14,
+                              height: 1.8,
+                              color: AppColors.gray700,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

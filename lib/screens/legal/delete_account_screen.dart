@@ -1,4 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/api_exception.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
 
@@ -51,13 +54,25 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              // 로그인 화면으로 이동
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/login',
-                (route) => false,
-              );
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              try {
+                await Di.authSession.deleteAccount();
+                navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+              } catch (e) {
+                String message = '탈퇴 처리 중 오류가 발생했습니다.';
+                if (e is DioException && e.error is ApiException) {
+                  final api = e.error as ApiException;
+                  if (api.code == 'OWNS_ACTIVE_GROUP_ROOM') {
+                    message = '소유 중인 그룹방이 있어 탈퇴할 수 없습니다. 방장 양도 후 재시도하세요.';
+                  } else {
+                    message = api.message;
+                  }
+                }
+                messenger.showSnackBar(SnackBar(content: Text(message)));
+              }
             },
             child: const Text(
               '탈퇴하기',

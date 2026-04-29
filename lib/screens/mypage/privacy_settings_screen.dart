@@ -1,8 +1,75 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/api_exception.dart';
+import '../../features/user/models/user_models.dart';
 import '../../theme/colors.dart';
 
-class PrivacySettingsScreen extends StatelessWidget {
+class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
+
+  @override
+  State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
+}
+
+class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
+  UserProfile? _profile;
+  PrivacySettings? _privacy;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        Di.userSession.refresh(),
+        Di.userRepository.getPrivacySettings(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _profile = results[0] as UserProfile;
+        _privacy = results[1] as PrivacySettings;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _messageOf(e, '정보를 불러오지 못했습니다.'));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _updatePrivacy(PrivacySettings next) async {
+    final previous = _privacy;
+    setState(() => _privacy = next);
+    try {
+      final saved = await Di.userRepository.updatePrivacySettings(next);
+      if (!mounted) return;
+      setState(() => _privacy = saved);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _privacy = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_messageOf(e, '저장에 실패했습니다.'))),
+      );
+    }
+  }
+
+  String _messageOf(Object e, String fallback) {
+    if (e is DioException && e.error is ApiException) {
+      return (e.error as ApiException).message;
+    }
+    if (e is ApiException) return e.message;
+    return fallback;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +79,6 @@ class PrivacySettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Container(
               color: AppColors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -39,197 +105,262 @@ class PrivacySettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 프로필 카드
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.gray50,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        children: [
-                          // 프로필 아바타
-                          Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFF9A9E), Color(0xFFFF6B6B)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '민',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 28,
-                                  color: AppColors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            '김민수',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
-                              color: AppColors.gray900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'minsu@email.com',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w400,
-                              fontSize: 14,
-                              color: AppColors.gray500,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          // 카카오 로그인 뱃지
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.kakaoYellow,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 18,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.kakaoText.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: const Icon(
-                                    Icons.chat_bubble,
-                                    size: 11,
-                                    color: AppColors.kakaoText,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  '카카오 로그인',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                    color: AppColors.kakaoText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // 기본 정보 섹션
-                    _buildSectionLabel('기본 정보'),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.gray50,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildInfoRow(
-                            icon: Icons.person_outline,
-                            iconColor: AppColors.blue,
-                            label: '이름',
-                            value: '김민수',
-                          ),
-                          const Divider(
-                              color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
-                          _buildInfoRow(
-                            icon: Icons.email_outlined,
-                            iconColor: AppColors.green,
-                            label: '이메일',
-                            value: 'minsu@email.com',
-                          ),
-                          const Divider(
-                              color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
-                          _buildInfoRow(
-                            icon: Icons.calendar_today_outlined,
-                            iconColor: AppColors.purple,
-                            label: '가입일',
-                            value: '2026.01.15',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // 계정 관리 섹션
-                    _buildSectionLabel('계정 관리'),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.gray50,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildActionRow(
-                            icon: Icons.logout_outlined,
-                            iconColor: AppColors.gray700,
-                            label: '로그아웃',
-                            onTap: () => _showLogoutDialog(context),
-                          ),
-                          const Divider(
-                              color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
-                          _buildActionRow(
-                            icon: Icons.delete_outline,
-                            iconColor: AppColors.primaryDark,
-                            label: '회원 탈퇴',
-                            labelColor: AppColors.primaryDark,
-                            onTap: () => Navigator.of(context).pushNamed('/delete-account'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4),
-                      child: Text(
-                        '탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 12,
-                          color: AppColors.gray400,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionLabel(String label) {
+  Widget _buildBody() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!,
+                  style: const TextStyle(color: AppColors.gray700, fontSize: 14)),
+              const SizedBox(height: 12),
+              TextButton(onPressed: _load, child: const Text('다시 시도')),
+            ],
+          ),
+        ),
+      );
+    }
+    final profile = _profile!;
+    final privacy = _privacy!;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildProfileCard(profile),
+          const SizedBox(height: 24),
+          _sectionLabel('기본 정보'),
+          const SizedBox(height: 10),
+          _basicInfoCard(profile),
+          const SizedBox(height: 24),
+          _sectionLabel('공개 설정'),
+          const SizedBox(height: 10),
+          _privacyToggleCard(privacy),
+          const SizedBox(height: 24),
+          _sectionLabel('계정 관리'),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                _actionRow(
+                  icon: Icons.logout_outlined,
+                  iconColor: AppColors.gray700,
+                  label: '로그아웃',
+                  onTap: () => _showLogoutDialog(context),
+                ),
+                const Divider(
+                    color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
+                _actionRow(
+                  icon: Icons.delete_outline,
+                  iconColor: AppColors.primaryDark,
+                  label: '회원 탈퇴',
+                  labelColor: AppColors.primaryDark,
+                  onTap: () => Navigator.of(context).pushNamed('/delete-account'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Padding(
+            padding: EdgeInsets.only(left: 4),
+            child: Text(
+              '탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+                color: AppColors.gray400,
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(UserProfile profile) {
+    final initial = profile.name.isNotEmpty ? profile.name[0] : '?';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF9A9E), Color(0xFFFF6B6B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Center(
+              child: profile.profileImage != null && profile.profileImage!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.network(
+                        profile.profileImage!,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _initialAvatar(initial),
+                      ),
+                    )
+                  : _initialAvatar(initial),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            profile.name,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            profile.email ?? '-',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 14,
+              color: AppColors.gray500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _providerBadge(profile.provider),
+        ],
+      ),
+    );
+  }
+
+  Widget _initialAvatar(String initial) => Text(
+        initial,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 28,
+          color: AppColors.white,
+        ),
+      );
+
+  Widget _providerBadge(String provider) {
+    final (label, bg, fg) = switch (provider) {
+      'naver' => ('네이버 로그인', AppColors.naverGreen, AppColors.white),
+      'apple' => ('Apple 로그인', AppColors.appleBlack, AppColors.white),
+      'admin' => ('관리자 계정', AppColors.gray700, AppColors.white),
+      _ => ('카카오 로그인', AppColors.kakaoYellow, AppColors.kakaoText),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          color: fg,
+        ),
+      ),
+    );
+  }
+
+  Widget _basicInfoCard(UserProfile profile) {
+    final joined = profile.createdAt;
+    final joinedText = joined != null
+        ? '${joined.year}.${joined.month.toString().padLeft(2, '0')}.${joined.day.toString().padLeft(2, '0')}'
+        : '-';
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          _infoRow(
+            icon: Icons.person_outline,
+            iconColor: AppColors.blue,
+            label: '이름',
+            value: profile.name,
+          ),
+          const Divider(color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
+          _infoRow(
+            icon: Icons.email_outlined,
+            iconColor: AppColors.green,
+            label: '이메일',
+            value: profile.email ?? '-',
+          ),
+          const Divider(color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
+          _infoRow(
+            icon: Icons.calendar_today_outlined,
+            iconColor: AppColors.purple,
+            label: '가입일',
+            value: joinedText,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _privacyToggleCard(PrivacySettings privacy) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          _toggleRow(
+            icon: Icons.public,
+            iconColor: AppColors.blue,
+            title: '프로필 공개',
+            subtitle: '다른 사용자에게 내 프로필이 노출됩니다',
+            value: privacy.profilePublic,
+            onChanged: (v) => _updatePrivacy(privacy.copyWith(profilePublic: v)),
+          ),
+          const Divider(color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
+          _toggleRow(
+            icon: Icons.visibility_outlined,
+            iconColor: AppColors.purple,
+            title: '활동 표시',
+            subtitle: '내 일기/일정 활동이 그룹방 구성원에게 표시됩니다',
+            value: privacy.activityVisible,
+            onChanged: (v) => _updatePrivacy(privacy.copyWith(activityVisible: v)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
@@ -245,7 +376,7 @@ class PrivacySettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow({
+  Widget _infoRow({
     required IconData icon,
     required Color iconColor,
     required String label,
@@ -293,7 +424,66 @@ class PrivacySettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionRow({
+  Widget _toggleRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppColors.primary,
+            activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionRow({
     required IconData icon,
     required Color iconColor,
     required String label,
@@ -377,9 +567,19 @@ class PrivacySettingsScreen extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              Navigator.of(context).pushReplacementNamed('/login');
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              try {
+                await Di.authSession.signOut();
+                Di.userSession.clear();
+                navigator.pushNamedAndRemoveUntil('/login', (_) => false);
+              } catch (_) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('로그아웃에 실패했습니다. 다시 시도해주세요.')),
+                );
+              }
             },
             child: const Text(
               '로그아웃',
