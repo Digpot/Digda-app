@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/group_room/models/group_room_models.dart';
+import '../../features/membership/models/membership_models.dart';
 import '../../theme/colors.dart';
 
 class ManageDiaryScreen extends StatefulWidget {
@@ -10,19 +14,111 @@ class ManageDiaryScreen extends StatefulWidget {
 
 class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
   bool _membersExpanded = false;
+  bool _loading = true;
+  bool _busy = false;
+  String? _errorMessage;
 
-  // TODO: API 연동 시 실제 삭제 상태로 교체
-  bool _isDeleted = false;
+  GroupRoomDetail? _detail;
+  List<Membership> _members = const [];
 
-  static const List<_MemberData> _mockMembers = [
-    _MemberData(name: '김민지', color: AppColors.primary, isOwner: true),
-    _MemberData(name: '이수현', color: AppColors.blue, isOwner: false),
-    _MemberData(name: '박지호', color: AppColors.green, isOwner: false),
-    _MemberData(name: '최서연', color: AppColors.purple, isOwner: false),
-    _MemberData(name: '정우진', color: Color(0xFFF0A050), isOwner: false),
-    _MemberData(name: '한예린', color: Color(0xFF6B82F0), isOwner: false),
-    _MemberData(name: '송태민', color: AppColors.primary, isOwner: false),
-  ];
+  bool get _isDeleted => _detail?.groupRoom.deleteScheduledAt != null;
+  bool get _isOwner => _detail?.isOwner ?? false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = '그룹방 정보를 불러올 수 없어요';
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    try {
+      final detail = await Di.groupRoomRepository.detail(groupId);
+      final members = await Di.membershipRepository.list(groupId);
+      if (!mounted) return;
+      setState(() {
+        _detail = detail;
+        _members = members;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
+    }
+  }
+
+  Color _hexToColor(String hex) {
+    final cleaned = hex.replaceAll('#', '');
+    final value = int.tryParse('FF$cleaned', radix: 16);
+    return value != null ? Color(value) : AppColors.primary;
+  }
+
+  Future<void> _removeMember(Membership member) async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _busy = true);
+    try {
+      await Di.membershipRepository.remove(groupId, member.userId);
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${member.name}님을 내보냈어요')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
+
+  Future<void> _softDelete() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _busy = true);
+    try {
+      await Di.groupRoomRepository.softDelete(groupId);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
+
+  Future<void> _recover() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _busy = true);
+    try {
+      await Di.groupRoomRepository.recover(groupId);
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('다이어리를 복구했어요')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +127,8 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 헤더
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 children: [
                   GestureDetector(
@@ -59,283 +153,112 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 24),
-                    // 다이어리 복구 배너 (삭제된 상태일 때)
-                    if (_isDeleted) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(
-                                  Icons.restore_rounded,
-                                  size: 20,
-                                  color: AppColors.primary,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  '삭제 예정 다이어리',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              '이 다이어리는 7일 후에 완전히 삭제됩니다.\n지금 복구하면 모든 데이터가 유지됩니다.',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w400,
-                                fontSize: 13,
-                                height: 1.5,
-                                color: AppColors.gray700,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            GestureDetector(
-                              onTap: () {
-                                // TODO: API 연동 시 복구 로직 구현
-                                setState(() => _isDeleted = false);
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    '다이어리 복구하기',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: AppColors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                    // ── 멤버 관리 ──
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => _membersExpanded = !_membersExpanded),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.gray50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.gray100),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.people_outline_rounded,
-                              size: 20,
-                              color: AppColors.gray700,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              '멤버 관리',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                                color: AppColors.gray900,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${_mockMembers.length}명',
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w400,
-                                fontSize: 13,
-                                color: AppColors.gray400,
-                              ),
-                            ),
-                            const Spacer(),
-                            AnimatedRotation(
-                              turns: _membersExpanded ? 0.25 : 0,
-                              duration: const Duration(milliseconds: 200),
-                              child: const Icon(
-                                Icons.arrow_forward_ios,
-                                size: 14,
-                                color: AppColors.gray400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // 멤버 리스트 (펼침)
-                    if (_membersExpanded) ...[
-                      const SizedBox(height: 8),
-                      ...List.generate(_mockMembers.length, (i) {
-                        final member = _mockMembers[i];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? _buildError()
+                      : _buildBody(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            if (_isDeleted) _buildRecoveryBanner(),
+            const SizedBox(height: 8),
+            _buildMembersSection(),
+            const SizedBox(height: 16),
+            if (_isOwner && !_isDeleted) _buildDeleteButton(),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecoveryBanner() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.restore_rounded,
+                    size: 20, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text(
+                  '삭제 예정 다이어리',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '이 다이어리는 7일 후에 완전히 삭제됩니다.\n지금 복구하면 모든 데이터가 유지됩니다.',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 13,
+                height: 1.5,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _busy ? null : _recover,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: _busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
                             color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.gray100),
+                            strokeWidth: 2,
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color:
-                                      member.color.withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    member.name[0],
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: member.color,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      member.name,
-                                      style: const TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: AppColors.gray900,
-                                      ),
-                                    ),
-                                    if (member.isOwner)
-                                      const Text(
-                                        '방장',
-                                        style: TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 12,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              if (!member.isOwner)
-                                GestureDetector(
-                                  onTap: () =>
-                                      _showRemoveMemberDialog(member.name),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                          color: AppColors.gray200),
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      '삭제',
-                                      style: TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 12,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                    const SizedBox(height: 16),
-                    // ── 다이어리 삭제 ──
-                    if (!_isDeleted)
-                      GestureDetector(
-                        onTap: _showDeleteRoomDialog,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.delete_outline_rounded,
-                                size: 20,
-                                color: AppColors.primary,
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                '다이어리 삭제',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ],
+                        )
+                      : const Text(
+                          '다이어리 복구하기',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: AppColors.white,
                           ),
                         ),
-                      ),
-                    const SizedBox(height: 40),
-                  ],
                 ),
               ),
             ),
@@ -345,12 +268,240 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     );
   }
 
-  // ── 멤버 삭제 다이얼로그 (2단계) ──
+  Widget _buildMembersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () =>
+              setState(() => _membersExpanded = !_membersExpanded),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray100),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.people_outline_rounded,
+                  size: 20,
+                  color: AppColors.gray700,
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  '멤버 관리',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${_members.length}명',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 13,
+                    color: AppColors.gray400,
+                  ),
+                ),
+                const Spacer(),
+                AnimatedRotation(
+                  turns: _membersExpanded ? 0.25 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: AppColors.gray400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_membersExpanded) ...[
+          const SizedBox(height: 8),
+          ..._members.map(_buildMemberTile),
+        ],
+      ],
+    );
+  }
 
-  void _showRemoveMemberDialog(String memberName) {
+  Widget _buildMemberTile(Membership m) {
+    final color = _hexToColor(m.color);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                m.name.isNotEmpty ? m.name[0] : '?',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  m.name,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                if (m.isOwner)
+                  const Text(
+                    '방장',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (_isOwner && !m.isOwner)
+            GestureDetector(
+              onTap: _busy ? null : () => _showRemoveMemberDialog(m),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.gray200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '삭제',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton() {
+    return GestureDetector(
+      onTap: _busy ? null : _showDeleteRoomDialog,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+          ),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded,
+                size: 20, color: AppColors.primary),
+            SizedBox(width: 10),
+            Text(
+              '다이어리 삭제',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline,
+              size: 48, color: AppColors.gray400),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _errorMessage ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _load,
+            child: const Text(
+              '다시 시도',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRemoveMemberDialog(Membership m) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -365,7 +516,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: Text(
-          '$memberName님을 이 다이어리에서\n내보내시겠어요?',
+          '${m.name}님을 이 다이어리에서\n내보내시겠어요?',
           style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
@@ -375,7 +526,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -388,8 +539,8 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              _showMemberRemoveFinalConfirm(memberName);
+              Navigator.of(ctx).pop();
+              _showMemberRemoveFinalConfirm(m);
             },
             child: const Text(
               '삭제',
@@ -406,10 +557,10 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     );
   }
 
-  void _showMemberRemoveFinalConfirm(String memberName) {
+  void _showMemberRemoveFinalConfirm(Membership m) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -424,7 +575,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: Text(
-          '$memberName님은 이 다이어리의 모든\n기록에 접근할 수 없게 됩니다.',
+          '${m.name}님은 이 다이어리의 모든\n기록에 접근할 수 없게 됩니다.',
           style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
@@ -434,7 +585,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -447,8 +598,8 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              // TODO: API 연동 시 실제 삭제 로직
+              Navigator.of(ctx).pop();
+              _removeMember(m);
             },
             child: const Text(
               '내보내기',
@@ -465,12 +616,10 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     );
   }
 
-  // ── 방 삭제 다이얼로그 (2단계) ──
-
   void _showDeleteRoomDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -495,7 +644,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -508,7 +657,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.of(ctx).pop();
               _showDeleteRoomFinalConfirm();
             },
             child: const Text(
@@ -529,7 +678,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
   void _showDeleteRoomFinalConfirm() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -554,7 +703,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -567,8 +716,8 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              setState(() => _isDeleted = true);
+              Navigator.of(ctx).pop();
+              _softDelete();
             },
             child: const Text(
               '삭제하기',
@@ -584,16 +733,4 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
       ),
     );
   }
-}
-
-class _MemberData {
-  final String name;
-  final Color color;
-  final bool isOwner;
-
-  const _MemberData({
-    required this.name,
-    required this.color,
-    required this.isOwner,
-  });
 }

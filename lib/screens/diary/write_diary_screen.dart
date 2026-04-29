@@ -2,6 +2,10 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/diary/models/diary_models.dart';
+import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/image_pick_helper.dart';
 
@@ -24,6 +28,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   File? _pickedImage;
   DateTime _selectedDate = DateTime.now();
   bool _dateInitialized = false;
+  bool _saving = false;
 
   // Mock: 이미 일기가 있는 날짜 목록
   final Set<DateTime> _existingDiaryDates = {
@@ -37,7 +42,42 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
 
   bool get _canSave =>
       _titleController.text.trim().isNotEmpty &&
-      _contentController.text.trim().isNotEmpty;
+      _contentController.text.trim().isNotEmpty &&
+      !_saving;
+
+  Future<void> _save() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _saving = true);
+    try {
+      String? imageId;
+      if (_pickedImage != null) {
+        final uploaded = await Di.uploadRepository.uploadImage(
+          filePath: _pickedImage!.path,
+          purpose: UploadPurpose.diary,
+        );
+        imageId = uploaded.id;
+      }
+      await Di.diaryRepository.create(
+        groupId,
+        DiaryWriteRequest.create(
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          date: _selectedDate,
+          weather: _selectedWeather,
+          mood: _selectedMood,
+          imageId: imageId,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -130,9 +170,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
                     color: _canSave ? AppColors.primary : AppColors.gray200,
                     borderRadius: BorderRadius.circular(8),
                     child: InkWell(
-                      onTap: _canSave
-                          ? () => Navigator.of(context).pop()
-                          : null,
+                      onTap: _canSave ? _save : null,
                       borderRadius: BorderRadius.circular(8),
                       splashColor: AppColors.white.withValues(alpha: 0.3),
                       highlightColor: AppColors.white.withValues(alpha: 0.15),

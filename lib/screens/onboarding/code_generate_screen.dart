@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/di.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/outline_button.dart';
 
+/// CreateDiaryScreen 에서 그룹방 생성 후 받은 초대 코드를 노출.
+/// 라우트 인자(`Map`)로 `code`/`groupRoomId`/`groupName` 을 받음.
 class CodeGenerateScreen extends StatefulWidget {
   const CodeGenerateScreen({super.key});
 
@@ -13,11 +16,26 @@ class CodeGenerateScreen extends StatefulWidget {
 }
 
 class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
-  final String _generatedCode = 'A3X9K2';
   bool _copied = false;
+  String? _code;
+  String? _groupRoomId;
+  String? _groupName;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      _code = args['code'] as String?;
+      _groupRoomId = args['groupRoomId'] as String?;
+      _groupName = args['groupName'] as String?;
+    }
+  }
 
   void _copyCode() {
-    Clipboard.setData(ClipboardData(text: _generatedCode));
+    final code = _code;
+    if (code == null) return;
+    Clipboard.setData(ClipboardData(text: code));
     setState(() => _copied = true);
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _copied = false);
@@ -25,21 +43,41 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
   }
 
   void _shareCode() {
+    final code = _code;
+    if (code == null) return;
     Share.share(
-      'Digda에서 함께 일기를 써요!\n\n초대 코드: $_generatedCode\n\nDigda 앱을 열고 초대 코드를 입력해주세요 🙌',
+      'Digda에서 함께 일기를 써요!\n\n초대 코드: $code\n\nDigda 앱을 열고 초대 코드를 입력해주세요 🙌',
+    );
+  }
+
+  void _enterGroupHome() {
+    if (_groupRoomId != null) {
+      Di.activeGroup.enter(
+        groupRoomId: _groupRoomId!,
+        groupRoomName: _groupName ?? '',
+        isOwner: true,
+      );
+    }
+    Navigator.of(context).pushReplacementNamed(
+      '/group-home',
+      arguments: {
+        'name': _groupName ?? '',
+        'members': 1,
+        'isOwner': true,
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final code = _code ?? '------';
 
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 코드 영역
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -67,7 +105,7 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          _generatedCode,
+                          code,
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w800,
@@ -124,13 +162,11 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
                 ),
               ),
             ),
-            // 하단 버튼 2개
             Padding(
               padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPadding + 16),
               child: PrimaryButton(
                 text: '그룹방으로 이동하기',
-                onPressed: () => Navigator.of(context)
-                    .pushReplacementNamed('/group-home'),
+                onPressed: _enterGroupHome,
               ),
             ),
           ],

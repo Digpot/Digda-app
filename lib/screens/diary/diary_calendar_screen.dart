@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 
@@ -13,6 +16,38 @@ class DiaryCalendarScreen extends StatefulWidget {
 class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  Set<DateTime> _diaryDates = {};
+  List<DiarySummary> _recent = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMonth());
+  }
+
+  Future<void> _loadMonth() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    try {
+      final dates = await Di.diaryRepository.calendar(groupId, _focusedDay);
+      final list = await Di.diaryRepository.list(
+        groupId,
+        month: _focusedDay,
+        limit: 5,
+      );
+      if (!mounted) return;
+      setState(() {
+        _diaryDates = dates
+            .map((d) => DateTime.utc(d.year, d.month, d.day))
+            .toSet();
+        _recent = list.diaries;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+    }
+  }
 
   // Mock diary data with colors for left border
   final List<Map<String, dynamic>> _recentDiaries = [
@@ -61,7 +96,9 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   };
 
   List<Map<String, dynamic>> _getDiariesForDay(DateTime day) {
-    return _diaries[DateTime.utc(day.year, day.month, day.day)] ?? [];
+    final key = DateTime.utc(day.year, day.month, day.day);
+    if (_diaryDates.contains(key)) return [const {}];
+    return _diaries[key] ?? [];
   }
 
   @override
@@ -135,12 +172,15 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         GestureDetector(
-                          onTap: () => setState(() {
-                            _focusedDay = DateTime(
-                              _focusedDay.year,
-                              _focusedDay.month - 1,
-                            );
-                          }),
+                          onTap: () {
+                            setState(() {
+                              _focusedDay = DateTime(
+                                _focusedDay.year,
+                                _focusedDay.month - 1,
+                              );
+                            });
+                            _loadMonth();
+                          },
                           child: const Icon(
                             Icons.chevron_left,
                             size: 20,
@@ -166,12 +206,15 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         ),
                         const SizedBox(width: 4),
                         GestureDetector(
-                          onTap: () => setState(() {
-                            _focusedDay = DateTime(
-                              _focusedDay.year,
-                              _focusedDay.month + 1,
-                            );
-                          }),
+                          onTap: () {
+                            setState(() {
+                              _focusedDay = DateTime(
+                                _focusedDay.year,
+                                _focusedDay.month + 1,
+                              );
+                            });
+                            _loadMonth();
+                          },
                           child: const Icon(
                             Icons.chevron_right,
                             size: 20,
@@ -325,6 +368,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                     },
                     onPageChanged: (focusedDay) {
                       setState(() => _focusedDay = focusedDay);
+                      _loadMonth();
                     },
                   ),
                   // Legend
@@ -416,6 +460,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         _focusedDay = picked;
         _selectedDay = null;
       });
+      _loadMonth();
     }
   }
 

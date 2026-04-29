@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
 
@@ -19,7 +21,12 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
   final List<FocusNode> _focusNodes =
       List.generate(_codeLength, (_) => FocusNode());
 
+  bool _submitting = false;
+
   bool get _isFilled => _controllers.every((c) => c.text.isNotEmpty);
+
+  String get _enteredCode =>
+      _controllers.map((c) => c.text.toUpperCase()).join();
 
   @override
   void initState() {
@@ -27,7 +34,7 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
     final code = widget.initialCode;
     if (code != null && code.length == _codeLength) {
       for (int i = 0; i < _codeLength; i++) {
-        _controllers[i].text = code[i];
+        _controllers[i].text = code[i].toUpperCase();
       }
     }
   }
@@ -43,12 +50,6 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
     super.dispose();
   }
 
-  // 목데이터: 유효하지 않은 초대 코드 목록 (나중에 API로 교체)
-  static const _invalidCodes = {'111111'};
-
-  String get _enteredCode =>
-      _controllers.map((c) => c.text).join();
-
   void _onChanged(String value, int index) {
     if (value.length == 1 && index < _codeLength - 1) {
       _focusNodes[index + 1].requestFocus();
@@ -58,16 +59,38 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
     setState(() {});
   }
 
-  void _onSubmit() {
+  Future<void> _onSubmit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
     final code = _enteredCode;
-    if (_invalidCodes.contains(code)) {
-      _showInvalidCodeDialog();
-    } else {
-      Navigator.of(context).pushReplacementNamed('/group-home');
+    try {
+      // 1) 미리보기 검증 (만료/이미 참여/인원 초과 여기서 잡힘)
+      await Di.inviteRepository.validate(code);
+      if (!mounted) return;
+      // 2) 참여
+      final result = await Di.inviteRepository.join(code);
+      if (!mounted) return;
+      Di.activeGroup.enter(
+        groupRoomId: result.groupRoom.id,
+        groupRoomName: result.groupRoom.name,
+        isOwner: false,
+      );
+      Navigator.of(context).pushReplacementNamed(
+        '/group-home',
+        arguments: {
+          'name': result.groupRoom.name,
+          'members': result.memberships.length,
+          'isOwner': false,
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showInvalidCodeDialog(errorMessageOf(e, fallback: '유효하지 않은 초대 코드예요'));
     }
   }
 
-  void _showInvalidCodeDialog() {
+  void _showInvalidCodeDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -84,9 +107,9 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
             color: AppColors.gray900,
           ),
         ),
-        content: const Text(
-          '유효하지 않은 초대 코드예요.\n코드를 다시 확인해주세요.',
-          style: TextStyle(
+        content: Text(
+          message,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
             fontSize: 14,
@@ -119,7 +142,6 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
       body: Column(
         children: [
           const Spacer(),
-          // 하단 흰색 시트
           Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(24, 12, 24, bottomPadding + 30),
@@ -131,7 +153,6 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 드래그 핸들
                 Center(
                   child: Container(
                     width: 36,
@@ -165,7 +186,6 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                // 코드 입력 필드
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(_codeLength, (index) {
@@ -177,9 +197,12 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                         focusNode: _focusNodes[index],
                         maxLength: 1,
                         textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
+                        textCapitalization: TextCapitalization.characters,
+                        keyboardType: TextInputType.text,
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'[A-Za-z0-9]')),
+                          UpperCaseTextFormatter(),
                         ],
                         style: const TextStyle(
                           fontFamily: 'Inter',
@@ -215,10 +238,10 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                   }),
                 ),
                 const SizedBox(height: 32),
-                // 참여하기 버튼
                 PrimaryButton(
-                  text: '참여하기',
-                  onPressed: _isFilled ? _onSubmit : null,
+                  text: _submitting ? '참여 중...' : '참여하기',
+                  onPressed:
+                      (_isFilled && !_submitting) ? _onSubmit : null,
                 ),
               ],
             ),
@@ -226,5 +249,15 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
         ],
       ),
     );
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
