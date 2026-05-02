@@ -15,7 +15,7 @@ class UploadedImage {
 
   factory UploadedImage.fromJson(Map<String, dynamic> json) {
     return UploadedImage(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       url: json['url'] as String,
       width: (json['width'] as num).toInt(),
       height: (json['height'] as num).toInt(),

@@ -7,7 +7,7 @@ class GroupRoom {
     required this.maxMembers,
     required this.memberCount,
     this.thumbnailImage,
-    required this.ownerId,
+    this.ownerId,
     required this.createdAt,
     this.deleteScheduledAt,
   });
@@ -17,18 +17,18 @@ class GroupRoom {
   final int maxMembers;
   final int memberCount;
   final String? thumbnailImage;
-  final String ownerId;
+  final String? ownerId;
   final DateTime createdAt;
   final DateTime? deleteScheduledAt;
 
   factory GroupRoom.fromJson(Map<String, dynamic> json) {
     return GroupRoom(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       name: json['name'] as String,
       maxMembers: (json['maxMembers'] as num).toInt(),
       memberCount: (json['memberCount'] as num? ?? 0).toInt(),
       thumbnailImage: json['thumbnailImage'] as String?,
-      ownerId: json['ownerId'] as String,
+      ownerId: json['ownerId']?.toString(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       deleteScheduledAt: json['deleteScheduledAt'] != null
           ? DateTime.tryParse(json['deleteScheduledAt'] as String)
@@ -62,7 +62,7 @@ class GroupRoomListItem {
 
   factory GroupRoomListItem.fromJson(Map<String, dynamic> json) {
     return GroupRoomListItem(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       name: json['name'] as String,
       thumbnailImage: json['thumbnailImage'] as String?,
       memberCount: (json['memberCount'] as num).toInt(),
@@ -76,20 +76,20 @@ class GroupRoomListItem {
 
 class MembershipSummary {
   MembershipSummary({
-    required this.userId,
+    this.userId,
     required this.name,
     this.profileImage,
     required this.role,
   });
 
-  final String userId;
+  final String? userId;
   final String name;
   final String? profileImage;
   final String role; // 'owner' | 'member'
 
   factory MembershipSummary.fromJson(Map<String, dynamic> json) {
     return MembershipSummary(
-      userId: json['userId'] as String,
+      userId: json['userId'] as String?,
       name: json['name'] as String,
       profileImage: json['profileImage'] as String?,
       role: json['role'] as String? ?? 'member',

@@ -23,7 +23,7 @@ class Todo {
 
   factory Todo.fromJson(Map<String, dynamic> json) {
     return Todo(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       text: json['text'] as String,
       completed: json['completed'] as bool? ?? false,
       completedAt: json['completedAt'] != null
