@@ -72,6 +72,9 @@ class NotificationType {
   static const String commentOnSchedule = 'comment_on_schedule';
   static const String commentOnDiary = 'comment_on_diary';
   static const String memberJoined = 'member_joined';
+  static const String memberLeft = 'member_left';
   static const String memberRemoved = 'member_removed';
+  static const String ownershipTransferred = 'ownership_transferred';
   static const String groupDeleteScheduled = 'group_delete_scheduled';
+  static const String announcement = 'announcement';
 }
