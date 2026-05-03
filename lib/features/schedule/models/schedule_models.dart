@@ -33,7 +33,7 @@ class Schedule {
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
     return Schedule(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       title: json['title'] as String,
       color: json['color'] as String,
       startDate: DateTime.parse(json['startDate'] as String),

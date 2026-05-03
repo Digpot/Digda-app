@@ -19,7 +19,7 @@ class DeviceRepository {
         'platform': platform.value,
       },
     );
-    return res.data!['deviceId'] as String;
+    return res.data!['deviceId'].toString();
   }
 
   /// 11-2. 디바이스 토큰 해제.

@@ -57,7 +57,12 @@ class Di {
     notificationRepository = NotificationRepository(apiClient: apiClient);
     deviceRepository = DeviceRepository(apiClient: apiClient);
     uploadRepository = UploadRepository(apiClient: apiClient);
-    authSession = AuthSession(repository: authRepository, api: apiClient);
+    authSession = AuthSession(
+      repository: authRepository,
+      api: apiClient,
+      deviceRepository: deviceRepository,
+      tokenStorage: tokenStorage,
+    );
     userSession = UserSession(repository: userRepository);
     activeGroup = ActiveGroupSession();
   }

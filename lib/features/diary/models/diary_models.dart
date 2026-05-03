@@ -27,7 +27,7 @@ class DiarySummary {
 
   factory DiarySummary.fromJson(Map<String, dynamic> json) {
     return DiarySummary(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       title: json['title'] as String,
       date: DateTime.parse(json['date'] as String),
       weather: (json['weather'] as num).toInt(),
@@ -84,7 +84,7 @@ class Diary {
 
   factory Diary.fromJson(Map<String, dynamic> json) {
     return Diary(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       title: json['title'] as String,
       content: json['content'] as String,
       date: DateTime.parse(json['date'] as String),

@@ -9,7 +9,8 @@ class UserSummary {
 
   factory UserSummary.fromJson(Map<String, dynamic> json) {
     return UserSummary(
-      id: json['id'] as String,
+      // 서버 도메인마다 userId/id 혼용 → 둘 다 허용
+      id: (json['userId'] ?? json['id']).toString(),
       name: json['name'] as String,
       profileImage: json['profileImage'] as String?,
     );
@@ -32,7 +33,7 @@ class CommentEntity {
 
   factory CommentEntity.fromJson(Map<String, dynamic> json) {
     return CommentEntity(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       text: json['text'] as String,
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),

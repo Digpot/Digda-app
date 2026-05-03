@@ -27,13 +27,13 @@ class AppNotification {
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       type: json['type'] as String,
       title: json['title'] as String,
       message: json['message'] as String,
-      groupRoomId: json['groupRoomId'] as String,
+      groupRoomId: json['groupRoomId']?.toString() ?? '',
       groupRoomName: json['groupRoomName'] as String? ?? '',
-      relatedId: json['relatedId'] as String?,
+      relatedId: json['relatedId']?.toString(),
       relatedType: json['relatedType'] as String?,
       isRead: json['isRead'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -72,6 +72,9 @@ class NotificationType {
   static const String commentOnSchedule = 'comment_on_schedule';
   static const String commentOnDiary = 'comment_on_diary';
   static const String memberJoined = 'member_joined';
+  static const String memberLeft = 'member_left';
   static const String memberRemoved = 'member_removed';
+  static const String ownershipTransferred = 'ownership_transferred';
   static const String groupDeleteScheduled = 'group_delete_scheduled';
+  static const String announcement = 'announcement';
 }

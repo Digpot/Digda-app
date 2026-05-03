@@ -1,6 +1,11 @@
+import 'dart:io';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/auth/token_storage.dart';
 import '../../../core/network/api_client.dart';
+import '../../../features/device/data/device_repository.dart';
 import '../models/auth_models.dart';
 import '../data/auth_repository.dart';
 
@@ -8,13 +13,22 @@ import '../data/auth_repository.dart';
 ///
 /// - 부팅 시 토큰 존재 여부로 자동 로그인 가능 여부 판정
 /// - 직전 로그인한 [SocialProvider] 를 메모리에 보관하여 로그아웃 시 SDK 측 정리에 사용
+/// - 로그인 성공 시 FCM 토큰을 서버에 등록, 로그아웃/탈퇴 시 해제
 class AuthSession extends ChangeNotifier {
-  AuthSession({required AuthRepository repository, required ApiClient api})
-      : _repository = repository,
-        _api = api;
+  AuthSession({
+    required AuthRepository repository,
+    required ApiClient api,
+    required DeviceRepository deviceRepository,
+    required TokenStorage tokenStorage,
+  })  : _repository = repository,
+        _api = api,
+        _deviceRepo = deviceRepository,
+        _tokenStorage = tokenStorage;
 
   final AuthRepository _repository;
   final ApiClient _api;
+  final DeviceRepository _deviceRepo;
+  final TokenStorage _tokenStorage;
 
   AuthUser? _user;
   SocialProvider? _lastProvider;
@@ -36,6 +50,7 @@ class AuthSession extends ChangeNotifier {
     _lastProvider = provider;
     _isAuthenticated = true;
     notifyListeners();
+    await _registerDevice();
     return result;
   }
 
@@ -44,6 +59,7 @@ class AuthSession extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await _unregisterDevice();
     final p = _lastProvider;
     await _repository.signOut(provider: p);
     _user = null;
@@ -53,6 +69,7 @@ class AuthSession extends ChangeNotifier {
   }
 
   Future<void> deleteAccount() async {
+    await _unregisterDevice();
     await _repository.deleteAccount();
     _user = null;
     _lastProvider = null;
@@ -63,5 +80,35 @@ class AuthSession extends ChangeNotifier {
   void setUser(AuthUser user) {
     _user = user;
     notifyListeners();
+  }
+
+  Future<void> _registerDevice() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission();
+      final token = await messaging.getToken();
+      if (token == null) return;
+
+      final platform = Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android;
+      final deviceId = await _deviceRepo.register(token: token, platform: platform);
+      await _tokenStorage.saveDeviceId(deviceId);
+
+      // 토큰 갱신 시 서버에 재등록
+      messaging.onTokenRefresh.listen((newToken) async {
+        final id = await _deviceRepo.register(token: newToken, platform: platform);
+        await _tokenStorage.saveDeviceId(id);
+      });
+    } catch (_) {
+      // FCM 설정 미완료 시 무시 (google-services.json 등 미설치)
+    }
+  }
+
+  Future<void> _unregisterDevice() async {
+    try {
+      final deviceId = await _tokenStorage.readDeviceId();
+      if (deviceId != null) {
+        await _deviceRepo.unregister(deviceId);
+      }
+    } catch (_) {}
   }
 }
