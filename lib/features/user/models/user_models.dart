@@ -68,7 +68,7 @@ class UpdateProfileRequest {
   Map<String, dynamic> toJson() {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
-    if (!identical(statusMessage, unset)) body['statusMessage'] = statusMessage;
+    if (!identical(statusMessage, unset)) body['statusMessage'] = statusMessage ?? '';
     if (!identical(profileImageId, unset)) body['profileImageId'] = profileImageId;
     return body;
   }
