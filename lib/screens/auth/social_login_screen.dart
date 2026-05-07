@@ -25,10 +25,14 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
       if (!mounted) return;
       if (result.isNewUser) {
         Navigator.of(context).pushReplacementNamed('/terms', arguments: provider.key);
-      } else if (provider == SocialProvider.naver) {
-        Navigator.of(context).pushReplacementNamed('/group-list');
       } else {
-        Navigator.of(context).pushReplacementNamed('/home');
+        final groups = await Di.groupRoomRepository.myList();
+        if (!mounted) return;
+        if (groups.isEmpty) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/group-list');
+        }
       }
     } catch (e) {
       if (!mounted) return;

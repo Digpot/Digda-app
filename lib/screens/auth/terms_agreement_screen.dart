@@ -49,13 +49,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
         pushConsent: _checks[4],
       ));
       if (!mounted) return;
-      if (widget.loginType == 'naver') {
-        Navigator.of(context).pushReplacementNamed('/group-list');
-      } else if (widget.loginType == 'apple') {
-        Navigator.of(context).pushReplacementNamed('/app-guide');
-      } else {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
+      Navigator.of(context).pushReplacementNamed('/app-guide');
     } catch (e) {
       if (!mounted) return;
       String message = '약관 동의 처리 중 오류가 발생했습니다.';
