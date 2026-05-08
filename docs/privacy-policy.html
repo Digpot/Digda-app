@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>개인정보처리방침 — Digda</title>
+  <title>Privacy Policy — Digda</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18,32 +18,52 @@
     header {
       background: #fff;
       border-bottom: 1px solid #e5e7eb;
-      padding: 20px 24px;
+      padding: 16px 24px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
     }
 
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
     .logo {
-      width: 36px;
-      height: 36px;
+      width: 36px; height: 36px;
       background: #FF6B6B;
       border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-weight: 700;
-      font-size: 16px;
-      font-family: 'Inter', sans-serif;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 16px;
+      font-family: 'Inter', sans-serif; flex-shrink: 0;
     }
 
     .logo-text {
-      font-weight: 700;
-      font-size: 18px;
+      font-weight: 700; font-size: 18px;
+      color: #111827; font-family: 'Inter', sans-serif;
+    }
+
+    .lang-tabs {
+      display: flex;
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .lang-btn {
+      padding: 5px 14px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lang-btn.active {
+      background: #fff;
       color: #111827;
-      font-family: 'Inter', sans-serif;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
     .container {
@@ -52,162 +72,108 @@
       padding: 0 24px 80px;
     }
 
-    h1 {
-      font-size: 26px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 8px;
-    }
+    h1 { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 8px; }
 
-    .meta {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 40px;
-    }
+    .meta { font-size: 13px; color: #6b7280; margin-bottom: 40px; }
 
     .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 32px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      background: #fff; border-radius: 16px; padding: 32px;
+      margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
 
     h2 {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 16px;
-      padding-bottom: 10px;
+      font-size: 16px; font-weight: 700; color: #111827;
+      margin-bottom: 16px; padding-bottom: 10px;
       border-bottom: 2px solid #fee2e2;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      display: flex; align-items: center; gap: 8px;
     }
 
     h2 .num {
-      background: #FF6B6B;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      background: #FF6B6B; color: #fff;
+      font-size: 12px; font-weight: 700;
+      width: 22px; height: 22px; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
 
     p { color: #374151; margin-bottom: 12px; }
     p:last-child { margin-bottom: 0; }
 
-    .sub-section {
-      margin-bottom: 20px;
-    }
+    .sub-section { margin-bottom: 20px; }
     .sub-section:last-child { margin-bottom: 0; }
 
     .sub-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #6b7280;
-      background: #f3f4f6;
-      padding: 4px 10px;
-      border-radius: 6px;
-      display: inline-block;
-      margin-bottom: 10px;
+      font-size: 13px; font-weight: 700; color: #6b7280;
+      background: #f3f4f6; padding: 4px 10px; border-radius: 6px;
+      display: inline-block; margin-bottom: 10px;
     }
 
-    ul {
-      padding-left: 4px;
-      list-style: none;
-    }
+    ul { padding-left: 4px; list-style: none; }
 
     ul li {
-      color: #374151;
-      padding: 4px 0;
-      display: flex;
-      gap: 8px;
+      color: #374151; padding: 4px 0;
+      display: flex; gap: 8px;
     }
 
-    ul li::before {
-      content: '·';
-      color: #FF6B6B;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
+    ul li::before { content: '·'; color: #FF6B6B; font-weight: 700; flex-shrink: 0; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 4px;
-      font-size: 14px;
-    }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 14px; }
 
     th {
-      background: #fff5f5;
-      border: 1px solid #fecaca;
-      padding: 10px 14px;
-      text-align: left;
-      font-weight: 700;
-      color: #991b1b;
-      white-space: nowrap;
+      background: #fff5f5; border: 1px solid #fecaca;
+      padding: 10px 14px; text-align: left;
+      font-weight: 700; color: #991b1b; white-space: nowrap;
     }
 
-    td {
-      border: 1px solid #f3f4f6;
-      padding: 10px 14px;
-      color: #374151;
-    }
+    td { border: 1px solid #f3f4f6; padding: 10px 14px; color: #374151; }
 
     tr:nth-child(even) td { background: #fafafa; }
 
     .notice {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 13px;
-      color: #92400e;
-      margin-top: 14px;
+      background: #fff7ed; border: 1px solid #fed7aa;
+      border-radius: 10px; padding: 12px 16px;
+      font-size: 13px; color: #92400e; margin-top: 14px;
     }
 
     .contact-box {
-      background: #f9fafb;
-      border-radius: 10px;
-      padding: 16px 20px;
-      margin-top: 8px;
+      background: #f9fafb; border-radius: 10px;
+      padding: 16px 20px; margin-top: 8px;
     }
 
     .contact-box p { margin-bottom: 4px; }
 
     footer {
-      text-align: center;
-      font-size: 13px;
-      color: #9ca3af;
-      padding: 32px 24px;
-      border-top: 1px solid #e5e7eb;
-      background: #fff;
+      text-align: center; font-size: 13px; color: #9ca3af;
+      padding: 32px 24px; border-top: 1px solid #e5e7eb; background: #fff;
     }
+
+    .lang-content { display: none; }
+    .lang-content.active { display: block; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">D</div>
-  <div class="logo-text">Digda</div>
+  <div class="header-left">
+    <div class="logo">D</div>
+    <div class="logo-text">Digda</div>
+  </div>
+  <div class="lang-tabs">
+    <button class="lang-btn active" onclick="switchLang('ko')">한국어</button>
+    <button class="lang-btn" onclick="switchLang('en')">English</button>
+  </div>
 </header>
 
+<!-- ────────── 한국어 ────────── -->
+<div id="ko" class="lang-content active">
 <div class="container">
-
   <h1>개인정보처리방침</h1>
   <div class="meta">시행일: 2026년 1월 1일 &nbsp;·&nbsp; 최종 수정일: 2026년 5월 22일</div>
 
   <div class="card">
-    <p>Digda(이하 "회사")는 이용자의 개인정보를 소중히 여기며, 「개인정보 보호법」 및 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」을 준수합니다.</p>
+    <p>태리보이(이하 "회사")는 이용자의 개인정보를 소중히 여기며, 「개인정보 보호법」 및 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」을 준수합니다.</p>
   </div>
 
-  <!-- 1 -->
   <div class="card">
     <h2><span class="num">1</span>수집하는 개인정보 항목 및 수집 방법</h2>
     <div class="sub-section">
@@ -227,13 +193,10 @@
     <div class="notice">※ 회사는 위에 명시된 항목 외의 개인정보를 수집하지 않습니다.</div>
   </div>
 
-  <!-- 2 -->
   <div class="card">
     <h2><span class="num">2</span>개인정보의 수집 및 이용 목적</h2>
     <table>
-      <thead>
-        <tr><th>수집 항목</th><th>이용 목적</th></tr>
-      </thead>
+      <thead><tr><th>수집 항목</th><th>이용 목적</th></tr></thead>
       <tbody>
         <tr><td>이름</td><td>앱 내 프로필 닉네임 표시, 그룹 구성원 식별</td></tr>
         <tr><td>이메일 주소</td><td>회원 식별, 중복 가입 방지, 서비스 관련 공지 발송</td></tr>
@@ -243,15 +206,12 @@
     </table>
   </div>
 
-  <!-- 3 -->
   <div class="card">
     <h2><span class="num">3</span>개인정보의 제3자 제공</h2>
     <p>회사는 이용자의 개인정보를 원칙적으로 제3자에게 제공하지 않습니다.<br>
     단, 소셜 로그인을 이용하는 경우 해당 제공자의 개인정보처리방침이 함께 적용됩니다.</p>
     <table>
-      <thead>
-        <tr><th>제공자</th><th>제공 목적</th></tr>
-      </thead>
+      <thead><tr><th>제공자</th><th>제공 목적</th></tr></thead>
       <tbody>
         <tr><td>카카오 (주식회사 카카오)</td><td>카카오 계정을 통한 로그인 인증</td></tr>
         <tr><td>네이버 (네이버 주식회사)</td><td>네이버 계정을 통한 로그인 인증</td></tr>
@@ -261,15 +221,12 @@
     <div class="notice">※ 법령의 규정에 의거하거나 수사기관의 요구가 있는 경우 예외적으로 제공될 수 있습니다.</div>
   </div>
 
-  <!-- 4 -->
   <div class="card">
     <h2><span class="num">4</span>개인정보의 보유 및 이용 기간</h2>
     <p>원칙적으로 개인정보 수집 및 이용 목적이 달성된 후 지체 없이 파기합니다.<br>
     단, 관련 법령에 따라 아래 기간 동안 보관합니다.</p>
     <table>
-      <thead>
-        <tr><th>보관 항목</th><th>보관 기간</th><th>근거 법령</th></tr>
-      </thead>
+      <thead><tr><th>보관 항목</th><th>보관 기간</th><th>근거 법령</th></tr></thead>
       <tbody>
         <tr><td>계약 또는 청약철회 등에 관한 기록</td><td>5년</td><td>전자상거래 등에서의 소비자 보호에 관한 법률</td></tr>
         <tr><td>소비자의 불만 또는 분쟁 처리에 관한 기록</td><td>3년</td><td>동 법률</td></tr>
@@ -278,7 +235,6 @@
     </table>
   </div>
 
-  <!-- 5 -->
   <div class="card">
     <h2><span class="num">5</span>개인정보의 파기 절차 및 방법</h2>
     <ul>
@@ -288,7 +244,6 @@
     </ul>
   </div>
 
-  <!-- 6 -->
   <div class="card">
     <h2><span class="num">6</span>이용자의 권리 및 행사 방법</h2>
     <p>이용자는 언제든지 다음의 권리를 행사할 수 있습니다.</p>
@@ -302,11 +257,10 @@
     <div class="sub-title">권리 행사 방법</div>
     <ul>
       <li><strong>앱 내</strong>&nbsp;— 마이페이지 &gt; 계정 탈퇴 메뉴에서 즉시 처리 가능</li>
-      <li><strong>이메일</strong>&nbsp;— privacy@digda.app (접수 후 7영업일 이내 처리)</li>
+      <li><strong>이메일</strong>&nbsp;— chltmdgh517@naver.com (접수 후 7영업일 이내 처리)</li>
     </ul>
   </div>
 
-  <!-- 7 -->
   <div class="card">
     <h2><span class="num">7</span>개인정보의 안전성 확보 조치</h2>
     <ul>
@@ -316,27 +270,158 @@
     </ul>
   </div>
 
-  <!-- 8 -->
   <div class="card">
     <h2><span class="num">8</span>개인정보 보호책임자</h2>
     <div class="contact-box">
-      <p><strong>이메일:</strong> privacy@digda.app</p>
+      <p><strong>이메일:</strong> chltmdgh517@naver.com</p>
       <p style="color:#6b7280;font-size:13px;">문의 접수 후 7영업일 이내에 회신합니다.</p>
     </div>
   </div>
 
-  <!-- 9 -->
   <div class="card">
     <h2><span class="num">9</span>개인정보처리방침의 변경</h2>
     <p>본 방침의 내용이 추가·삭제 또는 변경되는 경우 시행 7일 전부터 앱 내 공지사항을 통해 안내합니다.</p>
   </div>
-
 </div>
-
 <footer>
-  © 2026 Digda. All rights reserved.<br>
+  © 2026 태리보이. All rights reserved.<br>
   시행일: 2026년 1월 1일 &nbsp;·&nbsp; 최종 수정일: 2026년 5월 22일
 </footer>
+</div>
+
+<!-- ────────── English ────────── -->
+<div id="en" class="lang-content">
+<div class="container">
+  <h1>Privacy Policy</h1>
+  <div class="meta">Effective: January 1, 2026 &nbsp;·&nbsp; Last updated: May 22, 2026</div>
+
+  <div class="card">
+    <p>Taeriboy (hereinafter "Company") values the privacy of its users and complies with the Personal Information Protection Act and the Act on Promotion of Information and Communications Network Utilization and Information Protection.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">1</span>Information We Collect</h2>
+    <div class="sub-section">
+      <div class="sub-title">Collected via Social Login</div>
+      <ul>
+        <li><strong>Name</strong>&nbsp;— Provided through Kakao / Naver / Apple social login</li>
+        <li><strong>Email address</strong>&nbsp;— Provided through Kakao / Naver / Apple social login</li>
+        <li><strong>Profile photo</strong>&nbsp;— Provided through Kakao / Naver / Apple social login (default image used if unavailable)</li>
+      </ul>
+    </div>
+    <div class="sub-section">
+      <div class="sub-title">Automatically Collected</div>
+      <ul>
+        <li><strong>FCM device token</strong>&nbsp;— Automatically collected upon app installation and launch (for push notifications)</li>
+      </ul>
+    </div>
+    <div class="notice">※ The Company does not collect any personal information beyond the items listed above.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span>How We Use Your Information</h2>
+    <table>
+      <thead><tr><th>Data</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td>Display profile nickname, identify group members</td></tr>
+        <tr><td>Email address</td><td>User identification, prevent duplicate accounts, send service notices</td></tr>
+        <tr><td>Profile photo</td><td>Display in-app profile image</td></tr>
+        <tr><td>FCM device token</td><td>Send push notifications for group activity, schedules, and to-do reminders</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span>Sharing Your Information</h2>
+    <p>The Company does not share your personal information with third parties as a general rule.<br>
+    However, when you use social login, the privacy policy of the respective provider also applies.</p>
+    <table>
+      <thead><tr><th>Provider</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Kakao Corp.</td><td>Login authentication via Kakao account</td></tr>
+        <tr><td>Naver Corp.</td><td>Login authentication via Naver account</td></tr>
+        <tr><td>Apple Inc.</td><td>Login authentication via Apple ID</td></tr>
+      </tbody>
+    </table>
+    <div class="notice">※ Information may be disclosed to authorities when required by law or upon lawful request by investigative agencies.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">4</span>Data Retention</h2>
+    <p>Personal information is deleted promptly once the purpose of collection has been fulfilled.<br>
+    The following data is retained as required by applicable law.</p>
+    <table>
+      <thead><tr><th>Record Type</th><th>Retention Period</th><th>Legal Basis</th></tr></thead>
+      <tbody>
+        <tr><td>Records of contracts or withdrawal of subscription</td><td>5 years</td><td>Act on Consumer Protection in Electronic Commerce</td></tr>
+        <tr><td>Records of consumer complaints or dispute resolution</td><td>3 years</td><td>Same Act</td></tr>
+        <tr><td>Communication records</td><td>3 months</td><td>Protection of Communications Secrets Act</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">5</span>Data Deletion</h2>
+    <ul>
+      <li><strong>Timing</strong>&nbsp;— Within 30 days of receiving a deletion/withdrawal request</li>
+      <li><strong>Electronic files</strong>&nbsp;— Permanently deleted using technically irreversible methods</li>
+      <li><strong>Physical documents</strong>&nbsp;— Shredded or incinerated</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">6</span>Your Rights</h2>
+    <p>You may exercise the following rights at any time:</p>
+    <ul>
+      <li>Request access to your personal information</li>
+      <li>Request correction or deletion of your personal information</li>
+      <li>Request restriction of processing</li>
+      <li>Withdraw from service and delete all personal data</li>
+    </ul>
+    <br>
+    <div class="sub-title">How to Exercise Your Rights</div>
+    <ul>
+      <li><strong>In-app</strong>&nbsp;— Go to My Page &gt; Delete Account (processed immediately)</li>
+      <li><strong>Email</strong>&nbsp;— chltmdgh517@naver.com (response within 7 business days)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">7</span>Security Measures</h2>
+    <ul>
+      <li><strong>Administrative</strong>&nbsp;— Minimizing access to personal data, maintaining internal management policies</li>
+      <li><strong>Technical</strong>&nbsp;— End-to-end encryption (HTTPS/TLS), access control and permission management</li>
+      <li><strong>Physical</strong>&nbsp;— Server access control, cloud security policies</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">8</span>Privacy Contact</h2>
+    <div class="contact-box">
+      <p><strong>Email:</strong> chltmdgh517@naver.com</p>
+      <p style="color:#6b7280;font-size:13px;">We will respond within 7 business days of receiving your inquiry.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">9</span>Changes to This Policy</h2>
+    <p>If this policy is added to, removed from, or otherwise modified, we will notify users via in-app announcements at least 7 days prior to the effective date.</p>
+  </div>
+</div>
+<footer>
+  © 2026 Taeriboy. All rights reserved.<br>
+  Effective: January 1, 2026 &nbsp;·&nbsp; Last updated: May 22, 2026
+</footer>
+</div>
+
+<script>
+  function switchLang(lang) {
+    document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(lang).classList.add('active');
+    document.querySelector('[onclick="switchLang(\'' + lang + '\')"]').classList.add('active');
+  }
+</script>
 
 </body>
 </html>
