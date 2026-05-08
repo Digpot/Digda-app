@@ -681,21 +681,40 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w400,
                         fontSize: 11,
-                        color: AppColors.primary,
+                        color: AppColors.gray500,
                       ),
                     ),
                     calendarBuilders: CalendarBuilders(
+                      dowBuilder: (context, day) {
+                        const labels = ['월', '화', '수', '목', '금', '토', '일'];
+                        final color = day.weekday == DateTime.saturday
+                            ? AppColors.blue
+                            : day.weekday == DateTime.sunday
+                                ? AppColors.primary
+                                : AppColors.gray500;
+                        return Center(
+                          child: Text(
+                            labels[day.weekday - 1],
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w400,
+                              fontSize: 11,
+                              color: color,
+                            ),
+                          ),
+                        );
+                      },
                       defaultBuilder: (context, day, focusedDay) {
-                        final isWeekend =
-                            day.weekday == DateTime.saturday ||
-                            day.weekday == DateTime.sunday;
+                        final textColor = day.weekday == DateTime.saturday
+                            ? AppColors.blue
+                            : day.weekday == DateTime.sunday
+                                ? AppColors.primary
+                                : AppColors.gray900;
                         return _buildDayCell(
                           day,
                           rowHeight,
                           cellWidth,
-                          textColor: isWeekend
-                              ? AppColors.primary
-                              : AppColors.gray900,
+                          textColor: textColor,
                         );
                       },
                       todayBuilder: (context, day, focusedDay) {

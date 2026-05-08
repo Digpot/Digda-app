@@ -254,12 +254,6 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         fontSize: 13,
                         color: AppColors.gray900,
                       ),
-                      weekendTextStyle: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 13,
-                        color: AppColors.primary,
-                      ),
                       outsideTextStyle: TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w400,
@@ -285,8 +279,47 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w400,
                         fontSize: 11,
-                        color: AppColors.primary,
+                        color: AppColors.gray500,
                       ),
+                    ),
+                    calendarBuilders: CalendarBuilders(
+                      defaultBuilder: (context, day, focusedDay) {
+                        final color = day.weekday == DateTime.saturday
+                            ? AppColors.blue
+                            : day.weekday == DateTime.sunday
+                                ? AppColors.primary
+                                : AppColors.gray900;
+                        return Center(
+                          child: Text(
+                            '${day.day}',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w400,
+                              fontSize: 13,
+                              color: color,
+                            ),
+                          ),
+                        );
+                      },
+                      dowBuilder: (context, day) {
+                        const labels = ['월', '화', '수', '목', '금', '토', '일'];
+                        final color = day.weekday == DateTime.saturday
+                            ? AppColors.blue
+                            : day.weekday == DateTime.sunday
+                                ? AppColors.primary
+                                : AppColors.gray500;
+                        return Center(
+                          child: Text(
+                            labels[day.weekday - 1],
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w400,
+                              fontSize: 11,
+                              color: color,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     enabledDayPredicate: (day) {
                       final now = DateTime.now();
@@ -596,12 +629,6 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                           fontSize: 13,
                           color: AppColors.gray900,
                         ),
-                        weekendTextStyle: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 13,
-                          color: AppColors.primary,
-                        ),
                         outsideTextStyle: TextStyle(
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w400,
@@ -626,8 +653,47 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w400,
                           fontSize: 11,
-                          color: AppColors.primary,
+                          color: AppColors.gray500,
                         ),
+                      ),
+                      calendarBuilders: CalendarBuilders(
+                        defaultBuilder: (context, day, focusedDay) {
+                          final color = day.weekday == DateTime.saturday
+                              ? AppColors.blue
+                              : day.weekday == DateTime.sunday
+                                  ? AppColors.primary
+                                  : AppColors.gray900;
+                          return Center(
+                            child: Text(
+                              '${day.day}',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w400,
+                                fontSize: 13,
+                                color: color,
+                              ),
+                            ),
+                          );
+                        },
+                        dowBuilder: (context, day) {
+                          const labels = ['월', '화', '수', '목', '금', '토', '일'];
+                          final color = day.weekday == DateTime.saturday
+                              ? AppColors.blue
+                              : day.weekday == DateTime.sunday
+                                  ? AppColors.primary
+                                  : AppColors.gray500;
+                          return Center(
+                            child: Text(
+                              labels[day.weekday - 1],
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w400,
+                                fontSize: 11,
+                                color: color,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       onDaySelected: (selectedDay, focusedDay) {
                         setModalState(() {
