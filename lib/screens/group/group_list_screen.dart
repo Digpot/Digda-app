@@ -246,7 +246,7 @@ class _EmptyState extends StatelessWidget {
               fontFamily: 'Inter',
               fontWeight: FontWeight.w600,
               fontSize: 15,
-              color: AppColors.gray600,
+              color: AppColors.gray700,
             ),
           ),
           const SizedBox(height: 4),

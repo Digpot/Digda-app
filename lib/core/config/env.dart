@@ -9,7 +9,7 @@ class Env {
   static Future<void> load() => dotenv.load(fileName: '.env');
 
   static String get apiBaseUrl =>
-      dotenv.maybeGet('API_BASE_URL') ?? 'https://api.digda.app/v1';
+      dotenv.maybeGet('API_BASE_URL') ?? 'https://api.digda.kro.kr';
 
   static String get kakaoNativeAppKey =>
       dotenv.maybeGet('KAKAO_NATIVE_APP_KEY') ?? '';
