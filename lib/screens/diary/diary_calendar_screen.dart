@@ -118,7 +118,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         const SizedBox(width: 16),
                         GestureDetector(
                           onTap: () => Navigator.of(context)
-                              .pushNamed('/my-page'),
+                              .pushNamed('/manage-diary')
+                              .then((_) => _loadMonth()),
                           child: const Icon(
                             Icons.settings_outlined,
                             size: 22,

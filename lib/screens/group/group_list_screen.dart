@@ -139,73 +139,92 @@ class _GroupListScreenState extends State<GroupListScreen> {
                       );
                     }
                     final groups = snap.data ?? const <GroupRoomListItem>[];
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          if (groups.isEmpty)
-                            const _EmptyState()
-                          else
-                            ...List.generate(groups.length, (i) {
-                              final g = groups[i];
-                              final skin = _palette[i % _palette.length];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: GroupListTile(
-                                  name: g.name,
-                                  memberCount: '${g.memberCount}명 참여 중',
-                                  groupIcon: skin.icon,
-                                  groupIconBg: skin.bg,
-                                  groupIconColor: skin.fg,
-                                  showActions: g.isOwner,
-                                  onTap: () => _enterGroup(g),
-                                  onShare: () => _showInviteCodeSheet(g.id),
-                                  onSettings: () {
-                                    Di.activeGroup.enter(
-                                      groupRoomId: g.id,
-                                      groupRoomName: g.name,
-                                      isOwner: g.isOwner,
-                                    );
-                                    Navigator.of(context)
-                                        .pushNamed('/manage-diary');
-                                  },
-                                ),
-                              );
-                            }),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: () async {
-                              await Navigator.of(context)
-                                  .pushNamed('/create-diary');
-                              _refresh();
-                            },
-                            child: const Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.add_circle_outline,
-                                    size: 18,
-                                    color: AppColors.primary,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    '새 다이어리 추가',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 14,
-                                      color: AppColors.primary,
+                    return LayoutBuilder(
+                      builder: (context, viewport) {
+                        final content = Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (groups.isEmpty)
+                                const _EmptyState()
+                              else
+                                ...List.generate(groups.length, (i) {
+                                  final g = groups[i];
+                                  final skin = _palette[i % _palette.length];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: GroupListTile(
+                                      name: g.name,
+                                      memberCount: '${g.memberCount}명 참여 중',
+                                      groupIcon: skin.icon,
+                                      groupIconBg: skin.bg,
+                                      groupIconColor: skin.fg,
+                                      showActions: g.isOwner,
+                                      onTap: () => _enterGroup(g),
+                                      onShare: () =>
+                                          _showInviteCodeSheet(g.id),
+                                      onSettings: () {
+                                        Di.activeGroup.enter(
+                                          groupRoomId: g.id,
+                                          groupRoomName: g.name,
+                                          isOwner: g.isOwner,
+                                        );
+                                        Navigator.of(context)
+                                            .pushNamed('/manage-diary');
+                                      },
                                     ),
+                                  );
+                                }),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  await Navigator.of(context)
+                                      .pushNamed('/create-diary');
+                                  _refresh();
+                                },
+                                child: const Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.add_circle_outline,
+                                        size: 18,
+                                        color: AppColors.primary,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        '새 다이어리 추가',
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                        // 콘텐츠가 짧을 때는 세로 중앙 정렬, 길어지면 일반 스크롤.
+                        return SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(minHeight: viewport.maxHeight),
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 24),
+                                child: content,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+                        );
+                      },
                     );
                   },
                 ),

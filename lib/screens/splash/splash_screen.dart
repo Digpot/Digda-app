@@ -46,7 +46,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
     await minDelay;
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(nextRoute);
+    // pushNamedAndRemoveUntil 로 splash/login 을 백스택에서 제거 → 앱 사용 중 뒤로가기로
+    // 로그인 화면이 다시 노출되는 문제를 차단.
+    Navigator.of(context).pushNamedAndRemoveUntil(nextRoute, (_) => false);
   }
 
   @override
