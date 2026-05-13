@@ -1,19 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/di.dart';
 import '../../theme/colors.dart';
-import '../onboarding/empty_state_screen.dart';
+import '../../features/user/models/user_models.dart';
 
-class MyPageScreen extends StatelessWidget {
+class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
 
   @override
+  State<MyPageScreen> createState() => _MyPageScreenState();
+}
+
+class _MyPageScreenState extends State<MyPageScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Di.userSession.addListener(_onSession);
+    // 캐시가 비어 있으면 강제 갱신, 있더라도 화면 진입 시 최신화. 실패는 화면 표시에 영향 없음.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Di.userSession.refresh().then(
+            (_) {},
+            onError: (_) {},
+          );
+    });
+  }
+
+  @override
+  void dispose() {
+    Di.userSession.removeListener(_onSession);
+    super.dispose();
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final profile = Di.userSession.profile;
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
@@ -40,31 +69,16 @@ class MyPageScreen extends StatelessWidget {
                   GestureDetector(
                     onTap: () =>
                         Navigator.of(context).pushNamed('/notifications'),
-                    child: Stack(
-                      children: [
-                        const Icon(
-                          Icons.notifications_outlined,
-                          size: 22,
-                          color: AppColors.gray700,
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: const Icon(
+                      Icons.notifications_outlined,
+                      size: 22,
+                      color: AppColors.gray700,
                     ),
                   ),
                   const SizedBox(width: 16),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/privacy-settings'),
+                    onTap: () => Navigator.of(context)
+                        .pushNamed('/privacy-settings'),
                     child: const Icon(
                       Icons.settings_outlined,
                       size: 22,
@@ -79,16 +93,15 @@ class MyPageScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Profile section
-                    _buildProfileSection(context),
+                    _buildProfileSection(context, profile),
                     const SizedBox(height: 24),
-                    // 다이어리 관리 section
                     _buildSectionLabel('다이어리 관리'),
                     _buildMenuItem(
                       context,
                       icon: Icons.menu_outlined,
                       label: '그룹방 목록 보기',
-                      onTap: () => Navigator.of(context).pushNamed('/group-list'),
+                      onTap: () =>
+                          Navigator.of(context).pushNamed('/group-list'),
                     ),
                     _buildMenuItem(
                       context,
@@ -97,7 +110,6 @@ class MyPageScreen extends StatelessWidget {
                       onTap: () => _showCodeInputSheet(context),
                     ),
                     const SizedBox(height: 16),
-                    // 설정 section
                     _buildSectionLabel('설정'),
                     _buildMenuItem(
                       context,
@@ -110,29 +122,31 @@ class MyPageScreen extends StatelessWidget {
                       context,
                       icon: Icons.lock_outline,
                       label: '개인정보 관리',
-                      onTap: () =>
-                          Navigator.of(context).pushNamed('/privacy-settings'),
+                      onTap: () => Navigator.of(context)
+                          .pushNamed('/privacy-settings'),
                     ),
                     const SizedBox(height: 16),
-                    // 기타 section
                     _buildSectionLabel('기타'),
                     _buildMenuItem(
                       context,
                       icon: Icons.menu_book_outlined,
                       label: '앱 사용 가이드',
-                      onTap: () => Navigator.of(context).pushNamed('/app-guide', arguments: true),
+                      onTap: () => Navigator.of(context)
+                          .pushNamed('/app-guide', arguments: true),
                     ),
                     _buildMenuItem(
                       context,
                       icon: Icons.description_outlined,
                       label: '이용약관',
-                      onTap: () => Navigator.of(context).pushNamed('/terms-detail', arguments: 'terms'),
+                      onTap: () => Navigator.of(context)
+                          .pushNamed('/terms-detail', arguments: 'terms'),
                     ),
                     _buildMenuItem(
                       context,
                       icon: Icons.shield_outlined,
                       label: '개인정보처리방침',
-                      onTap: () => Navigator.of(context).pushNamed('/terms-detail', arguments: 'privacy'),
+                      onTap: () => Navigator.of(context)
+                          .pushNamed('/terms-detail', arguments: 'privacy'),
                     ),
                     _buildMenuItem(
                       context,
@@ -169,7 +183,10 @@ class MyPageScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileSection(BuildContext context) {
+  Widget _buildProfileSection(BuildContext context, UserProfile? profile) {
+    final name = profile?.name ?? '';
+    final imageUrl = profile?.profileImage;
+    final initial = name.isNotEmpty ? name[0] : '';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
@@ -185,11 +202,17 @@ class MyPageScreen extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.person,
-                    size: 36,
-                    color: AppColors.primary,
-                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _avatarFallback(initial),
+                        )
+                      : _avatarFallback(initial),
                 ),
                 Positioned(
                   right: 0,
@@ -213,45 +236,69 @@ class MyPageScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '홍길동',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: AppColors.gray900,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.isEmpty ? '사용자' : name,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: AppColors.gray900,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 4),
-              GestureDetector(
-                onTap: () =>
-                    Navigator.of(context).pushNamed('/edit-profile'),
-                child: Row(
-                  children: const [
-                    Text(
-                      '프로필 편집',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 13,
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () =>
+                      Navigator.of(context).pushNamed('/edit-profile'),
+                  child: Row(
+                    children: const [
+                      Text(
+                        '프로필 편집',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w400,
+                          fontSize: 13,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 14,
                         color: AppColors.primary,
                       ),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 14,
-                      color: AppColors.primary,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _avatarFallback(String initial) {
+    if (initial.isEmpty) {
+      return const Icon(
+        Icons.person,
+        size: 36,
+        color: AppColors.primary,
+      );
+    }
+    return Center(
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 24,
+          color: AppColors.primary,
+        ),
       ),
     );
   }
@@ -353,7 +400,8 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     return Container(
-      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPadding + keyboardHeight + 24),
+      padding:
+          EdgeInsets.fromLTRB(24, 0, 24, bottomPadding + keyboardHeight + 24),
       decoration: const BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -450,9 +498,10 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
             child: ElevatedButton(
               onPressed: _isFilled
                   ? () {
+                      final code = _controllers.map((c) => c.text).join();
                       Navigator.of(context).pop();
                       Navigator.of(context)
-                          .pushReplacementNamed('/group-home');
+                          .pushNamed('/code-input', arguments: code);
                     }
                   : null,
               style: ElevatedButton.styleFrom(

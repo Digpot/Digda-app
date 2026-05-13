@@ -141,7 +141,9 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                   ),
                   const SizedBox(width: 16),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/my-page'),
+                    onTap: () => Navigator.of(context)
+                        .pushNamed('/manage-diary')
+                        .then((_) => _load()),
                     child: const Icon(
                       Icons.settings_outlined,
                       size: 22,

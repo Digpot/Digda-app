@@ -63,13 +63,27 @@ class SocialAuthService {
   Future<SocialCredential> _signInNaver() async {
     final result = await FlutterNaverLogin.logIn();
     if (result.status != NaverLoginStatus.loggedIn) {
+      // 사용자 취소(loggedOut)는 메시지를 다르게, 그 외(error 등)는 상세 메시지를 노출.
+      final isCancel = result.status == NaverLoginStatus.loggedOut;
+      final errMsg = result.errorMessage ?? '';
       throw ApiException(
         statusCode: 0,
-        code: 'SOCIAL_LOGIN_CANCELLED',
-        message: '네이버 로그인이 취소되었습니다',
+        code: isCancel ? 'SOCIAL_LOGIN_CANCELLED' : 'SOCIAL_LOGIN_FAILED',
+        message: isCancel
+            ? '네이버 로그인이 취소되었습니다'
+            : (errMsg.isNotEmpty
+                ? '네이버 로그인 실패: $errMsg'
+                : '네이버 로그인에 실패했습니다'),
       );
     }
     final token = await FlutterNaverLogin.getCurrentAccessToken();
+    if (token.accessToken.isEmpty) {
+      throw ApiException(
+        statusCode: 0,
+        code: 'SOCIAL_LOGIN_FAILED',
+        message: '네이버 액세스 토큰을 받지 못했습니다',
+      );
+    }
     return SocialCredential(
       provider: SocialProvider.naver,
       accessToken: token.accessToken,

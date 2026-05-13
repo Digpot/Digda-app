@@ -30,15 +30,8 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
   bool _dateInitialized = false;
   bool _saving = false;
 
-  // Mock: 이미 일기가 있는 날짜 목록
-  final Set<DateTime> _existingDiaryDates = {
-    DateTime.utc(2026, 2, 5),
-    DateTime.utc(2026, 2, 7),
-    DateTime.utc(2026, 2, 8),
-    DateTime.utc(2026, 2, 14),
-    DateTime.utc(2026, 2, 21),
-    DateTime.utc(2026, 2, 22),
-  };
+  /// 서버에서 받아온, 이미 일기가 있는 날짜.
+  Set<DateTime> _existingDiaryDates = const <DateTime>{};
 
   bool get _canSave =>
       _titleController.text.trim().isNotEmpty &&
@@ -88,6 +81,23 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         _selectedDate = args;
       }
       _dateInitialized = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingDates());
+    }
+  }
+
+  Future<void> _loadExistingDates() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    try {
+      final dates = await Di.diaryRepository.calendar(groupId, _selectedDate);
+      if (!mounted) return;
+      setState(() {
+        _existingDiaryDates = dates
+            .map((d) => DateTime.utc(d.year, d.month, d.day))
+            .toSet();
+      });
+    } catch (_) {
+      // 기존 일기 정보를 못 받아도 작성 자체는 가능 — 무시.
     }
   }
 
