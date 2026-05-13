@@ -1,4 +1,4 @@
-package com.example.digdaapp
+package com.digda.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,0 +1,9 @@
+# android/key.properties 의 예시.
+# 실제 사용 시 이 파일을 'key.properties' 로 복사하고 값을 채운 뒤
+# digda-release.jks 를 android/ 디렉터리에 둔다.
+# (key.properties, *.jks, *.keystore 는 .gitignore 로 보호됨)
+
+storeFile=digda-release.jks
+storePassword=YOUR_STORE_PASSWORD
+keyAlias=digda
+keyPassword=YOUR_KEY_PASSWORD
