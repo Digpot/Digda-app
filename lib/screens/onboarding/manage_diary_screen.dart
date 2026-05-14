@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/group_room/models/group_room_models.dart';
 import '../../features/membership/models/membership_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class ManageDiaryScreen extends StatefulWidget {
   const ManageDiaryScreen({super.key});
@@ -75,14 +76,12 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
       await Di.membershipRepository.remove(groupId, member.userId);
       await _load();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${member.name}님을 내보냈어요')),
-      );
+      setState(() => _busy = false);
+      showInfoDialog(context, '내보내기 완료', '${member.name}님을 내보냈어요');
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -93,11 +92,12 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     try {
       await Di.groupRoomRepository.softDelete(groupId);
       await _load();
+      if (!mounted) return;
+      setState(() => _busy = false);
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -109,14 +109,12 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
       await Di.groupRoomRepository.recover(groupId);
       await _load();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('다이어리를 복구했어요')),
-      );
+      setState(() => _busy = false);
+      showInfoDialog(context, '복구 완료', '다이어리를 복구했어요');
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

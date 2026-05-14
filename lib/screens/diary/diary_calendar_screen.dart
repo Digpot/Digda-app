@@ -5,6 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
+import '../../widgets/app_dialog.dart';
 
 class DiaryCalendarScreen extends StatefulWidget {
   const DiaryCalendarScreen({super.key});
@@ -18,11 +19,26 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   DateTime? _selectedDay;
   Set<DateTime> _diaryDates = {};
   List<DiarySummary> _recent = const [];
+  List<DiarySummary> _monthDiaries = const [];
+  bool _hasUnreadNotifications = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMonth());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMonth();
+      _checkUnreadNotifications();
+    });
+  }
+
+  Future<void> _checkUnreadNotifications() async {
+    try {
+      final result = await Di.notificationRepository.list(limit: 20);
+      if (!mounted) return;
+      setState(() {
+        _hasUnreadNotifications = result.notifications.any((n) => !n.isRead);
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadMonth() async {
@@ -33,19 +49,19 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
       final list = await Di.diaryRepository.list(
         groupId,
         month: _focusedDay,
-        limit: 5,
+        limit: 31,
       );
       if (!mounted) return;
       setState(() {
         _diaryDates = dates
             .map((d) => DateTime.utc(d.year, d.month, d.day))
             .toSet();
-        _recent = list.diaries;
+        _monthDiaries = list.diaries;
+        _recent = list.diaries.take(5).toList();
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -92,7 +108,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         const Spacer(),
                         GestureDetector(
                           onTap: () => Navigator.of(context)
-                              .pushNamed('/notifications'),
+                              .pushNamed('/notifications')
+                              .then((_) => _checkUnreadNotifications()),
                           child: Stack(
                             children: [
                               const Icon(
@@ -100,26 +117,26 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                 size: 22,
                                 color: AppColors.gray700,
                               ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
+                              if (_hasUnreadNotifications)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 16),
                         GestureDetector(
-                          onTap: () => Navigator.of(context)
-                              .pushNamed('/manage-diary')
-                              .then((_) => _loadMonth()),
+                          onTap: () =>
+                              Navigator.of(context).pushNamed('/my-page'),
                           child: const Icon(
                             Icons.settings_outlined,
                             size: 22,
@@ -301,7 +318,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         final key = DateTime.utc(
                             selectedDay.year, selectedDay.month, selectedDay.day);
                         DiarySummary? match;
-                        for (final d in _recent) {
+                        for (final d in _monthDiaries) {
                           final dKey =
                               DateTime.utc(d.date.year, d.date.month, d.date.day);
                           if (dKey == key) {
@@ -360,7 +377,11 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                 onPressed: () {
                                   Navigator.of(context).pop();
                                   setState(() => _selectedDay = null);
-                                  Navigator.of(context).pushNamed('/write-diary');
+                                  Navigator.of(context)
+                                      .pushNamed('/write-diary')
+                                      .then((_) {
+                                    if (mounted) _loadMonth();
+                                  });
                                 },
                                 child: const Text(
                                   '작성하기',
@@ -722,10 +743,14 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                   _showDuplicateDiaryDialog();
                                 } else {
                                   Navigator.of(context).pop();
-                                  Navigator.of(context).pushNamed(
-                                    '/write-diary',
-                                    arguments: selected,
-                                  );
+                                  Navigator.of(context)
+                                      .pushNamed(
+                                        '/write-diary',
+                                        arguments: selected,
+                                      )
+                                      .then((_) {
+                                    if (mounted) _loadMonth();
+                                  });
                                 }
                               }
                             : null,

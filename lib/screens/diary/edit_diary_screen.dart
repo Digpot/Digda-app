@@ -7,6 +7,7 @@ import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/image_pick_helper.dart';
 
 class EditDiaryScreen extends StatefulWidget {
@@ -68,8 +69,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -110,8 +110,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

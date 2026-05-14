@@ -7,6 +7,7 @@ import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/image_pick_helper.dart';
 
 class WriteDiaryScreen extends StatefulWidget {
@@ -67,8 +68,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

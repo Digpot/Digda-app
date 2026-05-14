@@ -5,6 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/group_room/models/group_room_models.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/image_pick_helper.dart';
 
@@ -71,8 +72,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadingExisting = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -179,9 +179,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
         if (!mounted) return;
         Di.activeGroup.updateName(updated.name);
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('다이어리 정보를 수정했어요')),
-        );
+        showInfoDialog(context, '수정 완료', '다이어리 정보를 수정했어요');
       } else {
         final imageId = await _uploadIfNeeded();
         final result = await Di.groupRoomRepository.create(
@@ -209,8 +207,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

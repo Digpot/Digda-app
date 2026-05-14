@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
   const DiaryDetailScreen({super.key});
@@ -92,8 +93,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

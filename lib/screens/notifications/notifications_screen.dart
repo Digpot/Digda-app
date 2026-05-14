@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/notification/models/notification_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -89,8 +90,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 _load();
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(errorMessageOf(e))));
+                showErrorDialog(context, errorMessageOf(e));
               }
             },
             child: const Text(

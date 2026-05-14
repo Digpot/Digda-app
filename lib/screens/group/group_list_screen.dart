@@ -6,6 +6,7 @@ import '../../core/network/error_message.dart';
 import '../../features/group_room/models/group_room_models.dart';
 import '../../features/invite/models/invite_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/group_list_tile.dart';
 
 class GroupListScreen extends StatefulWidget {
@@ -56,8 +57,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
       code = await Di.inviteRepository.regenerate(groupRoomId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
       return;
     }
     if (!mounted || code == null) return;
@@ -171,7 +171,8 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                           isOwner: g.isOwner,
                                         );
                                         Navigator.of(context)
-                                            .pushNamed('/manage-diary');
+                                            .pushNamed('/update-diary')
+                                            .then((_) => _refresh());
                                       },
                                     ),
                                   );
