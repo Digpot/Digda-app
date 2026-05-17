@@ -91,9 +91,20 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     setState(() => _busy = true);
     try {
       await Di.groupRoomRepository.softDelete(groupId);
-      await _load();
       if (!mounted) return;
       setState(() => _busy = false);
+      showInfoDialog(
+        context,
+        '삭제가 예약됐어요',
+        '7일 후에 그룹방이 완전히 삭제됩니다.\n그 전에 복구할 수 있어요.',
+        onConfirm: () {
+          Di.activeGroup.clear();
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/group-list',
+            (_) => false,
+          );
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -110,7 +121,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
       await _load();
       if (!mounted) return;
       setState(() => _busy = false);
-      showInfoDialog(context, '복구 완료', '다이어리를 복구했어요');
+      showInfoDialog(context, '복구 완료', '그룹방을 복구했어요');
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -139,7 +150,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
                   ),
                   const SizedBox(width: 16),
                   const Text(
-                    '다이어리 관리',
+                    '그룹방 관리',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
@@ -219,7 +230,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              '이 다이어리는 7일 후에 완전히 삭제됩니다.\n지금 복구하면 모든 데이터가 유지됩니다.',
+              '이 그룹방은 7일 후에 완전히 삭제됩니다.\n지금 복구하면 모든 데이터가 유지됩니다.',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w400,
@@ -351,21 +362,28 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           Container(
             width: 36,
             height: 36,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Center(
-              child: Text(
-                m.name.isNotEmpty ? m.name[0] : '?',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: color,
-                ),
-              ),
-            ),
+            child: (m.profileImage != null && m.profileImage!.isNotEmpty)
+                ? Image.network(
+                    m.profileImage!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Text(
+                        m.name.isNotEmpty ? m.name[0] : '?',
+                        style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 14, color: color),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      m.name.isNotEmpty ? m.name[0] : '?',
+                      style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 14, color: color),
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -443,7 +461,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
                 size: 20, color: AppColors.primary),
             SizedBox(width: 10),
             Text(
-              '다이어리 삭제',
+              '그룹방 삭제',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w600,
@@ -573,7 +591,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: Text(
-          '${m.name}님은 이 다이어리의 모든\n기록에 접근할 수 없게 됩니다.',
+          '${m.name}님은 이 그룹방의 모든\n기록에 접근할 수 없게 됩니다.',
           style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
@@ -623,7 +641,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         title: const Text(
-          '다이어리를 삭제할까요?',
+          '그룹방을 삭제할까요?',
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w700,
@@ -632,7 +650,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: const Text(
-          '삭제하면 모든 멤버가 이 다이어리에\n접근할 수 없게 됩니다.',
+          '삭제하면 모든 멤버가 이 그룹방에\n접근할 수 없게 됩니다.',
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
@@ -691,7 +709,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: const Text(
-          '다이어리는 7일 후에 완전히 삭제됩니다.\n7일 이내에 복구할 수 있어요.',
+          '그룹방은 7일 후에 완전히 삭제됩니다.\n7일 이내에 복구할 수 있어요.',
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,

@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   const ScheduleDetailScreen({super.key});
@@ -91,8 +92,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -149,8 +149,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                 Navigator.of(context).pop();
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+                showErrorDialog(context, errorMessageOf(e));
               }
             },
             child: const Text(

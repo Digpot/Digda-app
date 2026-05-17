@@ -6,6 +6,7 @@ import '../../core/network/api_exception.dart';
 import '../../features/auth/models/auth_models.dart';
 import '../../theme/colors.dart';
 import '../../theme/text_styles.dart';
+import '../../widgets/app_dialog.dart';
 
 class SocialLoginScreen extends StatefulWidget {
   const SocialLoginScreen({super.key});
@@ -48,7 +49,7 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
     } else if (e is ApiException) {
       message = e.message;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showErrorDialog(context, message);
   }
 
   @override

@@ -6,6 +6,7 @@ import '../../core/network/api_exception.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../features/user/models/user_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/image_pick_helper.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -103,7 +104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } else if (e is ApiException) {
       message = e.message;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showErrorDialog(context, message);
   }
 
   @override

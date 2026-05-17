@@ -5,6 +5,7 @@ import '../../core/network/api_exception.dart';
 import '../../features/auth/models/auth_models.dart';
 import '../../theme/colors.dart';
 import '../../theme/text_styles.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/primary_button.dart';
 
 class TermsAgreementScreen extends StatefulWidget {
@@ -58,7 +59,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
       } else if (e is ApiException) {
         message = e.message;
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      showErrorDialog(context, message);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

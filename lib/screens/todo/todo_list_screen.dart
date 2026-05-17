@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/todo/models/todo_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({super.key});
@@ -129,8 +130,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
         _todos = snapshot;
         _progress = _recomputeProgress(snapshot);
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -159,8 +159,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

@@ -90,7 +90,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                   ),
                   const SizedBox(width: 16),
                   const Text(
-                    '내 다이어리',
+                    '내 그룹방',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
@@ -157,6 +157,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                     child: GroupListTile(
                                       name: g.name,
                                       memberCount: '${g.memberCount}명 참여 중',
+                                      thumbnailImageUrl: g.thumbnailImage,
                                       groupIcon: skin.icon,
                                       groupIconBg: skin.bg,
                                       groupIconColor: skin.fg,
@@ -195,7 +196,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                       ),
                                       SizedBox(width: 6),
                                       Text(
-                                        '새 다이어리 추가',
+                                        '새 그룹방 추가',
                                         style: TextStyle(
                                           fontFamily: 'Inter',
                                           fontWeight: FontWeight.w500,
@@ -261,7 +262,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            '아직 다이어리가 없어요',
+            '아직 그룹방이 없어요',
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w600,
@@ -271,7 +272,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            '새 다이어리를 만들거나 초대 코드로 참여해보세요',
+            '새 그룹방을 만들거나 초대 코드로 참여해보세요',
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,

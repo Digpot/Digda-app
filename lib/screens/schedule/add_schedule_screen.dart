@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/membership/models/membership_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/primary_button.dart';
 
 class AddScheduleScreen extends StatefulWidget {
@@ -103,8 +104,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -162,8 +162,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

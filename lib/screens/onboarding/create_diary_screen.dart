@@ -179,7 +179,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
         if (!mounted) return;
         Di.activeGroup.updateName(updated.name);
         Navigator.of(context).pop();
-        showInfoDialog(context, '수정 완료', '다이어리 정보를 수정했어요');
+        showInfoDialog(context, '수정 완료', '그룹방 정보를 수정했어요');
       } else {
         final imageId = await _uploadIfNeeded();
         final result = await Di.groupRoomRepository.create(
@@ -235,7 +235,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                         ),
                         const SizedBox(width: 16),
                         const Text(
-                          '다이어리',
+                          '그룹방',
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w700,
@@ -483,7 +483,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                                         color: AppColors.gray700),
                                     SizedBox(width: 10),
                                     Text(
-                                      '다이어리 관리',
+                                      '그룹방 관리',
                                       style: TextStyle(
                                         fontFamily: 'Inter',
                                         fontWeight: FontWeight.w600,
@@ -532,7 +532,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      '다이어리 생성 시 초대 코드가 자동으로\n만들어집니다',
+                                      '그룹방 생성 시 초대 코드가 자동으로\n만들어집니다',
                                       style: TextStyle(
                                         fontFamily: 'Inter',
                                         fontWeight: FontWeight.w400,
@@ -556,7 +556,7 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
                     child: PrimaryButton(
                       text: _submitting
                           ? '처리 중...'
-                          : (widget.isEdit ? '다이어리 수정하기' : '다이어리 만들기'),
+                          : (widget.isEdit ? '그룹방 수정하기' : '그룹방 만들기'),
                       onPressed: _canCreate ? _submit : null,
                     ),
                   ),

@@ -4,6 +4,7 @@ import '../../core/di.dart';
 import '../../core/network/api_exception.dart';
 import '../../features/user/models/user_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
@@ -454,16 +455,15 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final messenger = ScaffoldMessenger.of(context);
               final navigator = Navigator.of(context);
               try {
                 await Di.authSession.signOut();
                 Di.userSession.clear();
                 navigator.pushNamedAndRemoveUntil('/login', (_) => false);
               } catch (_) {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('로그아웃에 실패했습니다. 다시 시도해주세요.')),
-                );
+                if (mounted) {
+                  showErrorDialog(context, '로그아웃에 실패했습니다. 다시 시도해주세요.');
+                }
               }
             },
             child: const Text(

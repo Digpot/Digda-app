@@ -325,12 +325,21 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: AppColors.white,
-                        border: Border.all(color: AppColors.gray100),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Container(
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius:
+                                  BorderRadius.vertical(top: Radius.circular(12)),
+                            ),
+                          ),
                           // 날짜 (클릭하여 변경)
                           GestureDetector(
                             onTap: () => _showDateChangeDialog(),
@@ -519,60 +528,42 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                       ),
                                     ],
                                   )
-                                : SizedBox(
+                                : Container(
                                     width: double.infinity,
-                                    height: 200,
+                                    height: 160,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFFF5F0),
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(12),
+                                        bottomRight: Radius.circular(12),
+                                      ),
+                                    ),
                                     child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            Container(
-                                              width: 72,
-                                              height: 56,
-                                              decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  color: AppColors.gray300,
-                                                  width: 1.5,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Icon(
-                                                Icons.image_outlined,
-                                                size: 32,
-                                                color: AppColors.gray300,
-                                              ),
-                                            ),
-                                            Positioned(
-                                              top: -6,
-                                              right: -6,
-                                              child: Container(
-                                                width: 18,
-                                                height: 18,
-                                                decoration: const BoxDecoration(
-                                                  color: AppColors.gray400,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.add,
-                                                  size: 12,
-                                                  color: AppColors.white,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.add_photo_alternate_outlined,
+                                            size: 26,
+                                            color: AppColors.primary,
+                                          ),
                                         ),
-                                        const SizedBox(height: 10),
+                                        const SizedBox(height: 8),
                                         const Text(
                                           '탭하여 그림·사진 추가',
                                           style: TextStyle(
                                             fontFamily: 'Inter',
                                             fontWeight: FontWeight.w400,
                                             fontSize: 13,
-                                            color: AppColors.gray400,
+                                            color: AppColors.gray500,
                                           ),
                                         ),
                                       ],
@@ -683,6 +674,13 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          Container(
+            height: 3,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Stack(
@@ -728,7 +726,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     ),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.only(top: 9),
+                    contentPadding: EdgeInsets.zero,
                     counterText: '',
                   ),
                   onChanged: (_) => setState(() {}),

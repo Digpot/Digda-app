@@ -109,12 +109,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _onNotificationTap(AppNotification n) async {
+    // 읽지 않은 알림이면 즉시 UI 업데이트(낙관적 처리) 후 서버 요청.
     if (!n.isRead) {
-      try {
-        await Di.notificationRepository.markRead(n.id);
-      } catch (_) {
-        // 읽음 처리 실패는 무시 (탭 액션은 진행)
-      }
       if (!mounted) return;
       setState(() {
         _items = _items
@@ -134,21 +130,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 : it)
             .toList();
       });
+      // 서버 오류는 무시하고 UI는 이미 읽음 처리됨.
+      Di.notificationRepository.markRead(n.id).ignore();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('읽음 처리되었습니다'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
     if (!mounted) return;
     // 관련 화면으로 딥링크.
-    Di.activeGroup.enter(
-      groupRoomId: n.groupRoomId,
-      groupRoomName: n.groupRoomName,
-      isOwner: Di.activeGroup.isOwner,
-    );
+    if (n.groupRoomId.isNotEmpty) {
+      Di.activeGroup.enter(
+        groupRoomId: n.groupRoomId,
+        groupRoomName: n.groupRoomName,
+        isOwner: Di.activeGroup.isOwner,
+      );
+    }
     if (n.relatedType == 'schedule' && n.relatedId != null) {
       Navigator.of(context)
           .pushNamed('/schedule-detail', arguments: n.relatedId);
     } else if (n.relatedType == 'diary' && n.relatedId != null) {
       Navigator.of(context)
           .pushNamed('/diary-detail', arguments: n.relatedId);
-    } else {
+    } else if (n.groupRoomId.isNotEmpty) {
       Navigator.of(context).pushNamed(
         '/group-home',
         arguments: {'name': n.groupRoomName},
