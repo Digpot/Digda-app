@@ -130,16 +130,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 : it)
             .toList();
       });
-      // 서버 오류는 무시하고 UI는 이미 읽음 처리됨.
       Di.notificationRepository.markRead(n.id).ignore();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('읽음 처리되었습니다'),
-          duration: Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
     if (!mounted) return;
     // 관련 화면으로 딥링크.
