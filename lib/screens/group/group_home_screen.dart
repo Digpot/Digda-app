@@ -349,20 +349,29 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       margin: const EdgeInsets.only(right: 8),
       width: 48,
       height: 48,
-      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.white, width: 2),
       ),
-      child: (profileImage != null && profileImage.isNotEmpty)
-          ? Image.network(
-              profileImage,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Icon(Icons.person_outline, size: 22, color: color),
-            )
-          : Icon(Icons.person_outline, size: 22, color: color),
+      child: ClipOval(
+        child: (profileImage != null && profileImage.isNotEmpty)
+            ? Image.network(
+                profileImage,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: color.withValues(alpha: 0.18),
+                  child: Center(
+                      child: Icon(Icons.person_outline, size: 22, color: color)),
+                ),
+              )
+            : Container(
+                color: color.withValues(alpha: 0.18),
+                child: Center(
+                    child: Icon(Icons.person_outline, size: 22, color: color)),
+              ),
+      ),
     );
   }
 

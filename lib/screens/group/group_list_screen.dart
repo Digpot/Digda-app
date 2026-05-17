@@ -45,10 +45,16 @@ class _GroupListScreenState extends State<GroupListScreen> {
       groupRoomName: g.name,
       isOwner: g.isOwner,
     );
-    Navigator.of(context).pushNamed(
-      '/group-home',
-      arguments: {'name': g.name, 'members': g.memberCount},
-    );
+    if (g.isDeleteScheduled) {
+      Navigator.of(context)
+          .pushNamed('/group-manage')
+          .then((_) => _refresh());
+    } else {
+      Navigator.of(context).pushNamed(
+        '/group-home',
+        arguments: {'name': g.name, 'members': g.memberCount},
+      );
+    }
   }
 
   Future<void> _showInviteCodeSheet(String groupRoomId) async {
@@ -161,7 +167,8 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                       groupIcon: skin.icon,
                                       groupIconBg: skin.bg,
                                       groupIconColor: skin.fg,
-                                      showActions: g.isOwner,
+                                      showActions: g.isOwner && !g.isDeleteScheduled,
+                                      isDeleteScheduled: g.isDeleteScheduled,
                                       onTap: () => _enterGroup(g),
                                       onShare: () =>
                                           _showInviteCodeSheet(g.id),

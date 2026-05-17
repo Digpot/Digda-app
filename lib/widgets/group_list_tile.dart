@@ -9,6 +9,7 @@ class GroupListTile extends StatelessWidget {
   final Color groupIconBg;
   final Color groupIconColor;
   final bool showActions;
+  final bool isDeleteScheduled;
   final VoidCallback? onTap;
   final VoidCallback? onShare;
   final VoidCallback? onSettings;
@@ -22,6 +23,7 @@ class GroupListTile extends StatelessWidget {
     this.groupIconBg = AppColors.gray50,
     this.groupIconColor = AppColors.gray500,
     this.showActions = false,
+    this.isDeleteScheduled = false,
     this.onTap,
     this.onShare,
     this.onSettings,
@@ -75,16 +77,45 @@ class GroupListTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      height: 1.3,
-                      letterSpacing: 0,
-                      color: AppColors.gray900,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            height: 1.3,
+                            letterSpacing: 0,
+                            color: isDeleteScheduled
+                                ? AppColors.gray400
+                                : AppColors.gray900,
+                          ),
+                        ),
+                      ),
+                      if (isDeleteScheduled) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            '삭제 예정',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
