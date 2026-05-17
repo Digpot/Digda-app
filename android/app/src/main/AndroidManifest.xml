@@ -47,6 +47,11 @@
         <meta-data
             android:name="com.naver.sdk.clientName"
             android:value="Digda" />
+        <activity
+            android:name="com.nhn.android.naverlogin.ui.OAuthLoginActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false"
+            android:launchMode="singleTop" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
