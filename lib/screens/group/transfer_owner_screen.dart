@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/membership/models/membership_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class TransferOwnerScreen extends StatefulWidget {
   const TransferOwnerScreen({super.key, this.groupName = '대학 친구들'});
@@ -128,15 +129,12 @@ class _TransferOwnerScreenState extends State<TransferOwnerScreen> {
       await Di.membershipRepository.transferOwner(groupId, target.userId);
       if (!mounted) return;
       Di.activeGroup.updateRole(isOwner: false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${target.name}님에게 방장을 양도했어요')),
-      );
       Navigator.of(context).pop();
+      showInfoDialog(context, '양도 완료', '${target.name}님에게 방장을 양도했어요');
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -305,25 +303,29 @@ class _TransferOwnerScreenState extends State<TransferOwnerScreen> {
                                             Container(
                                               width: 36,
                                               height: 36,
+                                              clipBehavior: Clip.antiAlias,
                                               decoration: BoxDecoration(
                                                 color: color.withValues(
                                                     alpha: 0.15),
                                                 shape: BoxShape.circle,
                                               ),
-                                              child: Center(
-                                                child: Text(
-                                                  m.name.isNotEmpty
-                                                      ? m.name[0]
-                                                      : '?',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Inter',
-                                                    fontWeight:
-                                                        FontWeight.w700,
-                                                    fontSize: 14,
-                                                    color: color,
-                                                  ),
-                                                ),
-                                              ),
+                                              child: (m.profileImage != null && m.profileImage!.isNotEmpty)
+                                                  ? Image.network(
+                                                      m.profileImage!,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (_, __, ___) => Center(
+                                                        child: Text(
+                                                          m.name.isNotEmpty ? m.name[0] : '?',
+                                                          style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 14, color: color),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : Center(
+                                                      child: Text(
+                                                        m.name.isNotEmpty ? m.name[0] : '?',
+                                                        style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 14, color: color),
+                                                      ),
+                                                    ),
                                             ),
                                             const SizedBox(width: 12),
                                             Expanded(

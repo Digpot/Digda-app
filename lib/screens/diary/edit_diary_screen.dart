@@ -7,6 +7,7 @@ import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/image_pick_helper.dart';
 
 class EditDiaryScreen extends StatefulWidget {
@@ -17,27 +18,59 @@ class EditDiaryScreen extends StatefulWidget {
 }
 
 class _EditDiaryScreenState extends State<EditDiaryScreen> {
-  final TextEditingController _titleController =
-      TextEditingController(text: '설날 모임');
-  final TextEditingController _contentController = TextEditingController(
-    text: '오늘은 설날이라서 친구들이랑 같이 떡국을\n먹었다. 아침에 세배도 하고 세뱃돈도 받았다.\n오후에는 영화관에서 영화를 봤는데 너무\n재밌었다. 팝콘이랑 콜라 먹으면서 행복했다.\n저녁에는 집에 와서 같이 셀카도 찍었다.\n다음에도 이렇게 만나고 싶다!',
-  );
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
 
   static const int _maxTitleLength = 20;
   static const int _maxContentLength = 300;
 
   int _selectedWeather = 0;
-  int _selectedMood = 1;
+  int _selectedMood = 0;
   File? _pickedImage;
-  DateTime _selectedDate = DateTime(2026, 2, 8);
+  String? _existingImageUrl;
+  DateTime _selectedDate = DateTime.now();
   bool _saving = false;
+  bool _argsConsumed = false;
   String? _diaryId;
+  DateTime _originalDateValue = DateTime.now();
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_argsConsumed) return;
+    _argsConsumed = true;
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is String) _diaryId = args;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _hydrate());
+  }
+
+  Future<void> _hydrate() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final diaryId = _diaryId;
+    if (groupId == null || diaryId == null) return;
+    try {
+      final detail = await Di.diaryRepository.detail(groupId, diaryId);
+      final dates = await Di.diaryRepository.calendar(groupId, detail.diary.date);
+      if (!mounted) return;
+      setState(() {
+        _titleController.text = detail.diary.title;
+        _contentController.text = detail.diary.content;
+        _selectedWeather = detail.diary.weather;
+        _selectedMood = detail.diary.mood;
+        _selectedDate = detail.diary.date;
+        _originalDateValue = DateTime.utc(
+          detail.diary.date.year,
+          detail.diary.date.month,
+          detail.diary.date.day,
+        );
+        _existingImageUrl = detail.diary.imageUrl;
+        _existingDiaryDates =
+            dates.map((d) => DateTime.utc(d.year, d.month, d.day)).toSet();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, errorMessageOf(e));
+    }
   }
 
   Future<void> _save() async {
@@ -49,13 +82,16 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     }
     setState(() => _saving = true);
     try {
-      String? imageId;
+      Object? imageIdField = DiaryWriteRequest.unset;
       if (_pickedImage != null) {
         final uploaded = await Di.uploadRepository.uploadImage(
           filePath: _pickedImage!.path,
           purpose: UploadPurpose.diary,
         );
-        imageId = uploaded.id;
+        imageIdField = uploaded.id;
+      } else if (_existingImageUrl == null) {
+        // 기존 이미지를 사용자가 제거한 경우.
+        imageIdField = null;
       }
       await Di.diaryRepository.update(
         groupId,
@@ -66,7 +102,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
           date: _selectedDate,
           weather: _selectedWeather,
           mood: _selectedMood,
-          imageId: imageId ?? DiaryWriteRequest.unset,
+          imageId: imageIdField,
         ),
       );
       if (!mounted) return;
@@ -74,23 +110,13 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
-  // Mock: 이미 일기가 있는 날짜 목록
-  final Set<DateTime> _existingDiaryDates = {
-    DateTime.utc(2026, 2, 5),
-    DateTime.utc(2026, 2, 7),
-    DateTime.utc(2026, 2, 8),
-    DateTime.utc(2026, 2, 14),
-    DateTime.utc(2026, 2, 21),
-    DateTime.utc(2026, 2, 22),
-  };
+  Set<DateTime> _existingDiaryDates = const <DateTime>{};
 
-  // 현재 수정 중인 일기의 원래 날짜 (이 날짜는 중복 체크에서 제외)
-  DateTime get _originalDate => DateTime.utc(2026, 2, 8);
+  DateTime get _originalDate => _originalDateValue;
 
   bool get _canSave =>
       _titleController.text.trim().isNotEmpty &&
@@ -299,12 +325,21 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: AppColors.white,
-                        border: Border.all(color: AppColors.gray100),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Container(
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius:
+                                  BorderRadius.vertical(top: Radius.circular(12)),
+                            ),
+                          ),
                           // 날짜 (클릭하여 변경)
                           GestureDetector(
                             onTap: () => _showDateChangeDialog(),
@@ -405,7 +440,9 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                 setState(() => _pickedImage = file);
                               }
                             },
-                            child: _pickedImage != null
+                            child: (_pickedImage != null ||
+                                    (_existingImageUrl != null &&
+                                        _existingImageUrl!.isNotEmpty))
                                 ? Stack(
                                     children: [
                                       ClipRRect(
@@ -413,12 +450,19 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                           bottomLeft: Radius.circular(12),
                                           bottomRight: Radius.circular(12),
                                         ),
-                                        child: Image.file(
-                                          _pickedImage!,
-                                          width: double.infinity,
-                                          height: 360,
-                                          fit: BoxFit.cover,
-                                        ),
+                                        child: _pickedImage != null
+                                            ? Image.file(
+                                                _pickedImage!,
+                                                width: double.infinity,
+                                                height: 360,
+                                                fit: BoxFit.cover,
+                                              )
+                                            : Image.network(
+                                                _existingImageUrl!,
+                                                width: double.infinity,
+                                                height: 360,
+                                                fit: BoxFit.cover,
+                                              ),
                                       ),
                                       // 편집 버튼
                                       Positioned(
@@ -463,8 +507,10 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                         top: 8,
                                         right: 8,
                                         child: GestureDetector(
-                                          onTap: () =>
-                                              setState(() => _pickedImage = null),
+                                          onTap: () => setState(() {
+                                            _pickedImage = null;
+                                            _existingImageUrl = null;
+                                          }),
                                           child: Container(
                                             width: 24,
                                             height: 24,
@@ -482,60 +528,42 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                                       ),
                                     ],
                                   )
-                                : SizedBox(
+                                : Container(
                                     width: double.infinity,
-                                    height: 200,
+                                    height: 160,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFFF5F0),
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(12),
+                                        bottomRight: Radius.circular(12),
+                                      ),
+                                    ),
                                     child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            Container(
-                                              width: 72,
-                                              height: 56,
-                                              decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  color: AppColors.gray300,
-                                                  width: 1.5,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Icon(
-                                                Icons.image_outlined,
-                                                size: 32,
-                                                color: AppColors.gray300,
-                                              ),
-                                            ),
-                                            Positioned(
-                                              top: -6,
-                                              right: -6,
-                                              child: Container(
-                                                width: 18,
-                                                height: 18,
-                                                decoration: const BoxDecoration(
-                                                  color: AppColors.gray400,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.add,
-                                                  size: 12,
-                                                  color: AppColors.white,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.add_photo_alternate_outlined,
+                                            size: 26,
+                                            color: AppColors.primary,
+                                          ),
                                         ),
-                                        const SizedBox(height: 10),
+                                        const SizedBox(height: 8),
                                         const Text(
                                           '탭하여 그림·사진 추가',
                                           style: TextStyle(
                                             fontFamily: 'Inter',
                                             fontWeight: FontWeight.w400,
                                             fontSize: 13,
-                                            color: AppColors.gray400,
+                                            color: AppColors.gray500,
                                           ),
                                         ),
                                       ],
@@ -646,6 +674,13 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          Container(
+            height: 3,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Stack(
@@ -691,7 +726,7 @@ class _EditDiaryScreenState extends State<EditDiaryScreen> {
                     ),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.only(top: 9),
+                    contentPadding: EdgeInsets.zero,
                     counterText: '',
                   ),
                   onChanged: (_) => setState(() {}),

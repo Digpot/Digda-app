@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:world_holidays/world_holidays.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/common/models/common_models.dart';
 import '../../features/schedule/models/schedule_models.dart' as api;
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
@@ -14,6 +15,7 @@ class _Schedule {
   final DateTime start;
   final DateTime end;
   final String? time;
+  final List<UserSummary> participants;
 
   const _Schedule({
     this.id,
@@ -22,7 +24,21 @@ class _Schedule {
     required this.start,
     DateTime? end,
     this.time,
+    this.participants = const [],
   }) : end = end ?? start;
+
+  /// 'HH:mm[:ss]' → '오전 9시', '오후 2시 30분' 같은 한글 표기.
+  static String _toKorean(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return hhmm;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return hhmm;
+    final period = h < 12 ? '오전' : '오후';
+    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    if (m == 0) return '$period $hour12시';
+    return '$period $hour12시 ${m.toString().padLeft(2, '0')}분';
+  }
 
   /// 서버 Schedule → 화면용 _Schedule.
   factory _Schedule.fromApi(api.Schedule s) {
@@ -34,8 +50,8 @@ class _Schedule {
       time = '종일';
     } else if (s.startTime != null) {
       time = s.endTime != null
-          ? '${s.startTime} - ${s.endTime}'
-          : s.startTime;
+          ? '${_toKorean(s.startTime!)} - ${_toKorean(s.endTime!)}'
+          : _toKorean(s.startTime!);
     }
     return _Schedule(
       id: s.id,
@@ -44,6 +60,7 @@ class _Schedule {
       start: DateTime.utc(s.startDate.year, s.startDate.month, s.startDate.day),
       end: DateTime.utc(s.endDate.year, s.endDate.month, s.endDate.day),
       time: time,
+      participants: s.participants,
     );
   }
 
@@ -80,12 +97,26 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
   bool _loadingSchedules = false;
   String? _scheduleError;
+  bool _hasUnreadNotifications = false;
 
   @override
   void initState() {
     super.initState();
     _loadHolidays();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSchedules());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSchedules();
+      _checkUnreadNotifications();
+    });
+  }
+
+  Future<void> _checkUnreadNotifications() async {
+    try {
+      final result = await Di.notificationRepository.list(limit: 20);
+      if (!mounted) return;
+      setState(() {
+        _hasUnreadNotifications = result.notifications.any((n) => !n.isRead);
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadSchedules() async {
@@ -154,79 +185,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   }
 
   // 일정 데이터 — API 로드 결과로 채워짐
-  List<_Schedule> _schedules = [
-    _Schedule(
-      title: '야근',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 1),
-    ),
-    _Schedule(
-      title: '야근',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 5),
-    ),
-    _Schedule(
-      title: '출근 일찍',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 7),
-    ),
-    _Schedule(
-      title: '카페로 데이트',
-      color: AppColors.purple,
-      start: DateTime.utc(2026, 2, 7),
-    ),
-    _Schedule(
-      title: '야근',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 8),
-      time: '종일',
-    ),
-    _Schedule(
-      title: '출근 늦게',
-      color: AppColors.purple,
-      start: DateTime.utc(2026, 2, 8),
-      time: '오후 2:00 - 5:00',
-    ),
-    _Schedule(
-      title: '출근 늦게',
-      color: AppColors.purple,
-      start: DateTime.utc(2026, 2, 14),
-    ),
-    // 설날연휴는 world_holidays에서 자동 로드
-    _Schedule(
-      title: '영화보기',
-      color: AppColors.purple,
-      start: DateTime.utc(2026, 2, 18),
-    ),
-    _Schedule(
-      title: '야근',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 20),
-    ),
-    // 출장 — 2일
-    _Schedule(
-      title: '제주 출장',
-      color: AppColors.purple,
-      start: DateTime.utc(2026, 2, 22),
-      end: DateTime.utc(2026, 2, 23),
-    ),
-    _Schedule(
-      title: '야근',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 26),
-    ),
-    _Schedule(
-      title: '출근 일찍',
-      color: AppColors.primary,
-      start: DateTime.utc(2026, 2, 28),
-    ),
-    _Schedule(
-      title: '부랄 저녁',
-      color: AppColors.purple,
-      start: DateTime.utc(2026, 2, 28),
-    ),
-    // 삼일절은 world_holidays에서 자동 로드
-  ];
+  List<_Schedule> _schedules = [];
 
   /// 해당 날짜에 걸치는 모든 일정
   List<_Schedule> _getSchedulesForDay(DateTime day) {
@@ -524,8 +483,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () =>
-                        Navigator.of(context).pushNamed('/notifications'),
+                    onTap: () => Navigator.of(context)
+                        .pushNamed('/notifications')
+                        .then((_) => _checkUnreadNotifications()),
                     child: Stack(
                       children: [
                         const Icon(
@@ -533,18 +493,19 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                           size: 22,
                           color: AppColors.gray700,
                         ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
+                        if (_hasUnreadNotifications)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -949,7 +910,7 @@ class _DayDetailBottomSheet extends StatelessWidget {
                                         ],
                                       ),
                                     ),
-                                    _buildAvatarStack(),
+                                    _buildAvatarStack(schedule),
                                   ],
                                 ),
                               ),
@@ -990,31 +951,57 @@ class _DayDetailBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatarStack() {
+  Widget _buildAvatarStack(_Schedule schedule) {
+    final participants = schedule.participants.take(3).toList();
+    if (participants.isEmpty) return const SizedBox.shrink();
+    const palette = [
+      AppColors.primary,
+      AppColors.blue,
+      AppColors.green,
+    ];
     return SizedBox(
-      width: 46,
+      width: 28 + (participants.length - 1) * 16.0,
       height: 28,
       child: Stack(
-        children: [
-          _buildAvatar(AppColors.primary, 0),
-          _buildAvatar(AppColors.blue, 16),
-        ],
+        children: List.generate(participants.length, (i) {
+          final p = participants[i];
+          final color = palette[i % palette.length];
+          return Positioned(
+            left: i * 16.0,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.white, width: 1.5),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: p.profileImage != null && p.profileImage!.isNotEmpty
+                  ? Image.network(
+                      p.profileImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _avatarFallback(p.name, color),
+                    )
+                  : _avatarFallback(p.name, color),
+            ),
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildAvatar(Color color, double left) {
-    return Positioned(
-      left: left,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.white, width: 1.5),
+  Widget _avatarFallback(String name, Color color) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0] : '?',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+          color: color,
         ),
-        child: Icon(Icons.person, size: 16, color: color),
       ),
     );
   }

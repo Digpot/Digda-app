@@ -20,11 +20,10 @@ class NotificationRepository {
   }
 
   /// 10-2. 단건 읽음 처리.
+  ///
+  /// POST `/notifications/{id}/read` 규약 (전체 읽음과 동일한 동사·경로 구조).
   Future<void> markRead(String notificationId) async {
-    await _api.patch<void>(
-      '/notifications/$notificationId',
-      body: {'isRead': true},
-    );
+    await _api.post<void>('/notifications/$notificationId/read');
   }
 
   /// 10-3. 전체 읽음 처리.

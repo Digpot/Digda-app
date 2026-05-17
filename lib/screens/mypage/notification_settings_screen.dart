@@ -4,6 +4,7 @@ import '../../core/di.dart';
 import '../../core/network/api_exception.dart';
 import '../../features/user/models/user_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -55,9 +56,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _settings = previous);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_messageOf(e, '저장에 실패했습니다.'))),
-      );
+      showErrorDialog(context, _messageOf(e, '저장에 실패했습니다.'));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

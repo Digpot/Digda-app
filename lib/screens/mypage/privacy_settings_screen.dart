@@ -4,6 +4,7 @@ import '../../core/di.dart';
 import '../../core/network/api_exception.dart';
 import '../../features/user/models/user_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
@@ -14,7 +15,6 @@ class PrivacySettingsScreen extends StatefulWidget {
 
 class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   UserProfile? _profile;
-  PrivacySettings? _privacy;
   bool _loading = true;
   String? _error;
 
@@ -30,36 +30,16 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        Di.userSession.refresh(),
-        Di.userRepository.getPrivacySettings(),
-      ]);
+      // 개인정보 관리 화면은 계정 정보 + 로그아웃/탈퇴가 본질이므로 /users/me 만 호출.
+      // (공개 설정 토글은 서버 도메인이 정착되기 전까지 화면에서 제외)
+      final me = await Di.userSession.refresh();
       if (!mounted) return;
-      setState(() {
-        _profile = results[0] as UserProfile;
-        _privacy = results[1] as PrivacySettings;
-      });
+      setState(() => _profile = me);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _messageOf(e, '정보를 불러오지 못했습니다.'));
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _updatePrivacy(PrivacySettings next) async {
-    final previous = _privacy;
-    setState(() => _privacy = next);
-    try {
-      final saved = await Di.userRepository.updatePrivacySettings(next);
-      if (!mounted) return;
-      setState(() => _privacy = saved);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _privacy = previous);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_messageOf(e, '저장에 실패했습니다.'))),
-      );
     }
   }
 
@@ -131,7 +111,6 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
       );
     }
     final profile = _profile!;
-    final privacy = _privacy!;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Column(
@@ -142,10 +121,6 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           _sectionLabel('기본 정보'),
           const SizedBox(height: 10),
           _basicInfoCard(profile),
-          const SizedBox(height: 24),
-          _sectionLabel('공개 설정'),
-          const SizedBox(height: 10),
-          _privacyToggleCard(privacy),
           const SizedBox(height: 24),
           _sectionLabel('계정 관리'),
           const SizedBox(height: 10),
@@ -330,36 +305,6 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     );
   }
 
-  Widget _privacyToggleCard(PrivacySettings privacy) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          _toggleRow(
-            icon: Icons.public,
-            iconColor: AppColors.blue,
-            title: '프로필 공개',
-            subtitle: '다른 사용자에게 내 프로필이 노출됩니다',
-            value: privacy.profilePublic,
-            onChanged: (v) => _updatePrivacy(privacy.copyWith(profilePublic: v)),
-          ),
-          const Divider(color: AppColors.gray100, height: 1, indent: 52, endIndent: 16),
-          _toggleRow(
-            icon: Icons.visibility_outlined,
-            iconColor: AppColors.purple,
-            title: '활동 표시',
-            subtitle: '내 일기/일정 활동이 그룹방 구성원에게 표시됩니다',
-            value: privacy.activityVisible,
-            onChanged: (v) => _updatePrivacy(privacy.copyWith(activityVisible: v)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _sectionLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
@@ -418,65 +363,6 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                 color: AppColors.gray900,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _toggleRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: iconColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.gray900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12,
-                    color: AppColors.gray500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
           ),
         ],
       ),
@@ -569,16 +455,15 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final messenger = ScaffoldMessenger.of(context);
               final navigator = Navigator.of(context);
               try {
                 await Di.authSession.signOut();
                 Di.userSession.clear();
                 navigator.pushNamedAndRemoveUntil('/login', (_) => false);
               } catch (_) {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('로그아웃에 실패했습니다. 다시 시도해주세요.')),
-                );
+                if (mounted) {
+                  showErrorDialog(context, '로그아웃에 실패했습니다. 다시 시도해주세요.');
+                }
               }
             },
             child: const Text(

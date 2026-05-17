@@ -78,7 +78,8 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
     if (widget.isFromMyPage) {
       Navigator.of(context).pop();
     } else {
-      Navigator.of(context).pushReplacementNamed('/home');
+      // 최초 가입 후 진입 → splash/login/terms 스택을 모두 제거하고 홈으로.
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
     }
   }
 

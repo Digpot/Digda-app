@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/api_exception.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/primary_button.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
@@ -56,7 +57,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final messenger = ScaffoldMessenger.of(context);
               final navigator = Navigator.of(context);
               try {
                 await Di.authSession.deleteAccount();
@@ -71,7 +71,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     message = api.message;
                   }
                 }
-                messenger.showSnackBar(SnackBar(content: Text(message)));
+                if (mounted) showErrorDialog(context, message);
               }
             },
             child: const Text(

@@ -3,8 +3,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/api_exception.dart';
+import '../../features/upload/models/upload_models.dart';
 import '../../features/user/models/user_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/image_pick_helper.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -68,12 +70,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final status = _statusController.text.trim();
     setState(() => _saving = true);
     try {
+      Object? profileImageId = UpdateProfileRequest.unset;
+      if (_imageCleared) {
+        profileImageId = null;
+      } else if (_profileImage != null) {
+        // 새 이미지 선택 → /uploads/images 업로드 후 받은 id 를 PUT /users/me 로 전달.
+        final uploaded = await Di.uploadRepository.uploadImage(
+          filePath: _profileImage!.path,
+          purpose: UploadPurpose.profile,
+        );
+        profileImageId = uploaded.id;
+      }
       final body = UpdateProfileRequest(
         name: name.isEmpty ? null : name,
         statusMessage: status,
-        profileImageId:
-            _imageCleared ? null : UpdateProfileRequest.unset,
-        // NOTE: 새 이미지 업로드는 12번 Upload 도메인 연동 후 profileImageId 로 전달
+        profileImageId: profileImageId,
       );
       await Di.userSession.update(body);
       if (!mounted) return;
@@ -93,7 +104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } else if (e is ApiException) {
       message = e.message;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showErrorDialog(context, message);
   }
 
   @override

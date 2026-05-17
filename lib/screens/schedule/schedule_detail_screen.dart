@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/common/models/common_models.dart';
+import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   const ScheduleDetailScreen({super.key});
@@ -12,14 +15,21 @@ class ScheduleDetailScreen extends StatefulWidget {
 
 class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   bool _showMenu = false;
-  final TextEditingController _commentController = TextEditingController();
+  bool _loading = true;
+  bool _argsConsumed = false;
+  String? _errorMessage;
+  ScheduleDetail? _detail;
   String? _scheduleId;
+  final TextEditingController _commentController = TextEditingController();
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_argsConsumed) return;
+    _argsConsumed = true;
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is String) _scheduleId = args;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
@@ -28,10 +38,42 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     super.dispose();
   }
 
-  void _onEditTap() {
+  Future<void> _load() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final scheduleId = _scheduleId;
+    if (groupId == null || scheduleId == null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = '일정 정보를 불러올 수 없어요';
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    try {
+      final detail = await Di.scheduleRepository.detail(groupId, scheduleId);
+      if (!mounted) return;
+      setState(() {
+        _detail = detail;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
+    }
+  }
+
+  Future<void> _onEditTap() async {
     setState(() => _showMenu = false);
-    Navigator.of(context)
+    await Navigator.of(context)
         .pushNamed('/add-schedule', arguments: _scheduleId);
+    if (!mounted) return;
+    _load();
   }
 
   Future<void> _submitComment() async {
@@ -47,13 +89,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       );
       _commentController.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('댓글을 작성했어요')),
-      );
+      await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -62,7 +101,8 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           '일정 삭제',
           style: TextStyle(
@@ -109,8 +149,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                 Navigator.of(context).pop();
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(errorMessageOf(e))));
+                showErrorDialog(context, errorMessageOf(e));
               }
             },
             child: const Text(
@@ -128,7 +167,348 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     );
   }
 
-  void _showParticipantPopup() {
+  Color _parseHex(String hex) {
+    final cleaned = hex.replaceAll('#', '');
+    final value = int.tryParse('FF$cleaned', radix: 16);
+    return value != null ? Color(value) : AppColors.primary;
+  }
+
+  /// '14:00' → '오후 2시', '14:30' → '오후 2시 30분'.
+  String _formatKoreanTime(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return hhmm;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return hhmm;
+    final period = h < 12 ? '오전' : '오후';
+    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    if (m == 0) return '$period $hour12시';
+    return '$period $hour12시 ${m.toString().padLeft(2, '0')}분';
+  }
+
+  String _formatDate(DateTime d) {
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    return '${d.year}년 ${d.month}월 ${d.day}일 (${weekdays[d.weekday - 1]})';
+  }
+
+  String _formatCommentTime(DateTime t) {
+    final h = t.hour;
+    final m = t.minute;
+    final period = h < 12 ? '오전' : '오후';
+    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return '$period $hour12:${m.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.white,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(),
+                Expanded(child: _buildBody()),
+                _buildBottomCommentBar(),
+              ],
+            ),
+            if (_showMenu) ...[
+              GestureDetector(
+                onTap: () => setState(() => _showMenu = false),
+                child: Container(color: Colors.transparent),
+              ),
+              Positioned(
+                top: 44,
+                right: 24,
+                child: _buildDropdownMenu(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: const Icon(
+              Icons.arrow_back_ios,
+              size: 14,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Text(
+            '일정 상세',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: AppColors.gray900,
+            ),
+          ),
+          const Spacer(),
+          if (_detail != null)
+            GestureDetector(
+              onTap: () => setState(() => _showMenu = !_showMenu),
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(
+                  Icons.more_horiz,
+                  size: 22,
+                  color: AppColors.gray700,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline,
+                size: 48, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: AppColors.gray700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _load,
+              child: const Text(
+                '다시 시도',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final detail = _detail!;
+    final schedule = detail.schedule;
+    final accent = _parseHex(schedule.color);
+    String timeLabel;
+    if (schedule.allDay) {
+      timeLabel = '종일';
+    } else if (schedule.startTime != null && schedule.endTime != null) {
+      timeLabel =
+          '${_formatKoreanTime(schedule.startTime!)} - ${_formatKoreanTime(schedule.endTime!)}';
+    } else if (schedule.startTime != null) {
+      timeLabel = _formatKoreanTime(schedule.startTime!);
+    } else {
+      timeLabel = '시간 미지정';
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.event, size: 36, color: accent),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            schedule.title,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              color: accent,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _formatDate(schedule.startDate) +
+                (schedule.endDate.isAtSameMomentAs(schedule.startDate)
+                    ? ''
+                    : ' ~ ${_formatDate(schedule.endDate)}'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                _buildInfoRow(
+                  icon: Icons.schedule,
+                  text: timeLabel,
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: schedule.participants.isEmpty
+                      ? null
+                      : () => _showParticipantPopup(schedule.participants),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.person_outline,
+                        size: 20,
+                        color: AppColors.gray400,
+                      ),
+                      const SizedBox(width: 14),
+                      if (schedule.participants.isEmpty)
+                        const Text(
+                          '참가자 없음',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 15,
+                            color: AppColors.gray500,
+                          ),
+                        )
+                      else
+                        Expanded(child: _buildParticipantAvatars(schedule)),
+                      if (schedule.participants.isNotEmpty)
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: AppColors.gray400,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          _buildComments(detail),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({required IconData icon, required String text}) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.gray400),
+        const SizedBox(width: 14),
+        Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 15,
+            color: AppColors.gray800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildParticipantAvatars(Schedule schedule) {
+    final participants = schedule.participants.take(4).toList();
+    final more = schedule.participants.length - participants.length;
+    return SizedBox(
+      height: 32,
+      child: Row(
+        children: [
+          ...List.generate(participants.length, (i) {
+            final p = participants[i];
+            final color = _avatarColor(i);
+            return Container(
+              margin: EdgeInsets.only(left: i == 0 ? 0 : -8),
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.white, width: 1.5),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: p.profileImage != null && p.profileImage!.isNotEmpty
+                  ? Image.network(p.profileImage!, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _initialAvatar(p.name, color))
+                  : _initialAvatar(p.name, color),
+            );
+          }),
+          if (more > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              '+$more',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                color: AppColors.gray500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _avatarColor(int i) {
+    const palette = [
+      AppColors.primary,
+      AppColors.blue,
+      AppColors.green,
+      AppColors.purple,
+    ];
+    return palette[i % palette.length];
+  }
+
+  Widget _initialAvatar(String name, Color color) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0] : '?',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  void _showParticipantPopup(List<UserSummary> participants) {
+    final me = Di.userSession.profile?.id;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -156,9 +536,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              '참여자',
-              style: TextStyle(
+            Text(
+              '참여자 (${participants.length}명)',
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
                 fontSize: 17,
@@ -166,9 +546,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildParticipantItem('승호', AppColors.primary, true),
-            _buildParticipantItem('지수', AppColors.blue, false),
-            _buildParticipantItem('민호', AppColors.green, false),
+            ...List.generate(participants.length, (i) {
+              final p = participants[i];
+              return _buildParticipantRow(p, _avatarColor(i), p.id == me);
+            }),
             const SizedBox(height: 16),
           ],
         ),
@@ -176,7 +557,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     );
   }
 
-  Widget _buildParticipantItem(String name, Color color, bool isMe) {
+  Widget _buildParticipantRow(UserSummary user, Color color, bool isMe) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -188,11 +569,17 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               color: color.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.person, size: 24, color: color),
+            clipBehavior: Clip.antiAlias,
+            child: user.profileImage != null && user.profileImage!.isNotEmpty
+                ? Image.network(user.profileImage!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        _initialAvatar(user.name, color))
+                : _initialAvatar(user.name, color),
           ),
           const SizedBox(width: 14),
           Text(
-            name,
+            user.name,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
@@ -224,287 +611,15 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // Header
-                Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            size: 14,
-                            color: AppColors.gray900,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Text(
-                          '일정 상세',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 20,
-                            color: AppColors.gray900,
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () =>
-                              setState(() => _showMenu = !_showMenu),
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.more_horiz,
-                              size: 22,
-                              color: AppColors.gray700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ),
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 16),
-                        // Profile avatar
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            size: 40,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          '출근 늦게',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w400,
-                            fontSize: 16,
-                            color: AppColors.purple,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          '2026년 2월 8일 (월)',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 22,
-                            color: AppColors.gray900,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        // Info rows
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            children: [
-                              _buildInfoRow(
-                                icon: Icons.notifications_outlined,
-                                text: '1일 전에 알림이 도착합니다.',
-                              ),
-                              const SizedBox(height: 20),
-                              // Participants row - 탭 시 popup
-                              GestureDetector(
-                                onTap: _showParticipantPopup,
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.person_outline,
-                                      size: 20,
-                                      color: AppColors.gray400,
-                                    ),
-                                    const SizedBox(width: 14),
-                                    _buildParticipantAvatars(),
-                                    const Spacer(),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      size: 18,
-                                      color: AppColors.gray400,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        _buildTimeline(),
-                        const SizedBox(height: 24),
-                        _buildComments(),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-                // 댓글 입력 바
-                _buildBottomCommentBar(),
-              ],
-            ),
-            // Dropdown menu overlay - 모던한 스타일
-            if (_showMenu) ...[
-              GestureDetector(
-                onTap: () => setState(() => _showMenu = false),
-                child: Container(color: Colors.transparent),
-              ),
-              Positioned(
-                top: 44,
-                right: 24,
-                child: _buildDropdownMenu(),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow({required IconData icon, required String text}) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.gray400),
-        const SizedBox(width: 14),
-        Text(
-          text,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            fontSize: 15,
-            color: AppColors.gray800,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildParticipantAvatars() {
-    final colors = [AppColors.primary, AppColors.blue, AppColors.green];
-    return SizedBox(
-      width: 72,
-      height: 32,
-      child: Stack(
-        children: List.generate(
-          colors.length,
-          (i) => Positioned(
-            left: i * 20.0,
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: colors[i].withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.white, width: 1.5),
-              ),
-              child: Icon(Icons.person, size: 18, color: colors[i]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimeline() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: List.generate(
-              40,
-              (i) => Expanded(
-                child: Container(
-                  height: 1,
-                  color: i.isEven ? AppColors.gray200 : Colors.transparent,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          '2026. 2. 10. (화)',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            fontSize: 12,
-            color: AppColors.gray400,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.person,
-                  size: 16, color: AppColors.primary),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              '일정을 등록했습니다',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                fontSize: 13,
-                color: AppColors.gray500,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: List.generate(
-              40,
-              (i) => Expanded(
-                child: Container(
-                  height: 1,
-                  color: i.isEven ? AppColors.gray200 : Colors.transparent,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComments() {
+  Widget _buildComments(ScheduleDetail detail) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '댓글 2개',
-            style: TextStyle(
+          Text(
+            '댓글 ${detail.comments.length}개',
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w700,
               fontSize: 15,
@@ -512,30 +627,35 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildCommentItem(
-            avatarColor: AppColors.blue,
-            name: '지수',
-            time: '오후 3:12',
-            content: '나도 같게! 장소 어디야?',
-          ),
-          const SizedBox(height: 14),
-          _buildCommentItem(
-            avatarColor: AppColors.green,
-            name: '민호',
-            time: '오후 4:05',
-            content: '좋아 나도 참석!',
-          ),
+          if (detail.comments.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  '아직 댓글이 없어요',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 13,
+                    color: AppColors.gray400,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...List.generate(detail.comments.length, (i) {
+              final c = detail.comments[i];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildCommentItem(c, _avatarColor(i)),
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildCommentItem({
-    required Color avatarColor,
-    required String name,
-    required String time,
-    required String content,
-  }) {
+  Widget _buildCommentItem(CommentEntity c, Color avatarColor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -546,7 +666,14 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             color: avatarColor.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.person, size: 18, color: avatarColor),
+          clipBehavior: Clip.antiAlias,
+          child: c.createdBy.profileImage != null &&
+                  c.createdBy.profileImage!.isNotEmpty
+              ? Image.network(c.createdBy.profileImage!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      _initialAvatar(c.createdBy.name, avatarColor))
+              : _initialAvatar(c.createdBy.name, avatarColor),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -556,7 +683,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               Row(
                 children: [
                   Text(
-                    name,
+                    c.createdBy.name,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
@@ -566,7 +693,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    time,
+                    _formatCommentTime(c.createdAt),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w400,
@@ -578,7 +705,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                content,
+                c.text,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w400,
@@ -593,7 +720,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     );
   }
 
-  // 모던한 편집/삭제 드롭다운 메뉴
   Widget _buildDropdownMenu() {
     return Material(
       elevation: 0,
@@ -617,8 +743,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             GestureDetector(
               onTap: _onEditTap,
               child: const Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
                     Icon(Icons.edit_outlined,
@@ -645,8 +770,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             GestureDetector(
               onTap: _onDeleteTap,
               child: const Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
                     Icon(Icons.delete_outline,
@@ -713,6 +837,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
+                onSubmitted: (_) => _submitComment(),
               ),
             ),
           ),

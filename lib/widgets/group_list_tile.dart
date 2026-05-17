@@ -4,6 +4,7 @@ import '../theme/colors.dart';
 class GroupListTile extends StatelessWidget {
   final String name;
   final String memberCount;
+  final String? thumbnailImageUrl;
   final IconData groupIcon;
   final Color groupIconBg;
   final Color groupIconColor;
@@ -16,6 +17,7 @@ class GroupListTile extends StatelessWidget {
     super.key,
     required this.name,
     required this.memberCount,
+    this.thumbnailImageUrl,
     this.groupIcon = Icons.group,
     this.groupIconBg = AppColors.gray50,
     this.groupIconColor = AppColors.gray500,
@@ -39,14 +41,33 @@ class GroupListTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: groupIconBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(groupIcon, size: 24, color: groupIconColor),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: (thumbnailImageUrl != null && thumbnailImageUrl!.isNotEmpty)
+                  ? Image.network(
+                      thumbnailImageUrl!,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: groupIconBg,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(groupIcon, size: 24, color: groupIconColor),
+                      ),
+                    )
+                  : Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: groupIconBg,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(groupIcon, size: 24, color: groupIconColor),
+                    ),
             ),
             const SizedBox(width: 14),
             Expanded(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/membership/models/membership_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/primary_button.dart';
 
 class AddScheduleScreen extends StatefulWidget {
@@ -19,45 +21,14 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   TimeOfDay _startTime = const TimeOfDay(hour: 14, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
   Color _selectedColor = AppColors.primary;
-  bool _allDay = false;
+  final bool _allDay = false;
   bool _saving = false;
+  bool _loading = true;
+  bool _argsConsumed = false;
   String? _editingScheduleId;
 
-  final List<Map<String, dynamic>> _allParticipants = [
-    {
-      'name': '승호',
-      'isMe': true,
-      'color': AppColors.primary,
-      'selected': true
-    },
-    {
-      'name': '지수',
-      'isMe': false,
-      'color': AppColors.blue,
-      'selected': true
-    },
-    {
-      'name': '민호',
-      'isMe': false,
-      'color': AppColors.green,
-      'selected': true
-    },
-    {
-      'name': '수진',
-      'isMe': false,
-      'color': const Color(0xFFFBBF24),
-      'selected': false
-    },
-    {
-      'name': '현우',
-      'isMe': false,
-      'color': AppColors.purple,
-      'selected': false
-    },
-  ];
-
-  int get _selectedCount =>
-      _allParticipants.where((p) => p['selected'] as bool).length;
+  List<Membership> _members = const [];
+  final Set<String> _selectedIds = <String>{};
 
   final List<Color> _colorOptions = [
     AppColors.primary,
@@ -70,9 +41,13 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   bool get _canSave =>
       _titleController.text.trim().isNotEmpty && !_saving;
 
+  bool get _isEdit => _editingScheduleId != null;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_argsConsumed) return;
+    _argsConsumed = true;
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is String) {
       _editingScheduleId = args;
@@ -86,17 +61,80 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         }
       }
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _hydrate());
+  }
+
+  Future<void> _hydrate() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      // 멤버 목록 (참가자 선택 UI 의 원천)
+      final members = await Di.membershipRepository.list(groupId);
+      List<String> initialIds = members.map((m) => m.userId).toList();
+
+      if (_isEdit) {
+        // 편집 모드 — 기존 일정으로 폼 채움
+        final detail =
+            await Di.scheduleRepository.detail(groupId, _editingScheduleId!);
+        final s = detail.schedule;
+        _titleController.text = s.title;
+        _startDate = s.startDate;
+        _endDate = s.endDate;
+        _selectedColor = _parseHex(s.color);
+        if (s.startTime != null) {
+          _startTime = _parseTime(s.startTime!) ?? _startTime;
+        }
+        if (s.endTime != null) {
+          _endTime = _parseTime(s.endTime!) ?? _endTime;
+        }
+        initialIds = s.participants.map((p) => p.id).toList();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _members = members;
+        _selectedIds
+          ..clear()
+          ..addAll(initialIds);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
+  Color _parseHex(String hex) {
+    final cleaned = hex.replaceAll('#', '');
+    final value = int.tryParse('FF$cleaned', radix: 16);
+    return value != null ? Color(value) : AppColors.primary;
+  }
+
+  TimeOfDay? _parseTime(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
   }
 
   String _hexFromColor(Color c) {
     final r = (c.r * 255).round() & 0xff;
     final g = (c.g * 255).round() & 0xff;
     final b = (c.b * 255).round() & 0xff;
-    return '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'.toUpperCase();
+    return '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'
+        .toUpperCase();
   }
 
   String _formatTime24(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Color _memberColor(Membership m) => _parseHex(m.color);
 
   Future<void> _save() async {
     final groupId = Di.activeGroup.groupRoomId;
@@ -111,25 +149,20 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         allDay: _allDay,
         startTime: _allDay ? null : _formatTime24(_startTime),
         endTime: _allDay ? null : _formatTime24(_endTime),
-        participantIds: _allParticipants
-            .where((p) => p['selected'] as bool)
-            .map((p) => (p['id'] as String?) ?? '')
-            .where((s) => s.isNotEmpty)
-            .toList(),
+        participantIds: _selectedIds.toList(),
       );
-      if (_editingScheduleId != null) {
+      if (_isEdit) {
         await Di.scheduleRepository.update(
             groupId, _editingScheduleId!, body);
       } else {
         await Di.scheduleRepository.create(groupId, body);
       }
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -156,12 +189,13 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _ParticipantPopup(
-        participants: _allParticipants,
+        members: _members,
+        selectedIds: _selectedIds.toSet(),
         onConfirm: (updated) {
           setState(() {
-            for (int i = 0; i < _allParticipants.length; i++) {
-              _allParticipants[i]['selected'] = updated[i]['selected'];
-            }
+            _selectedIds
+              ..clear()
+              ..addAll(updated);
           });
         },
       ),
@@ -176,7 +210,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header - 좌측 정렬
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
@@ -190,9 +223,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Text(
-                    '일정 등록',
-                    style: TextStyle(
+                  Text(
+                    _isEdit ? '일정 수정' : '일정 등록',
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
                       fontSize: 20,
@@ -202,36 +235,67 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 ],
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    // Category/Color - 회색 배경 + 정중앙 정렬, "+" 제거
-                    _buildSectionLabel('카테고리 분류'),
-                    const SizedBox(height: 12),
-                    _buildColorPicker(),
-                    const SizedBox(height: 24),
-                    // Title
-                    _buildSectionLabel('제목'),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _titleController,
-                      hintText: '일정 제목을 입력하세요',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 24),
-                    // Date - 시작일/종료일
-                    _buildSectionLabel('날짜'),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _pickDateRange,
-                      child: Row(
+            if (_loading)
+              const Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildSectionLabel('카테고리 분류'),
+                      const SizedBox(height: 12),
+                      _buildColorPicker(),
+                      const SizedBox(height: 24),
+                      _buildSectionLabel('제목'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _titleController,
+                        hintText: '일정 제목을 입력하세요',
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionLabel('날짜'),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _pickDateRange,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildDateField('시작일', _startDate),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                '~',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 16,
+                                  color: AppColors.gray400,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildDateField('종료일', _endDate),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionLabel('시간'),
+                      const SizedBox(height: 8),
+                      Row(
                         children: [
                           Expanded(
-                            child: _buildDateField('시작일', _startDate),
+                            child: GestureDetector(
+                              onTap: () => _pickTime(isStart: true),
+                              child:
+                                  _buildTimeField(_formatTime(_startTime)),
+                            ),
                           ),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10),
@@ -245,101 +309,78 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                             ),
                           ),
                           Expanded(
-                            child: _buildDateField('종료일', _endDate),
+                            child: GestureDetector(
+                              onTap: () => _pickTime(isStart: false),
+                              child: _buildTimeField(_formatTime(_endTime)),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Time
-                    _buildSectionLabel('시간'),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _pickTime(isStart: true),
-                            child: _buildTimeField(_formatTime(_startTime)),
+                      const SizedBox(height: 24),
+                      _buildSectionLabel('참가자'),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _members.isEmpty ? null : _showParticipantPopup,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            '~',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 16,
-                              color: AppColors.gray400,
-                            ),
+                          decoration: BoxDecoration(
+                            color: AppColors.gray50,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _pickTime(isStart: false),
-                            child: _buildTimeField(_formatTime(_endTime)),
+                          child: Row(
+                            children: [
+                              ..._members
+                                  .where((m) => _selectedIds.contains(m.userId))
+                                  .take(3)
+                                  .map((m) => _buildSmallAvatar(
+                                        _memberColor(m),
+                                        m.name,
+                                      )),
+                              if (_selectedIds.isNotEmpty)
+                                const SizedBox(width: 4),
+                              Container(
+                                width: 32,
+                                height: 32,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.gray200,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  size: 16,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                              Text(
+                                _selectedIds.isEmpty
+                                    ? '참가자 선택'
+                                    : '${_selectedIds.length}명 참가',
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 14,
+                                  color: AppColors.gray500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Participants
-                    _buildSectionLabel('참가자'),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _showParticipantPopup,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.gray50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            ..._allParticipants
-                                .where((p) => p['selected'] as bool)
-                                .take(3)
-                                .map((p) => _buildSmallAvatar(
-                                      p['color'] as Color,
-                                    )),
-                            Container(
-                              width: 32,
-                              height: 32,
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: const BoxDecoration(
-                                color: AppColors.gray200,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                size: 16,
-                                color: AppColors.gray500,
-                              ),
-                            ),
-                            Text(
-                              '$_selectedCount명 참가',
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w400,
-                                fontSize: 14,
-                                color: AppColors.gray500,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
-            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: PrimaryButton(
-                text: _saving ? '저장 중...' : '일정 저장하기',
+                text: _saving
+                    ? '저장 중...'
+                    : (_isEdit ? '일정 수정하기' : '일정 저장하기'),
                 onPressed: _canSave ? _save : null,
               ),
             ),
@@ -362,7 +403,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     );
   }
 
-  // 색상 선택 - "+" 제거, 회색 배경 영역, 정중앙 정렬
   Widget _buildColorPicker() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -498,7 +538,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     );
   }
 
-  Widget _buildSmallAvatar(Color color) {
+  Widget _buildSmallAvatar(Color color, String name) {
+    final initial = name.isNotEmpty ? name[0] : '?';
     return Container(
       width: 32,
       height: 32,
@@ -507,7 +548,17 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         color: color.withValues(alpha: 0.2),
         shape: BoxShape.circle,
       ),
-      child: Icon(Icons.person, size: 18, color: color),
+      child: Center(
+        child: Text(
+          initial,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: color,
+          ),
+        ),
+      ),
     );
   }
 
@@ -547,7 +598,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primary,
               onPrimary: AppColors.white,
               surface: AppColors.white,
@@ -571,11 +622,13 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 }
 
 class _ParticipantPopup extends StatefulWidget {
-  final List<Map<String, dynamic>> participants;
-  final void Function(List<Map<String, dynamic>>) onConfirm;
+  final List<Membership> members;
+  final Set<String> selectedIds;
+  final void Function(Set<String>) onConfirm;
 
   const _ParticipantPopup({
-    required this.participants,
+    required this.members,
+    required this.selectedIds,
     required this.onConfirm,
   });
 
@@ -584,32 +637,30 @@ class _ParticipantPopup extends StatefulWidget {
 }
 
 class _ParticipantPopupState extends State<_ParticipantPopup> {
-  late List<Map<String, dynamic>> _local;
+  late Set<String> _local;
 
   @override
   void initState() {
     super.initState();
-    _local = widget.participants
-        .map((p) => Map<String, dynamic>.from(p))
-        .toList();
+    _local = widget.selectedIds.toSet();
   }
 
-  int get _selectedCount =>
-      _local.where((p) => p['selected'] as bool).length;
-
-  String get _headerTitle {
-    final me =
-        _local.firstWhere((p) => p['isMe'] as bool, orElse: () => {});
-    final myName = me.isNotEmpty ? me['name'] as String : '나';
-    final others = _selectedCount -
-        (me.isNotEmpty && me['selected'] as bool ? 1 : 0);
-    return '참가자 : $myName(나), 기타 $others명';
+  Color _color(Membership m) {
+    final cleaned = m.color.replaceAll('#', '');
+    final value = int.tryParse('FF$cleaned', radix: 16);
+    return value != null ? Color(value) : AppColors.primary;
   }
+
+  String? get _myId => Di.userSession.profile?.id;
 
   @override
   Widget build(BuildContext context) {
-    final me = _local.where((p) => p['isMe'] as bool).toList();
-    final members = _local.where((p) => !(p['isMe'] as bool)).toList();
+    final me = widget.members
+        .where((m) => _myId != null && m.userId == _myId)
+        .toList();
+    final others = widget.members
+        .where((m) => _myId == null || m.userId != _myId)
+        .toList();
 
     return Container(
       decoration: const BoxDecoration(
@@ -633,7 +684,7 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
           ),
           const SizedBox(height: 16),
           Text(
-            _headerTitle,
+            '${_local.length}명 선택됨',
             style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
@@ -643,28 +694,30 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
           ),
           const SizedBox(height: 16),
           const Divider(color: AppColors.gray100, height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '나',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: AppColors.gray500,
+          if (me.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '나',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.gray500,
+                  ),
                 ),
               ),
             ),
-          ),
-          ...me.map((p) => _buildParticipantRow(p)),
+            ...me.map(_buildParticipantRow),
+          ],
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '멤버 (${members.length})',
+                '멤버 (${others.length})',
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w700,
@@ -674,7 +727,7 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
               ),
             ),
           ),
-          ...members.map((p) => _buildParticipantRow(p)),
+          ...others.map(_buildParticipantRow),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -691,14 +744,18 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
     );
   }
 
-  Widget _buildParticipantRow(Map<String, dynamic> participant) {
-    final idx = _local.indexOf(participant);
-    final isSelected = participant['selected'] as bool;
-    final color = participant['color'] as Color;
-
+  Widget _buildParticipantRow(Membership m) {
+    final isSelected = _local.contains(m.userId);
+    final color = _color(m);
     return GestureDetector(
       onTap: () {
-        setState(() => _local[idx]['selected'] = !isSelected);
+        setState(() {
+          if (isSelected) {
+            _local.remove(m.userId);
+          } else {
+            _local.add(m.userId);
+          }
+        });
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -711,12 +768,18 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
                 color: color.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.person, size: 24, color: color),
+              clipBehavior: Clip.antiAlias,
+              child: m.profileImage != null && m.profileImage!.isNotEmpty
+                  ? Image.network(m.profileImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _initialAvatar(m.name, color))
+                  : _initialAvatar(m.name, color),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
-                participant['name'] as String,
+                m.name,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w400,
@@ -740,6 +803,20 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
                   : null,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _initialAvatar(String name, Color color) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0] : '?',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
+          color: color,
         ),
       ),
     );

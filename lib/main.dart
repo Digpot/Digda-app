@@ -17,6 +17,7 @@ Future<void> main() async {
     nativeAppKey: Env.kakaoNativeAppKey,
     javaScriptAppKey: Env.kakaoJavaScriptAppKey,
   );
+  // flutter_naver_login 2.x: 설정은 AndroidManifest meta-data 로 수행 (com.naver.sdk.clientId 등).
   Di.bootstrap();
   await Di.authSession.hydrate();
   runApp(const DigdaApp());

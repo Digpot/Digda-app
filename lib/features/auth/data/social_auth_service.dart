@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
@@ -61,19 +62,47 @@ class SocialAuthService {
   }
 
   Future<SocialCredential> _signInNaver() async {
-    final result = await FlutterNaverLogin.logIn();
-    if (result.status != NaverLoginStatus.loggedIn) {
+    try {
+      final result = await FlutterNaverLogin.logIn();
+      if (result.status != NaverLoginStatus.loggedIn) {
+        final isCancel = result.status == NaverLoginStatus.loggedOut;
+        final errMsg = result.errorMessage ?? '';
+        throw ApiException(
+          statusCode: 0,
+          code: isCancel ? 'SOCIAL_LOGIN_CANCELLED' : 'SOCIAL_LOGIN_FAILED',
+          message: isCancel
+              ? '네이버 로그인이 취소되었습니다'
+              : (errMsg.isNotEmpty
+                  ? '네이버 로그인 실패: $errMsg'
+                  : '네이버 로그인에 실패했습니다'),
+        );
+      }
+      // 로그인 성공 후 토큰 획득 — 실패 시 재시도 1회.
+      var token = await FlutterNaverLogin.getCurrentAccessToken();
+      if (token.accessToken.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        token = await FlutterNaverLogin.getCurrentAccessToken();
+      }
+      if (token.accessToken.isEmpty) {
+        throw ApiException(
+          statusCode: 0,
+          code: 'SOCIAL_LOGIN_FAILED',
+          message: '네이버 액세스 토큰을 받지 못했습니다',
+        );
+      }
+      return SocialCredential(
+        provider: SocialProvider.naver,
+        accessToken: token.accessToken,
+      );
+    } on ApiException {
+      rethrow;
+    } on PlatformException catch (e) {
       throw ApiException(
         statusCode: 0,
-        code: 'SOCIAL_LOGIN_CANCELLED',
-        message: '네이버 로그인이 취소되었습니다',
+        code: 'SOCIAL_LOGIN_FAILED',
+        message: '네이버 로그인에 실패했습니다: ${e.message ?? e.code}',
       );
     }
-    final token = await FlutterNaverLogin.getCurrentAccessToken();
-    return SocialCredential(
-      provider: SocialProvider.naver,
-      accessToken: token.accessToken,
-    );
   }
 
   Future<SocialCredential> _signInApple() async {

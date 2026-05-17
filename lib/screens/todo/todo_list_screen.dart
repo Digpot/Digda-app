@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/todo/models/todo_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class TodoListScreen extends StatefulWidget {
   const TodoListScreen({super.key});
@@ -81,35 +82,55 @@ class _TodoListScreenState extends State<TodoListScreen> {
     }
   }
 
+  /// 진행률 재계산 — 서버 응답이 없을 때도 진행률이 즉시 따라오도록 로컬에서 산출.
+  TodoProgress _recomputeProgress(List<Todo> todos) {
+    final total = todos.length;
+    final completed = todos.where((t) => t.completed).length;
+    final percent = total > 0 ? ((completed / total) * 100).round() : 0;
+    return TodoProgress(total: total, completed: completed, percent: percent);
+  }
+
   Future<void> _toggleTodo(Todo todo) async {
     final groupId = Di.activeGroup.groupRoomId;
     if (groupId == null) return;
     final newCompleted = !todo.completed;
-    // 낙관적 갱신
+    final snapshot = _todos;
+    final optimistic = _todos
+        .map((t) => t.id == todo.id
+            ? Todo(
+                id: t.id,
+                text: t.text,
+                completed: newCompleted,
+                completedAt: newCompleted ? DateTime.now() : null,
+                completedBy: t.completedBy,
+                createdBy: t.createdBy,
+                createdAt: t.createdAt,
+              )
+            : t)
+        .toList();
     setState(() {
-      _todos = _todos
-          .map((t) => t.id == todo.id
-              ? Todo(
-                  id: t.id,
-                  text: t.text,
-                  completed: newCompleted,
-                  completedAt: newCompleted ? DateTime.now() : null,
-                  completedBy: t.completedBy,
-                  createdBy: t.createdBy,
-                  createdAt: t.createdAt,
-                )
-              : t)
-          .toList();
+      _todos = optimistic;
+      _progress = _recomputeProgress(optimistic);
     });
     try {
-      await Di.todoRepository
+      // 서버 응답으로 동기화하되, 전체 목록 재호출(=loading flicker)은 하지 않음.
+      final updated = await Di.todoRepository
           .toggle(groupId, todo.id, completed: newCompleted);
-      _load();
+      if (!mounted) return;
+      final next =
+          _todos.map((t) => t.id == updated.id ? updated : t).toList();
+      setState(() {
+        _todos = next;
+        _progress = _recomputeProgress(next);
+      });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
-      _load();
+      // 실패 시 원복.
+      setState(() {
+        _todos = snapshot;
+        _progress = _recomputeProgress(snapshot);
+      });
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -119,13 +140,18 @@ class _TodoListScreenState extends State<TodoListScreen> {
     if (text.isEmpty || groupId == null) return;
     _addController.clear();
     try {
-      await Di.todoRepository.create(groupId, text);
-      await _load();
+      // 생성된 항목만 로컬 목록 끝에 붙임 — 전체 재로딩으로 인한 깜빡임 방지.
+      final created = await Di.todoRepository.create(groupId, text);
       if (!mounted) return;
+      final next = [..._todos, created];
+      setState(() {
+        _todos = next;
+        _progress = _recomputeProgress(next);
+      });
       Future.delayed(const Duration(milliseconds: 100), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
-            0,
+            _scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
@@ -133,8 +159,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 

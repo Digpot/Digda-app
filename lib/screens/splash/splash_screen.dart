@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../core/di.dart';
 import '../../theme/colors.dart';
 import '../../theme/text_styles.dart';
 
@@ -14,11 +16,39 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
+    _decideRoute();
+  }
+
+  Future<void> _decideRoute() async {
+    final minDelay = Future.delayed(const Duration(milliseconds: 1200));
+    String nextRoute = '/login';
+
+    if (Di.authSession.isAuthenticated) {
+      // 저장된 토큰으로 사용자 정보를 받아 자동 로그인.
+      // 실패하면 토큰이 만료/무효 → 로그인 화면으로 이동.
+      try {
+        await Di.userSession.refresh();
+        try {
+          final groups = await Di.groupRoomRepository.myList();
+          nextRoute = groups.isEmpty ? '/home' : '/group-list';
+        } catch (_) {
+          nextRoute = '/home';
+        }
+      } catch (e) {
+        final isAuthFailure = e is DioException &&
+            (e.response?.statusCode == 401 || e.response?.statusCode == 403);
+        if (isAuthFailure) {
+          await Di.apiClient.clearSession();
+        }
+        nextRoute = '/login';
       }
-    });
+    }
+
+    await minDelay;
+    if (!mounted) return;
+    // pushNamedAndRemoveUntil 로 splash/login 을 백스택에서 제거 → 앱 사용 중 뒤로가기로
+    // 로그인 화면이 다시 노출되는 문제를 차단.
+    Navigator.of(context).pushNamedAndRemoveUntil(nextRoute, (_) => false);
   }
 
   @override

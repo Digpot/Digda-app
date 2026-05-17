@@ -5,6 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
+import '../../widgets/app_dialog.dart';
 
 class DiaryCalendarScreen extends StatefulWidget {
   const DiaryCalendarScreen({super.key});
@@ -18,11 +19,26 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   DateTime? _selectedDay;
   Set<DateTime> _diaryDates = {};
   List<DiarySummary> _recent = const [];
+  List<DiarySummary> _monthDiaries = const [];
+  bool _hasUnreadNotifications = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMonth());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMonth();
+      _checkUnreadNotifications();
+    });
+  }
+
+  Future<void> _checkUnreadNotifications() async {
+    try {
+      final result = await Di.notificationRepository.list(limit: 20);
+      if (!mounted) return;
+      setState(() {
+        _hasUnreadNotifications = result.notifications.any((n) => !n.isRead);
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadMonth() async {
@@ -33,73 +49,36 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
       final list = await Di.diaryRepository.list(
         groupId,
         month: _focusedDay,
-        limit: 5,
+        limit: 31,
       );
       if (!mounted) return;
       setState(() {
         _diaryDates = dates
             .map((d) => DateTime.utc(d.year, d.month, d.day))
             .toSet();
-        _recent = list.diaries;
+        _monthDiaries = list.diaries;
+        _recent = list.diaries.take(5).toList();
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessageOf(e))));
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
-  // Mock diary data with colors for left border
-  final List<Map<String, dynamic>> _recentDiaries = [
-    {
-      'title': '설날 데이트',
-      'preview': '오늘 떡국 먹고 영화 봤다. 너무 행복했다...',
-      'date': '2026.02.08',
-      'color': AppColors.primary,
-      'hasImage': true,
-    },
-    {
-      'title': '제물포 바닷가 산책',
-      'preview': '바다 보면서 산책하고 커피 마셨다...',
-      'date': '2026.02.07',
-      'color': AppColors.blue,
-      'hasImage': true,
-    },
-    {
-      'title': '카페에서 브런치',
-      'preview': '새로 생긴 카페 가봤는데 분위기 좋았다...',
-      'date': '2026.02.05',
-      'color': AppColors.green,
-      'hasImage': true,
-    },
+  static const _accentPalette = [
+    AppColors.primary,
+    AppColors.blue,
+    AppColors.green,
+    AppColors.purple,
   ];
 
-  final Map<DateTime, List<Map<String, dynamic>>> _diaries = {
-    DateTime.utc(2026, 2, 5): [
-      {'title': '카페에서 브런치'},
-    ],
-    DateTime.utc(2026, 2, 7): [
-      {'title': '제물포 바닷가 산책'},
-    ],
-    DateTime.utc(2026, 2, 8): [
-      {'title': '설날 데이트'},
-    ],
-    DateTime.utc(2026, 2, 14): [
-      {'title': '발렌타인 데이'},
-    ],
-    DateTime.utc(2026, 2, 21): [
-      {'title': '주말'},
-    ],
-    DateTime.utc(2026, 2, 22): [
-      {'title': '산책'},
-    ],
-  };
-
-  List<Map<String, dynamic>> _getDiariesForDay(DateTime day) {
+  List<Object> _getDiariesForDay(DateTime day) {
     final key = DateTime.utc(day.year, day.month, day.day);
-    if (_diaryDates.contains(key)) return [const {}];
-    return _diaries[key] ?? [];
+    return _diaryDates.contains(key) ? const [Object()] : const [];
   }
+
+  String _formatDate(DateTime d) =>
+      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +108,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         const Spacer(),
                         GestureDetector(
                           onTap: () => Navigator.of(context)
-                              .pushNamed('/notifications'),
+                              .pushNamed('/notifications')
+                              .then((_) => _checkUnreadNotifications()),
                           child: Stack(
                             children: [
                               const Icon(
@@ -137,25 +117,26 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                 size: 22,
                                 color: AppColors.gray700,
                               ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
+                              if (_hasUnreadNotifications)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 16),
                         GestureDetector(
-                          onTap: () => Navigator.of(context)
-                              .pushNamed('/my-page'),
+                          onTap: () =>
+                              Navigator.of(context).pushNamed('/my-page'),
                           child: const Icon(
                             Icons.settings_outlined,
                             size: 22,
@@ -334,8 +315,22 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                       });
                       final hasDiary = _getDiariesForDay(selectedDay).isNotEmpty;
                       if (hasDiary) {
-                        Navigator.of(context).pushNamed('/diary-detail').then((_) {
+                        final key = DateTime.utc(
+                            selectedDay.year, selectedDay.month, selectedDay.day);
+                        DiarySummary? match;
+                        for (final d in _monthDiaries) {
+                          final dKey =
+                              DateTime.utc(d.date.year, d.date.month, d.date.day);
+                          if (dKey == key) {
+                            match = d;
+                            break;
+                          }
+                        }
+                        Navigator.of(context)
+                            .pushNamed('/diary-detail', arguments: match?.id)
+                            .then((_) {
                           setState(() => _selectedDay = null);
+                          _loadMonth();
                         });
                       } else {
                         showDialog(
@@ -382,7 +377,11 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                 onPressed: () {
                                   Navigator.of(context).pop();
                                   setState(() => _selectedDay = null);
-                                  Navigator.of(context).pushNamed('/write-diary');
+                                  Navigator.of(context)
+                                      .pushNamed('/write-diary')
+                                      .then((_) {
+                                    if (mounted) _loadMonth();
+                                  });
                                 },
                                 child: const Text(
                                   '작성하기',
@@ -444,16 +443,33 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                 ],
               ),
             ),
-            // Diary list
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final diary = _recentDiaries[index];
-                  return _buildDiaryItem(diary);
-                },
-                childCount: _recentDiaries.length,
+            // Recent diary list (실제 서버 데이터)
+            if (_recent.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Center(
+                    child: Text(
+                      '아직 작성한 일기가 없어요',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return _buildDiaryItem(_recent[index], index);
+                  },
+                  childCount: _recent.length,
+                ),
               ),
-            ),
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],
         ),
@@ -727,10 +743,14 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                   _showDuplicateDiaryDialog();
                                 } else {
                                   Navigator.of(context).pop();
-                                  Navigator.of(context).pushNamed(
-                                    '/write-diary',
-                                    arguments: selected,
-                                  );
+                                  Navigator.of(context)
+                                      .pushNamed(
+                                        '/write-diary',
+                                        arguments: selected,
+                                      )
+                                      .then((_) {
+                                    if (mounted) _loadMonth();
+                                  });
                                 }
                               }
                             : null,
@@ -812,12 +832,14 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     );
   }
 
-  Widget _buildDiaryItem(Map<String, dynamic> diary) {
-    final color = diary['color'] as Color;
-    final hasImage = diary['hasImage'] as bool;
+  Widget _buildDiaryItem(DiarySummary diary, int index) {
+    final color = _accentPalette[index % _accentPalette.length];
+    final hasImage = diary.imageUrl != null && diary.imageUrl!.isNotEmpty;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed('/diary-detail'),
+      onTap: () => Navigator.of(context)
+          .pushNamed('/diary-detail', arguments: diary.id)
+          .then((_) => _loadMonth()),
       child: Container(
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
         padding: const EdgeInsets.all(16),
@@ -828,7 +850,6 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         ),
         child: Row(
           children: [
-            // Left color border
             Container(
               width: 3,
               height: 56,
@@ -838,35 +859,24 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
               ),
             ),
             const SizedBox(width: 14),
-            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    diary['title'] as String,
+                    diary.title,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
                       color: AppColors.gray900,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    diary['preview'] as String,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                      color: AppColors.gray500,
-                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    diary['date'] as String,
+                    _formatDate(diary.date),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w400,
@@ -877,19 +887,27 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                 ],
               ),
             ),
-            // Image placeholder
             if (hasImage)
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.image_outlined,
-                  size: 24,
-                  color: color.withValues(alpha: 0.5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  diary.imageUrl!,
+                  width: 52,
+                  height: 52,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.image_outlined,
+                      size: 24,
+                      color: color.withValues(alpha: 0.5),
+                    ),
+                  ),
                 ),
               ),
           ],

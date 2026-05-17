@@ -310,7 +310,11 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ...List.generate(displayCount, (i) => _buildAvatar(i)),
+            ...List.generate(displayCount, (i) {
+              final memberships = _detail?.memberships ?? [];
+              final member = i < memberships.length ? memberships[i] : null;
+              return _buildAvatar(i, member);
+            }),
             if (extraCount > 0) ...[
               const SizedBox(width: 8),
               _buildExtraAvatar(extraCount),
@@ -338,18 +342,27 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     );
   }
 
-  Widget _buildAvatar(int index) {
+  Widget _buildAvatar(int index, [MembershipSummary? member]) {
     final color = _memberColors[index % _memberColors.length];
+    final profileImage = member?.profileImage;
     return Container(
       margin: const EdgeInsets.only(right: 8),
       width: 48,
       height: 48,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.white, width: 2),
       ),
-      child: Icon(Icons.person_outline, size: 22, color: color),
+      child: (profileImage != null && profileImage.isNotEmpty)
+          ? Image.network(
+              profileImage,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Icon(Icons.person_outline, size: 22, color: color),
+            )
+          : Icon(Icons.person_outline, size: 22, color: color),
     );
   }
 

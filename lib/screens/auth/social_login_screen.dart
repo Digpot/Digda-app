@@ -6,6 +6,7 @@ import '../../core/network/api_exception.dart';
 import '../../features/auth/models/auth_models.dart';
 import '../../theme/colors.dart';
 import '../../theme/text_styles.dart';
+import '../../widgets/app_dialog.dart';
 
 class SocialLoginScreen extends StatefulWidget {
   const SocialLoginScreen({super.key});
@@ -23,16 +24,15 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
     try {
       final result = await Di.authSession.signIn(provider);
       if (!mounted) return;
+      final nav = Navigator.of(context);
       if (result.isNewUser) {
-        Navigator.of(context).pushReplacementNamed('/terms', arguments: provider.key);
+        // 약관 동의는 다음 단계가 있어 login 위에 push (가입 완료 후 그쪽에서 스택 정리).
+        nav.pushReplacementNamed('/terms', arguments: provider.key);
       } else {
         final groups = await Di.groupRoomRepository.myList();
         if (!mounted) return;
-        if (groups.isEmpty) {
-          Navigator.of(context).pushReplacementNamed('/home');
-        } else {
-          Navigator.of(context).pushReplacementNamed('/group-list');
-        }
+        final target = groups.isEmpty ? '/home' : '/group-list';
+        nav.pushNamedAndRemoveUntil(target, (_) => false);
       }
     } catch (e) {
       if (!mounted) return;
@@ -49,7 +49,7 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
     } else if (e is ApiException) {
       message = e.message;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showErrorDialog(context, message);
   }
 
   @override
