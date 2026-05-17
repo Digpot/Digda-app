@@ -8,6 +8,7 @@ import '../../features/invite/models/invite_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/group_list_tile.dart';
+import '../../widgets/notification_bell_icon.dart';
 
 class GroupListScreen extends StatefulWidget {
   const GroupListScreen({super.key});
@@ -106,15 +107,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () =>
-                        Navigator.of(context).pushNamed('/notifications'),
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      size: 22,
-                      color: AppColors.gray700,
-                    ),
-                  ),
+                  const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pushNamed('/my-page'),

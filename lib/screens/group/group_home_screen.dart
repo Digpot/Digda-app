@@ -5,6 +5,7 @@ import '../../features/group_room/models/group_room_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/feature_card.dart';
+import '../../widgets/notification_bell_icon.dart';
 
 class GroupHomeScreen extends StatefulWidget {
   const GroupHomeScreen({
@@ -130,15 +131,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () =>
-                        Navigator.of(context).pushNamed('/notifications'),
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      size: 22,
-                      color: AppColors.gray700,
-                    ),
-                  ),
+                  const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pushNamed('/my-page'),

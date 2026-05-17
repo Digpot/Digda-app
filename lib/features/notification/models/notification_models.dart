@@ -36,7 +36,7 @@ class AppNotification {
       relatedId: json['relatedId']?.toString(),
       relatedType: json['relatedType'] as String?,
       isRead: json['isRead'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse('${json['createdAt'] as String}Z').toLocal(),
     );
   }
 }
