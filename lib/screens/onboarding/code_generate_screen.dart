@@ -46,7 +46,7 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
     final code = _code;
     if (code == null) return;
     Share.share(
-      'Digda에서 함께 일기를 써요!\n\n초대 코드: $code\n\nDigda 앱을 열고 초대 코드를 입력해주세요 🙌',
+      '디그팟에서 함께 일기를 써요!\n\n초대 코드: $code\n\n디그팟 앱을 열고 초대 코드를 입력해주세요 🙌',
     );
   }
 

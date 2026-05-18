@@ -28,7 +28,7 @@ class EmptyStateScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Digda',
+                    '디그팟',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,

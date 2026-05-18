@@ -2,7 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 const String _channelId = 'digda_default';
-const String _channelName = '디그다 알림';
+const String _channelName = '디그팟 알림';
 
 /// 앱이 포그라운드일 때 FCM 메시지를 시스템 알림으로 표시.
 /// 백그라운드/종료 상태에서는 Android OS가 notification payload를 자동 처리.

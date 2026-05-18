@@ -22,7 +22,11 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
   GroupRoomDetail? _detail;
   List<Membership> _members = const [];
 
-  bool get _isDeleted => _detail?.groupRoom.deleteScheduledAt != null;
+  /// 서버 detail 응답의 deleteScheduledAt 이 비어 있는 케이스가 있어, 리스트에서
+  /// 진입할 때 ActiveGroupSession 에 저장된 isDeleteScheduled 도 fallback 으로 사용.
+  bool get _isDeleted =>
+      _detail?.groupRoom.deleteScheduledAt != null ||
+      Di.activeGroup.isDeleteScheduled;
   bool get _isOwner => _detail?.isOwner ?? false;
 
   @override
@@ -91,12 +95,13 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     setState(() => _busy = true);
     try {
       await Di.groupRoomRepository.softDelete(groupId);
+      Di.activeGroup.updateDeleteScheduled(true);
       if (!mounted) return;
       setState(() => _busy = false);
       showInfoDialog(
         context,
         '삭제가 예약됐어요',
-        '7일 후에 그룹방이 완전히 삭제됩니다.\n그 전에 복구할 수 있어요.',
+        '7일 후에 그룹방이 완전히 삭제됩니다.\n그룹방 목록에서 [복구] 버튼으로 복구할 수 있어요.',
         onConfirm: () {
           Di.activeGroup.clear();
           Navigator.of(context).pushNamedAndRemoveUntil(
@@ -118,6 +123,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     setState(() => _busy = true);
     try {
       await Di.groupRoomRepository.recover(groupId);
+      Di.activeGroup.updateDeleteScheduled(false);
       await _load();
       if (!mounted) return;
       setState(() => _busy = false);

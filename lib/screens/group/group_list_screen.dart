@@ -50,6 +50,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
       groupRoomId: g.id,
       groupRoomName: g.name,
       isOwner: g.isOwner,
+      isDeleteScheduled: g.isDeleteScheduled,
     );
     if (g.isDeleteScheduled) {
       // 삭제 예정 그룹은 그룹 관리 화면(복구 배너 노출)으로 이동.
@@ -61,6 +62,91 @@ class _GroupListScreenState extends State<GroupListScreen> {
         '/group-home',
         arguments: {'name': g.name, 'members': g.memberCount},
       );
+    }
+  }
+
+  Future<void> _recoverGroup(GroupRoomListItem g) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '그룹방을 복구할까요?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: Text(
+          '"${g.name}" 그룹방을 복구하면\n모든 데이터가 그대로 유지됩니다.',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              '복구하기',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await Di.groupRoomRepository.recover(g.id);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            '"${g.name}" 그룹방을 복구했어요',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: AppColors.white,
+            ),
+          ),
+          backgroundColor: AppColors.gray900,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -181,6 +267,10 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                             .pushNamed('/update-diary')
                                             .then((_) => _refresh());
                                       },
+                                      // 삭제 예정 그룹은 owner 에게 즉시 복구 버튼 노출.
+                                      onRecover: (g.isOwner && g.isDeleteScheduled)
+                                          ? () => _recoverGroup(g)
+                                          : null,
                                     ),
                                   );
                                 }),
@@ -441,7 +531,7 @@ class _InviteCodeBottomSheetState extends State<_InviteCodeBottomSheet> {
                 child: GestureDetector(
                   onTap: () {
                     Share.share(
-                      'Digda에서 함께 일기를 써요!\n\n초대 코드: ${widget.code}\n\nDigda 앱을 열고 초대 코드를 입력해주세요 🙌',
+                      '디그팟에서 함께 일기를 써요!\n\n초대 코드: ${widget.code}\n\n디그팟 앱을 열고 초대 코드를 입력해주세요 🙌',
                     );
                   },
                   child: Container(

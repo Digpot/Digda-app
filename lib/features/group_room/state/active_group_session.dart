@@ -8,10 +8,14 @@ class ActiveGroupSession extends ChangeNotifier {
   String? _groupRoomId;
   String? _groupRoomName;
   bool _isOwner = false;
+  bool _isDeleteScheduled = false;
 
   String? get groupRoomId => _groupRoomId;
   String? get groupRoomName => _groupRoomName;
   bool get isOwner => _isOwner;
+  /// 리스트에서 진입할 때 전달받은 "삭제 예정" 상태. detail 응답의
+  /// deleteScheduledAt 이 누락되는 경우에도 복구 UI 노출 판정에 활용한다.
+  bool get isDeleteScheduled => _isDeleteScheduled;
 
   bool get hasActive => _groupRoomId != null;
 
@@ -20,10 +24,12 @@ class ActiveGroupSession extends ChangeNotifier {
     required String groupRoomId,
     required String groupRoomName,
     required bool isOwner,
+    bool isDeleteScheduled = false,
   }) {
     _groupRoomId = groupRoomId;
     _groupRoomName = groupRoomName;
     _isOwner = isOwner;
+    _isDeleteScheduled = isDeleteScheduled;
     notifyListeners();
   }
 
@@ -39,11 +45,18 @@ class ActiveGroupSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 복구 등으로 삭제 예정 플래그 변경 시.
+  void updateDeleteScheduled(bool value) {
+    _isDeleteScheduled = value;
+    notifyListeners();
+  }
+
   /// 그룹방 나가기/삭제/그룹 리스트로 복귀 시.
   void clear() {
     _groupRoomId = null;
     _groupRoomName = null;
     _isOwner = false;
+    _isDeleteScheduled = false;
     notifyListeners();
   }
 }
