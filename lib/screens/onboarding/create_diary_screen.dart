@@ -178,8 +178,14 @@ class _CreateDiaryScreenState extends State<CreateDiaryScreen> {
         final updated = await Di.groupRoomRepository.update(groupId, body);
         if (!mounted) return;
         Di.activeGroup.updateName(updated.name);
-        Navigator.of(context).pop();
-        showInfoDialog(context, '수정 완료', '그룹방 정보를 수정했어요');
+        // pop 후 showInfoDialog 를 호출하면 이미 사라진 컨텍스트에서 다이얼로그를
+        // 띄우게 되어 안내가 노출되지 않는다. 다이얼로그 → 확인 시 pop 으로 정리.
+        showInfoDialog(
+          context,
+          '수정 완료',
+          '그룹방 정보를 수정했어요',
+          onConfirm: () => Navigator.of(context).pop(),
+        );
       } else {
         final imageId = await _uploadIfNeeded();
         final result = await Di.groupRoomRepository.create(

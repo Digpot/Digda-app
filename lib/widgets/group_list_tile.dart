@@ -48,6 +48,9 @@ class GroupListTile extends StatelessWidget {
               child: (thumbnailImageUrl != null && thumbnailImageUrl!.isNotEmpty)
                   ? Image.network(
                       thumbnailImageUrl!,
+                      // URL 이 바뀌면 위젯이 새로 마운트되어 캐시된 이미지가 아닌
+                      // 새 이미지를 다시 가져오도록 한다.
+                      key: ValueKey(thumbnailImageUrl),
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
@@ -129,6 +132,25 @@ class GroupListTile extends StatelessWidget {
                       color: AppColors.gray500,
                     ),
                   ),
+                  if (isDeleteScheduled) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: const [
+                        Icon(Icons.restore_rounded,
+                            size: 13, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text(
+                          '탭하여 복구 · 7일 내 가능',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
