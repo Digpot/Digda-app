@@ -44,6 +44,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  void _showToast(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+            color: AppColors.white,
+          ),
+        ),
+        backgroundColor: AppColors.gray900,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(milliseconds: 1800),
+      ),
+    );
+  }
+
   void _markAllRead() {
     showDialog(
       context: context,
@@ -87,7 +113,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               Navigator.of(ctx).pop();
               try {
                 await Di.notificationRepository.markAllRead();
-                _load();
+                if (!mounted) return;
+                await _load();
+                _showToast('모든 알림을 읽음 처리했어요');
               } catch (e) {
                 if (!mounted) return;
                 showErrorDialog(context, errorMessageOf(e));
@@ -131,6 +159,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             .toList();
       });
       Di.notificationRepository.markRead(n.id).ignore();
+      _showToast('읽음 처리했어요');
     }
     if (!mounted) return;
     // 관련 화면으로 딥링크.
@@ -161,8 +190,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (diff.inMinutes < 1) return '방금';
     if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
     if (diff.inHours < 24) return '${diff.inHours}시간 전';
-    if (diff.inDays < 7) return '${diff.inDays}일 전';
-    return '${t.month}월 ${t.day}일';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 알림을 날짜별 섹션 헤더 + 항목으로 평탄화한다.
+  /// 결과 리스트의 원소는 [String] (헤더) 또는 [AppNotification] 이다.
+  List<Object> _buildSections() {
+    if (_items.isEmpty) return const [];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    String label(DateTime t) {
+      final d = DateTime(t.year, t.month, t.day);
+      if (d == today) return '오늘';
+      if (d == yesterday) return '어제';
+      return '${t.year}.${t.month.toString().padLeft(2, '0')}.${t.day.toString().padLeft(2, '0')}';
+    }
+
+    final result = <Object>[];
+    String? currentLabel;
+    for (final n in _items) {
+      final l = label(n.createdAt);
+      if (l != currentLabel) {
+        result.add(l);
+        currentLabel = l;
+      }
+      result.add(n);
+    }
+    return result;
   }
 
   String _iconFor(String type) {
@@ -223,7 +278,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         '모두 읽음',
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w500,
                           fontSize: 14,
                           color: AppColors.primary,
                         ),
@@ -258,21 +313,61 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     ),
                                   ],
                                 )
-                              : ListView.builder(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  itemCount: _items.length,
-                                  itemBuilder: (context, i) {
-                                    final n = _items[i];
-                                    return GestureDetector(
-                                      onTap: () => _onNotificationTap(n),
-                                      child: _buildItem(n),
-                                    );
-                                  },
-                                ),
+                              : _buildSectionedList(),
                         ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionedList() {
+    final sections = _buildSections();
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 4, bottom: 20),
+      itemCount: sections.length,
+      separatorBuilder: (context, i) {
+        final isHeaderNext =
+            i + 1 < sections.length && sections[i + 1] is String;
+        // 섹션 헤더 직전엔 구분선 없이 여백만, 그 외에는 얇은 구분선.
+        if (isHeaderNext || sections[i] is String) {
+          return const SizedBox.shrink();
+        }
+        return const Divider(
+          height: 1,
+          thickness: 1,
+          indent: 76,
+          endIndent: 20,
+          color: AppColors.gray100,
+        );
+      },
+      itemBuilder: (context, i) {
+        final section = sections[i];
+        if (section is String) {
+          return _buildSectionHeader(section);
+        }
+        final n = section as AppNotification;
+        return InkWell(
+          onTap: () => _onNotificationTap(n),
+          child: _buildItem(n),
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionHeader(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          letterSpacing: 0.2,
+          color: AppColors.gray500,
         ),
       ),
     );
@@ -322,19 +417,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Container(
       color: isRead
           ? AppColors.white
-          : AppColors.primary.withValues(alpha: 0.03),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          : AppColors.primary.withValues(alpha: 0.04),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          // 좌측 unread 인디케이터 영역(읽음/미읽음 모두 같은 폭 차지하도록).
+          SizedBox(
             width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(top: 18),
-            decoration: BoxDecoration(
-              color: isRead ? Colors.transparent : AppColors.primary,
-              shape: BoxShape.circle,
-            ),
+            child: isRead
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 18),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(width: 10),
           Container(
@@ -342,7 +445,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             height: 44,
             decoration: BoxDecoration(
               color: AppColors.gray50,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
               child: Text(
@@ -356,33 +459,47 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  n.groupRoomName,
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: isRead ? FontWeight.w400 : FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.gray900,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        n.groupRoomName.isNotEmpty
+                            ? n.groupRoomName
+                            : n.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight:
+                              isRead ? FontWeight.w500 : FontWeight.w700,
+                          fontSize: 14,
+                          color: AppColors.gray900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatRelativeTime(n.createdAt),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 11,
+                        color: AppColors.gray400,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   n.message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w400,
                     fontSize: 13,
+                    height: 1.4,
                     color: AppColors.gray700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatRelativeTime(n.createdAt),
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 11,
-                    color: AppColors.gray400,
                   ),
                 ),
               ],

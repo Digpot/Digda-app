@@ -36,6 +36,11 @@ class _GroupListScreenState extends State<GroupListScreen> {
   }
 
   Future<void> _refresh() async {
+    // 썸네일을 새 이미지로 교체했을 때 Image.network 가 이전 URL/바이트를
+    // 캐시한 채 동일 URL 로 응답할 수 있어 화면이 갱신되지 않는 케이스가 있었다.
+    // 리스트 재조회 직전에 이미지 캐시를 비워 강제로 다시 로드한다.
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     setState(() => _future = Di.groupRoomRepository.myList());
     await _future;
   }
@@ -47,8 +52,9 @@ class _GroupListScreenState extends State<GroupListScreen> {
       isOwner: g.isOwner,
     );
     if (g.isDeleteScheduled) {
+      // 삭제 예정 그룹은 그룹 관리 화면(복구 배너 노출)으로 이동.
       Navigator.of(context)
-          .pushNamed('/group-manage')
+          .pushNamed('/manage-diary')
           .then((_) => _refresh());
     } else {
       Navigator.of(context).pushNamed(

@@ -16,10 +16,67 @@ class DeleteAccountScreen extends StatefulWidget {
 class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   bool _confirmed = false;
 
+  bool _processing = false;
+
+  Future<void> _executeDelete() async {
+    // 다이얼로그 컨텍스트(이미 dismiss됨) 가 아닌, 화면 자체의 컨텍스트로
+    // Navigator/Messenger 를 미리 캡처해 async 경계 후에도 안전하게 사용.
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _processing = true);
+    try {
+      await Di.authSession.deleteAccount();
+      if (!mounted) return;
+      navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+      // 새 화면이 push 된 다음 토스트가 표시되도록 한 프레임 뒤에 보여준다.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text(
+              '회원 탈퇴가 완료되었습니다',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.white,
+              ),
+            ),
+            backgroundColor: AppColors.gray900,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      String message = '탈퇴 처리 중 오류가 발생했습니다.';
+      if (e is DioException && e.error is ApiException) {
+        final api = e.error as ApiException;
+        if (api.code == 'OWNS_ACTIVE_GROUP_ROOM') {
+          message = '소유 중인 그룹방이 있어 탈퇴할 수 없습니다. 방장 양도 후 재시도하세요.';
+        } else {
+          message = api.message;
+        }
+      } else if (e is ApiException) {
+        if (e.code == 'OWNS_ACTIVE_GROUP_ROOM') {
+          message = '소유 중인 그룹방이 있어 탈퇴할 수 없습니다. 방장 양도 후 재시도하세요.';
+        } else {
+          message = e.message;
+        }
+      }
+      showErrorDialog(context, message);
+    }
+  }
+
   void _showFinalConfirmDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
@@ -43,7 +100,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text(
               '취소',
               style: TextStyle(
@@ -55,24 +112,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             ),
           ),
           TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              final navigator = Navigator.of(context);
-              try {
-                await Di.authSession.deleteAccount();
-                navigator.pushNamedAndRemoveUntil('/login', (route) => false);
-              } catch (e) {
-                String message = '탈퇴 처리 중 오류가 발생했습니다.';
-                if (e is DioException && e.error is ApiException) {
-                  final api = e.error as ApiException;
-                  if (api.code == 'OWNS_ACTIVE_GROUP_ROOM') {
-                    message = '소유 중인 그룹방이 있어 탈퇴할 수 없습니다. 방장 양도 후 재시도하세요.';
-                  } else {
-                    message = api.message;
-                  }
-                }
-                if (mounted) showErrorDialog(context, message);
-              }
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              // 다이얼로그가 닫힌 직후 본 화면의 컨텍스트로 탈퇴 실행.
+              _executeDelete();
             },
             child: const Text(
               '탈퇴하기',
@@ -198,8 +241,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     ),
                     const Spacer(),
                     PrimaryButton(
-                      text: '탈퇴하기',
-                      onPressed: _confirmed ? _showFinalConfirmDialog : null,
+                      text: _processing ? '처리 중...' : '탈퇴하기',
+                      onPressed: (_confirmed && !_processing)
+                          ? _showFinalConfirmDialog
+                          : null,
                     ),
                     const SizedBox(height: 48),
                   ],
