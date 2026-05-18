@@ -59,7 +59,7 @@ class _DigdaAppState extends State<DigdaApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      title: '디그다',
+      title: '디그팟',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

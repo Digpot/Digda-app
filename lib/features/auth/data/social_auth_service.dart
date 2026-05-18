@@ -66,10 +66,18 @@ class SocialAuthService {
       final result = await FlutterNaverLogin.logIn();
       if (result.status != NaverLoginStatus.loggedIn) {
         final isCancel = result.status == NaverLoginStatus.loggedOut;
+        // SDK 가 돌려준 errorMessage 가 있으면 그대로 노출해 디버깅 가능하게 한다.
+        // (errorCode:xxx, errorDesc:xxx 형태로 들어옴)
+        final reason = result.errorMessage;
+        final fallback = isCancel
+            ? '네이버 로그인이 취소되었습니다'
+            : '네이버 로그인에 실패했습니다.';
         throw ApiException(
           statusCode: 0,
           code: isCancel ? 'SOCIAL_LOGIN_CANCELLED' : 'SOCIAL_LOGIN_FAILED',
-          message: isCancel ? '네이버 로그인이 취소되었습니다' : '네이버 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.',
+          message: (reason == null || reason.isEmpty)
+              ? fallback
+              : '$fallback ($reason)',
         );
       }
       // 로그인 성공 후 토큰 획득 — 실패 시 재시도 1회.

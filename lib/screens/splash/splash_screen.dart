@@ -76,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  '디그다',
+                  '디그팟',
                   style: AppTextStyles.heading1,
                 ),
                 const SizedBox(height: 8),

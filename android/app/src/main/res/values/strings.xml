@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        앱 표시 이름. 매니페스트 application 의 android:label 이 이 리소스를 참조해
+        런처/태스크 매니저 표기를 "디그팟" 으로 통일한다.
+    -->
+    <string name="app_name">디그팟</string>
+
+    <!--
+        네이버 로그인 SDK 자격 증명.
+        매니페스트 meta-data 의 android:value="…" 를 직접 박을 경우 값이 숫자/리소스
+        ID 로 오해되거나, '_' 시작 값에서 일부 디바이스가 null 을 반환하는 케이스가
+        있어 문자열 리소스로 우회 참조한다.
+    -->
+    <string name="naver_client_id">_MW9YUTFCTti7zmLegvY</string>
+    <string name="naver_client_secret">rbIJdRw8iL</string>
+    <string name="naver_client_name">디그팟</string>
+</resources>

@@ -13,6 +13,8 @@ class GroupListTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onShare;
   final VoidCallback? onSettings;
+  /// 삭제 예정 상태일 때 우측에 노출되는 "복구" 버튼 콜백. 비어 있으면 버튼 미노출.
+  final VoidCallback? onRecover;
 
   const GroupListTile({
     super.key,
@@ -27,6 +29,7 @@ class GroupListTile extends StatelessWidget {
     this.onTap,
     this.onShare,
     this.onSettings,
+    this.onRecover,
   });
 
   @override
@@ -136,11 +139,11 @@ class GroupListTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: const [
-                        Icon(Icons.restore_rounded,
+                        Icon(Icons.schedule_rounded,
                             size: 13, color: AppColors.primary),
                         SizedBox(width: 4),
                         Text(
-                          '탭하여 복구 · 7일 내 가능',
+                          '7일 내 복구 가능',
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w500,
@@ -154,6 +157,35 @@ class GroupListTile extends StatelessWidget {
                 ],
               ),
             ),
+            if (isDeleteScheduled && onRecover != null)
+              GestureDetector(
+                onTap: onRecover,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.restore_rounded,
+                          size: 14, color: AppColors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        '복구',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (showActions) ...[
               GestureDetector(
                 onTap: onShare,

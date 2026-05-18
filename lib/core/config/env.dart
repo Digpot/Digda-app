@@ -21,7 +21,7 @@ class Env {
   static String get naverClientSecret =>
       dotenv.maybeGet('NAVER_CLIENT_SECRET') ?? '';
   static String get naverClientName =>
-      dotenv.maybeGet('NAVER_CLIENT_NAME') ?? 'Digda';
+      dotenv.maybeGet('NAVER_CLIENT_NAME') ?? '디그팟';
 
   static String get appleServiceId => dotenv.maybeGet('APPLE_SERVICE_ID') ?? '';
   static String get appleRedirectUri =>
