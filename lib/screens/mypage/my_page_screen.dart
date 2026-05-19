@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/di.dart';
 import '../../theme/colors.dart';
 import '../../features/user/models/user_models.dart';
+
+/// 디그팟 개인정보처리방침 호스팅 URL.
+const String _privacyPolicyUrl =
+    'https://datediary.github.io/Digda-app/privacy-policy.html';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -95,7 +100,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   children: [
                     _buildProfileSection(context, profile),
                     const SizedBox(height: 24),
-                    _buildSectionLabel('다이어리 관리'),
+                    _buildSectionLabel('그룹방 관리'),
                     _buildMenuItem(
                       context,
                       icon: Icons.menu_outlined,
@@ -145,8 +150,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       context,
                       icon: Icons.shield_outlined,
                       label: '개인정보처리방침',
-                      onTap: () => Navigator.of(context)
-                          .pushNamed('/terms-detail', arguments: 'privacy'),
+                      onTap: () => _openPrivacyPolicy(context),
                     ),
                     _buildMenuItem(
                       context,
@@ -172,6 +176,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final uri = Uri.parse(_privacyPolicyUrl);
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('브라우저를 열 수 없어요')),
+      );
+    }
   }
 
   void _showCodeInputSheet(BuildContext context) {

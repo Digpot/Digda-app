@@ -1,15 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../core/di.dart';
 import '../../theme/colors.dart';
+import '../../widgets/notification_bell_icon.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/outline_button.dart';
 
-class EmptyStateScreen extends StatelessWidget {
+class EmptyStateScreen extends StatefulWidget {
   const EmptyStateScreen({super.key});
 
   @override
+  State<EmptyStateScreen> createState() => _EmptyStateScreenState();
+}
+
+class _EmptyStateScreenState extends State<EmptyStateScreen> {
+  /// 그룹방 목록 조회 결과를 알기 전까지는 컨텐츠를 그리지 않는다.
+  /// 그룹방이 1개라도 있으면 즉시 /group-list 로 replace 하므로, 잠깐의 빈 화면이
+  /// 깜빡이지 않도록 로딩 인디케이터로 가린다.
+  bool _checking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _redirectIfHasGroup());
+  }
+
+  Future<void> _redirectIfHasGroup() async {
+    try {
+      final list = await Di.groupRoomRepository.myList();
+      if (!mounted) return;
+      if (list.isNotEmpty) {
+        // 이미 그룹방이 있는 사용자에게는 그룹방 목록이 홈이다.
+        // create-diary 에서 뒤로가기로 돌아왔을 때도 empty 화면이 다시 뜨지 않게
+        // pushReplacement 로 스택을 교체한다.
+        Navigator.of(context).pushReplacementNamed('/group-list');
+        return;
+      }
+    } catch (_) {
+      // 조회 실패 시에는 그냥 empty 상태를 보여준다.
+    }
+    if (mounted) setState(() => _checking = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(
+        backgroundColor: AppColors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -39,31 +80,7 @@ class EmptyStateScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () =>
-                        Navigator.of(context).pushNamed('/notifications'),
-                    child: Stack(
-                      children: [
-                        const Icon(
-                          Icons.notifications_outlined,
-                          size: 22,
-                          color: AppColors.gray700,
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () =>
