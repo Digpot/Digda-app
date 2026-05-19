@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/di.dart';
+import '../../core/route_observer.dart';
 import '../../theme/colors.dart';
 import '../../widgets/notification_bell_icon.dart';
 import '../../widgets/primary_button.dart';
@@ -14,11 +15,13 @@ class EmptyStateScreen extends StatefulWidget {
   State<EmptyStateScreen> createState() => _EmptyStateScreenState();
 }
 
-class _EmptyStateScreenState extends State<EmptyStateScreen> {
+class _EmptyStateScreenState extends State<EmptyStateScreen>
+    with RouteAware {
   /// 그룹방 목록 조회 결과를 알기 전까지는 컨텐츠를 그리지 않는다.
   /// 그룹방이 1개라도 있으면 즉시 /group-list 로 replace 하므로, 잠깐의 빈 화면이
   /// 깜빡이지 않도록 로딩 인디케이터로 가린다.
   bool _checking = true;
+  PageRoute<dynamic>? _subscribedRoute;
 
   @override
   void initState() {
@@ -26,7 +29,42 @@ class _EmptyStateScreenState extends State<EmptyStateScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _redirectIfHasGroup());
   }
 
-  Future<void> _redirectIfHasGroup() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 라우트 변경(다른 화면이 위로 push/pop)을 감지하기 위해 RouteObserver 구독.
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      if (!identical(route, _subscribedRoute)) {
+        if (_subscribedRoute != null) {
+          appRouteObserver.unsubscribe(this);
+        }
+        appRouteObserver.subscribe(this, route);
+        _subscribedRoute = route;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  /// 다른 화면이 위에서 pop 되어 이 화면이 다시 노출됐을 때 호출된다.
+  /// 그 사이 그룹방이 생겼다면 즉시 /group-list 로 보낸다 — 예: code-input 에서
+  /// join 한 뒤 group-home 을 뒤로가기로 빠져나와 stale 인스턴스에 닿는 케이스.
+  @override
+  void didPopNext() {
+    _redirectIfHasGroup(silent: true);
+  }
+
+  /// [silent] = true 면 빈 결과여도 로딩 인디케이터를 다시 띄우지 않는다
+  /// (didPopNext 시 화면이 깜빡이지 않게).
+  Future<void> _redirectIfHasGroup({bool silent = false}) async {
+    if (!silent && !_checking) {
+      setState(() => _checking = true);
+    }
     try {
       final list = await Di.groupRoomRepository.myList();
       if (!mounted) return;
@@ -40,7 +78,7 @@ class _EmptyStateScreenState extends State<EmptyStateScreen> {
     } catch (_) {
       // 조회 실패 시에는 그냥 empty 상태를 보여준다.
     }
-    if (mounted) setState(() => _checking = false);
+    if (mounted && _checking) setState(() => _checking = false);
   }
 
   @override

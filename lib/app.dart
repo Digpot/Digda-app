@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
 import 'core/di.dart';
+import 'core/route_observer.dart';
 import 'theme/colors.dart';
 
 class DigdaApp extends StatefulWidget {
@@ -72,6 +73,7 @@ class _DigdaAppState extends State<DigdaApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
+      navigatorObservers: [appRouteObserver],
       title: '디그팟',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
