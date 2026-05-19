@@ -241,21 +241,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     ];
   }
 
-  /// 알림 타입별 아이콘 스킨 (Material Icons 기반).
+  /// 알림 타입별 아이콘 스킨. 11종 모두 색조가 한눈에 구별되도록 분리.
+  /// bg/fg 모두 톤이 묶이지 않게 의도적으로 분산했고, 의미가 가까운 짝(일정 작성/수정,
+  /// 일정 댓글/일기 댓글, 자발탈퇴/강퇴)은 같은 계열 내에서만 명도를 달리한다.
   static const _iconSkins = <String, _IconSkin>{
-    'schedule_created': _IconSkin(Icons.event_available_rounded, Color(0xFFEFF1FF), Color(0xFF5B73E8)),
-    'schedule_updated': _IconSkin(Icons.edit_calendar_rounded, Color(0xFFEFF1FF), Color(0xFF5B73E8)),
-    'diary_written': _IconSkin(Icons.book_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
-    'comment_on_schedule': _IconSkin(Icons.chat_bubble_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
-    'comment_on_diary': _IconSkin(Icons.chat_bubble_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
-    'member_joined': _IconSkin(Icons.person_add_rounded, Color(0xFFFFF6E0), Color(0xFFD4A017)),
-    'member_removed': _IconSkin(Icons.person_remove_rounded, Color(0xFFF1F3F5), Color(0xFF6B7280)),
-    'member_left': _IconSkin(Icons.exit_to_app_rounded, Color(0xFFF1F3F5), Color(0xFF6B7280)),
-    'ownership_transferred': _IconSkin(Icons.star_rounded, Color(0xFFFFF6E0), Color(0xFFD4A017)),
-    'group_delete_scheduled': _IconSkin(Icons.delete_sweep_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
-    'announcement': _IconSkin(Icons.campaign_rounded, Color(0xFFEFF1FF), Color(0xFF5B73E8)),
+    // 일정 — 블루 계열
+    'schedule_created':
+        _IconSkin(Icons.event_available_rounded, Color(0xFFE8F0FE), Color(0xFF1A73E8)),
+    'schedule_updated':
+        _IconSkin(Icons.edit_calendar_rounded, Color(0xFFE0F7FA), Color(0xFF00838F)),
+    // 일기 — 핑크
+    'diary_written':
+        _IconSkin(Icons.auto_stories_rounded, Color(0xFFFFE3EC), Color(0xFFE91E63)),
+    // 댓글 — 보라 계열 (일정 댓글 = 퍼플, 일기 댓글 = 마젠타)
+    'comment_on_schedule':
+        _IconSkin(Icons.mode_comment_rounded, Color(0xFFEDE7F6), Color(0xFF5E35B1)),
+    'comment_on_diary':
+        _IconSkin(Icons.forum_rounded, Color(0xFFFCE4EC), Color(0xFFAD1457)),
+    // 멤버 변화 — 초록(가입) / 그레이(자발탈퇴) / 오렌지(강퇴)
+    'member_joined':
+        _IconSkin(Icons.person_add_alt_1_rounded, Color(0xFFE6F4EA), Color(0xFF2E7D32)),
+    'member_left':
+        _IconSkin(Icons.logout_rounded, Color(0xFFF1F3F5), Color(0xFF6B7280)),
+    'member_removed':
+        _IconSkin(Icons.person_off_rounded, Color(0xFFFFF3E0), Color(0xFFE65100)),
+    // 권한 — 골드
+    'ownership_transferred':
+        _IconSkin(Icons.workspace_premium_rounded, Color(0xFFFFF8E1), Color(0xFFF9A825)),
+    // 그룹 삭제 예약 — 짙은 빨강(경고)
+    'group_delete_scheduled':
+        _IconSkin(Icons.auto_delete_rounded, Color(0xFFFFEBEE), Color(0xFFC62828)),
+    // 공지 — 인디고
+    'announcement':
+        _IconSkin(Icons.campaign_rounded, Color(0xFFE8EAF6), Color(0xFF3949AB)),
   };
-  static const _defaultSkin = _IconSkin(Icons.notifications_rounded, Color(0xFFF1F3F5), Color(0xFF9CA3AF));
+  static const _defaultSkin =
+      _IconSkin(Icons.notifications_rounded, Color(0xFFF1F3F5), Color(0xFF9CA3AF));
 
   _IconSkin _skinFor(String type) => _iconSkins[type] ?? _defaultSkin;
 
