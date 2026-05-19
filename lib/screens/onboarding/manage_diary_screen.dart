@@ -101,7 +101,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
       showInfoDialog(
         context,
         '삭제가 예약됐어요',
-        '7일 후에 그룹방이 완전히 삭제됩니다.\n그룹방 목록에서 [복구] 버튼으로 복구할 수 있어요.',
+        '24시간 후에 그룹방이 완전히 삭제됩니다.\n그룹방 목록에서 [복구] 버튼으로 복구할 수 있어요.',
         onConfirm: () {
           Di.activeGroup.clear();
           Navigator.of(context).pushNamedAndRemoveUntil(
@@ -236,7 +236,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              '이 그룹방은 7일 후에 완전히 삭제됩니다.\n지금 복구하면 모든 데이터가 유지됩니다.',
+              '이 그룹방은 24시간 후에 완전히 삭제됩니다.\n지금 복구하면 모든 데이터가 유지됩니다.',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w400,
@@ -715,7 +715,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
           ),
         ),
         content: const Text(
-          '그룹방은 7일 후에 완전히 삭제됩니다.\n7일 이내에 복구할 수 있어요.',
+          '그룹방은 24시간 후에 완전히 삭제됩니다.\n24시간 이내에 복구할 수 있어요.',
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
