@@ -74,8 +74,11 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
         groupRoomName: result.groupRoom.name,
         isOwner: false,
       );
-      Navigator.of(context).pushReplacementNamed(
+      // join 진입 경로가 /home, /my-page, /group-list 등 다양해서 어느 경로든
+      // 잔류하지 않도록 스택을 비우고 group-home 만 남긴다.
+      Navigator.of(context).pushNamedAndRemoveUntil(
         '/group-home',
+        (route) => false,
         arguments: {
           'name': result.groupRoom.name,
           'members': result.memberships.length,
