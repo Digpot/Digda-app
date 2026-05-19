@@ -24,6 +24,9 @@ class ApiClient {
   final Dio _dio;
   final TokenStorage _tokenStorage;
 
+  /// 리프레시 토큰 만료 시 호출되는 콜백. [AuthSession.forceSignOut] 을 주입.
+  VoidCallback? onSessionExpired;
+
   /// 토큰 갱신용 별도 Dio (인터셉터 재진입 방지).
   late final Dio _refreshDio = Dio(BaseOptions(
     baseUrl: Env.apiBaseUrl,
@@ -112,7 +115,11 @@ class ApiClient {
         data: {'refreshToken': refresh},
       );
       final data = res.data;
-      if (data == null) return false;
+      if (data == null) {
+        await _tokenStorage.clear();
+        onSessionExpired?.call();
+        return false;
+      }
       await _tokenStorage.save(
         accessToken: data['accessToken'] as String,
         refreshToken: data['refreshToken'] as String,
@@ -120,6 +127,7 @@ class ApiClient {
       return true;
     } catch (_) {
       await _tokenStorage.clear();
+      onSessionExpired?.call();
       return false;
     }
   }

@@ -82,6 +82,15 @@ class AuthSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 리프레시 토큰 만료 등으로 세션이 강제 종료될 때 호출.
+  /// API 호출 없이 로컬 상태만 초기화한다.
+  void forceSignOut() {
+    _user = null;
+    _lastProvider = null;
+    _isAuthenticated = false;
+    notifyListeners();
+  }
+
   Future<void> _registerDevice() async {
     try {
       final messaging = FirebaseMessaging.instance;

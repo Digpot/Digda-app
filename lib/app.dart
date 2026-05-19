@@ -3,6 +3,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
+import 'core/di.dart';
 import 'theme/colors.dart';
 
 class DigdaApp extends StatefulWidget {
@@ -22,12 +23,24 @@ class _DigdaAppState extends State<DigdaApp> {
     super.initState();
     _appLinks = AppLinks();
     _initDeepLink();
+    Di.authSession.addListener(_onAuthChanged);
   }
 
   @override
   void dispose() {
+    Di.authSession.removeListener(_onAuthChanged);
     _linkSub?.cancel();
     super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (!Di.authSession.isAuthenticated) {
+      // 세션 만료 → 스택 전체 제거 후 로그인 화면으로 이동
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/login',
+        (_) => false,
+      );
+    }
   }
 
   Future<void> _initDeepLink() async {

@@ -63,6 +63,8 @@ class Di {
       deviceRepository: deviceRepository,
       tokenStorage: tokenStorage,
     );
+    // 리프레시 토큰 만료 시 자동 로그아웃
+    apiClient.onSessionExpired = authSession.forceSignOut;
     userSession = UserSession(repository: userRepository);
     activeGroup = ActiveGroupSession();
   }
