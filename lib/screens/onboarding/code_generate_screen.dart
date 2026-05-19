@@ -58,8 +58,12 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
         isOwner: true,
       );
     }
-    Navigator.of(context).pushReplacementNamed(
+    // 그룹방 생성 직후에는 empty_state(`/home`) 가 스택에 남아 있을 수 있다.
+    // 뒤로가기로 다시 "다이어리 없음" 화면이 뜨지 않도록 스택을 전부 비우고
+    // group-home 만 남긴다.
+    Navigator.of(context).pushNamedAndRemoveUntil(
       '/group-home',
+      (route) => false,
       arguments: {
         'name': _groupName ?? '',
         'members': 1,
