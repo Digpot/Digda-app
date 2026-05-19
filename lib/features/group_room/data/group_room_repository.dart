@@ -45,7 +45,7 @@ class GroupRoomRepository {
     return GroupRoom.fromJson(res.data!);
   }
 
-  /// 3-5. 그룹방 삭제 (Soft Delete, 7일 후 영구 삭제).
+  /// 3-5. 그룹방 삭제 (Soft Delete, 24시간 후 영구 삭제).
   Future<DateTime> softDelete(String groupRoomId) async {
     final res = await _api.delete<Map<String, dynamic>>(
       '/group-rooms/$groupRoomId',

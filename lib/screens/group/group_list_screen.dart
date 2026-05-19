@@ -19,6 +19,9 @@ class GroupListScreen extends StatefulWidget {
 
 class _GroupListScreenState extends State<GroupListScreen> {
   late Future<List<GroupRoomListItem>> _future;
+  /// 카운트다운이 0 에 도달한 그룹방 id 들. 빌드 시 즉시 리스트에서 숨겨,
+  /// 서버 스케줄러(최대 5분 주기) 가 실제 삭제하기 전에도 UX 상 자연스럽게 사라지게 한다.
+  final Set<String> _expiredIds = <String>{};
 
   // 그룹마다 일관된 아이콘/색을 부여하기 위한 팔레트.
   static const _palette = [
@@ -43,6 +46,11 @@ class _GroupListScreenState extends State<GroupListScreen> {
     PaintingBinding.instance.imageCache.clearLiveImages();
     setState(() => _future = Di.groupRoomRepository.myList());
     await _future;
+  }
+
+  void _handleCountdownExpired(String groupRoomId) {
+    if (_expiredIds.contains(groupRoomId)) return;
+    setState(() => _expiredIds.add(groupRoomId));
   }
 
   void _enterGroup(GroupRoomListItem g) {
@@ -229,7 +237,8 @@ class _GroupListScreenState extends State<GroupListScreen> {
                         onRetry: _refresh,
                       );
                     }
-                    final raw = snap.data ?? const <GroupRoomListItem>[];
+                    final raw = (snap.data ?? const <GroupRoomListItem>[])
+                        .where((g) => !_expiredIds.contains(g.id));
                     final groups = [...raw]
                       ..sort((a, b) {
                         // 삭제 예정 항목은 맨 아래
@@ -263,6 +272,9 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                       groupIconColor: skin.fg,
                                       showActions: g.isOwner && !g.isDeleteScheduled,
                                       isDeleteScheduled: g.isDeleteScheduled,
+                                      deleteScheduledAt: g.deleteScheduledAt,
+                                      onCountdownExpired: () =>
+                                          _handleCountdownExpired(g.id),
                                       onTap: () => _enterGroup(g),
                                       onShare: () =>
                                           _showInviteCodeSheet(g.id),

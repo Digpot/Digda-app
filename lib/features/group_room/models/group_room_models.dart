@@ -47,6 +47,7 @@ class GroupRoomListItem {
     required this.myRole,
     required this.lastActivityAt,
     required this.isDeleteScheduled,
+    this.deleteScheduledAt,
   });
 
   final String id;
@@ -57,6 +58,7 @@ class GroupRoomListItem {
   final String myRole; // 'owner' | 'member'
   final DateTime lastActivityAt;
   final bool isDeleteScheduled;
+  final DateTime? deleteScheduledAt;
 
   bool get isOwner => myRole == 'owner';
 
@@ -70,6 +72,9 @@ class GroupRoomListItem {
       myRole: json['myRole'] as String? ?? 'member',
       lastActivityAt: DateTime.parse(json['lastActivityAt'] as String),
       isDeleteScheduled: json['isDeleteScheduled'] as bool? ?? false,
+      deleteScheduledAt: json['deleteScheduledAt'] != null
+          ? DateTime.tryParse(json['deleteScheduledAt'] as String)
+          : null,
     );
   }
 }

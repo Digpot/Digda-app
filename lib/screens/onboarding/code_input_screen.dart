@@ -25,8 +25,7 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
 
   bool get _isFilled => _controllers.every((c) => c.text.isNotEmpty);
 
-  String get _enteredCode =>
-      _controllers.map((c) => c.text.toUpperCase()).join();
+  String get _enteredCode => _controllers.map((c) => c.text).join();
 
   @override
   void initState() {
@@ -34,7 +33,7 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
     final code = widget.initialCode;
     if (code != null && code.length == _codeLength) {
       for (int i = 0; i < _codeLength; i++) {
-        _controllers[i].text = code[i].toUpperCase();
+        _controllers[i].text = code[i];
       }
     }
   }
@@ -197,12 +196,9 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                         focusNode: _focusNodes[index],
                         maxLength: 1,
                         textAlign: TextAlign.center,
-                        textCapitalization: TextCapitalization.characters,
-                        keyboardType: TextInputType.text,
+                        keyboardType: TextInputType.number,
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'[A-Za-z0-9]')),
-                          UpperCaseTextFormatter(),
+                          FilteringTextInputFormatter.digitsOnly,
                         ],
                         style: const TextStyle(
                           fontFamily: 'Inter',
@@ -252,12 +248,3 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
   }
 }
 
-class UpperCaseTextFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    return newValue.copyWith(text: newValue.text.toUpperCase());
-  }
-}
