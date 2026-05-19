@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/colors.dart';
 
-const int _maxImageBytes = 5 * 1024 * 1024; // 5 MB
+const int _maxImageBytes = 8 * 1024 * 1024; // 8 MB
 
 Future<File?> pickImage(BuildContext context) async {
   final source = await showModalBottomSheet<ImageSource>(
@@ -56,7 +56,7 @@ Future<File?> pickImage(BuildContext context) async {
             ),
           ),
           content: const Text(
-            '5MB 이하의 사진을 선택해주세요.',
+            '8MB 이하의 사진을 선택해주세요.',
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
