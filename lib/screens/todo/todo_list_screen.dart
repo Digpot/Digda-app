@@ -134,6 +134,80 @@ class _TodoListScreenState extends State<TodoListScreen> {
     }
   }
 
+  Future<void> _deleteTodo(Todo todo) async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '할 일을 삭제할까요?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: Text(
+          '"${todo.text}"를 삭제하시겠어요?',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              '삭제',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final snapshot = _todos;
+    final next = _todos.where((t) => t.id != todo.id).toList();
+    setState(() {
+      _todos = next;
+      _progress = _recomputeProgress(next);
+    });
+    try {
+      await Di.todoRepository.delete(groupId, todo.id);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _todos = snapshot;
+        _progress = _recomputeProgress(snapshot);
+      });
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
   Future<void> _addTodo() async {
     final groupId = Di.activeGroup.groupRoomId;
     final text = _addController.text.trim();
@@ -165,7 +239,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   String _formatCompletedDate(DateTime? d) {
     if (d == null) return '';
-    return '${d.month}월 ${d.day}일 완료';
+    final local = d.toLocal();
+    return '${local.month}월 ${local.day}일 완료';
   }
 
   @override
@@ -316,6 +391,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                                       text: t.text,
                                       isCompleted: false,
                                       onToggle: () => _toggleTodo(t),
+                                      onDelete: () => _deleteTodo(t),
                                     )),
                                 const SizedBox(height: 20),
                               ],
@@ -339,6 +415,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                                       completedDate: _formatCompletedDate(
                                           t.completedAt),
                                       onToggle: () => _toggleTodo(t),
+                                      onDelete: () => _deleteTodo(t),
                                     )),
                               ],
                               if (_todos.isEmpty)
@@ -482,31 +559,32 @@ class _TodoListScreenState extends State<TodoListScreen> {
     required bool isCompleted,
     String? completedDate,
     required VoidCallback onToggle,
+    required VoidCallback onDelete,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: onToggle,
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.gray100, width: 1),
-            boxShadow: isCompleted
-                ? null
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-          ),
-          child: Row(
-            children: [
-              Container(
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.gray100, width: 1),
+          boxShadow: isCompleted
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onToggle,
+              child: Container(
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
@@ -521,8 +599,11 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         size: 16, color: AppColors.white)
                     : null,
               ),
-              const SizedBox(width: 14),
-              Expanded(
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: GestureDetector(
+                onTap: onToggle,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -558,8 +639,20 @@ class _TodoListScreenState extends State<TodoListScreen> {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onDelete,
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: AppColors.gray300,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

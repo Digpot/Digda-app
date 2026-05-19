@@ -189,6 +189,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ///   - 어제: "어제 오후 6:30"
   ///   - 그 외: "2월 6일"
   String _formatTime(DateTime t, _Bucket bucket) {
+    final local = t.toLocal();
     final now = DateTime.now();
     final diff = now.difference(t);
     switch (bucket) {
@@ -198,13 +199,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (diff.inHours < 24) return '${diff.inHours}시간 전';
         return '오늘';
       case _Bucket.yesterday:
-        final hour12 = t.hour == 0
+        final hour12 = local.hour == 0
             ? 12
-            : (t.hour > 12 ? t.hour - 12 : t.hour);
-        final period = t.hour < 12 ? '오전' : '오후';
-        return '어제 $period $hour12:${t.minute.toString().padLeft(2, '0')}';
+            : (local.hour > 12 ? local.hour - 12 : local.hour);
+        final period = local.hour < 12 ? '오전' : '오후';
+        return '어제 $period $hour12:${local.minute.toString().padLeft(2, '0')}';
       case _Bucket.earlier:
-        return '${t.month}월 ${t.day}일';
+        return '${local.month}월 ${local.day}일';
     }
   }
 
@@ -220,7 +221,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final earlierItems = <AppNotification>[];
 
     for (final n in _items) {
-      final d = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      final local = n.createdAt.toLocal();
+      final d = DateTime(local.year, local.month, local.day);
       if (d == today) {
         todayItems.add(n);
       } else if (d == yesterday) {
@@ -239,21 +241,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     ];
   }
 
-  /// 와이어프레임의 부드러운 파스텔 톤 아이콘 배경.
+  /// 알림 타입별 아이콘 스킨 (Material Icons 기반).
   static const _iconSkins = <String, _IconSkin>{
-    'schedule_created': _IconSkin('📅', Color(0xFFEFF1FF)),
-    'schedule_updated': _IconSkin('📅', Color(0xFFEFF1FF)),
-    'diary_written': _IconSkin('📔', Color(0xFFFFEEEE)),
-    'comment_on_schedule': _IconSkin('✏️', Color(0xFFFFEEEE)),
-    'comment_on_diary': _IconSkin('✏️', Color(0xFFFFEEEE)),
-    'member_joined': _IconSkin('👋', Color(0xFFFFF6E0)),
-    'member_removed': _IconSkin('🚪', Color(0xFFF1F3F5)),
-    'member_left': _IconSkin('🚪', Color(0xFFF1F3F5)),
-    'ownership_transferred': _IconSkin('👑', Color(0xFFFFF6E0)),
-    'group_delete_scheduled': _IconSkin('🗑️', Color(0xFFFFEEEE)),
-    'announcement': _IconSkin('📢', Color(0xFFEFF1FF)),
+    'schedule_created': _IconSkin(Icons.event_available_rounded, Color(0xFFEFF1FF), Color(0xFF5B73E8)),
+    'schedule_updated': _IconSkin(Icons.edit_calendar_rounded, Color(0xFFEFF1FF), Color(0xFF5B73E8)),
+    'diary_written': _IconSkin(Icons.book_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
+    'comment_on_schedule': _IconSkin(Icons.chat_bubble_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
+    'comment_on_diary': _IconSkin(Icons.chat_bubble_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
+    'member_joined': _IconSkin(Icons.person_add_rounded, Color(0xFFFFF6E0), Color(0xFFD4A017)),
+    'member_removed': _IconSkin(Icons.person_remove_rounded, Color(0xFFF1F3F5), Color(0xFF6B7280)),
+    'member_left': _IconSkin(Icons.exit_to_app_rounded, Color(0xFFF1F3F5), Color(0xFF6B7280)),
+    'ownership_transferred': _IconSkin(Icons.star_rounded, Color(0xFFFFF6E0), Color(0xFFD4A017)),
+    'group_delete_scheduled': _IconSkin(Icons.delete_sweep_rounded, Color(0xFFFFEEEE), Color(0xFFE05C5C)),
+    'announcement': _IconSkin(Icons.campaign_rounded, Color(0xFFEFF1FF), Color(0xFF5B73E8)),
   };
-  static const _defaultSkin = _IconSkin('🔔', Color(0xFFF1F3F5));
+  static const _defaultSkin = _IconSkin(Icons.notifications_rounded, Color(0xFFF1F3F5), Color(0xFF9CA3AF));
 
   _IconSkin _skinFor(String type) => _iconSkins[type] ?? _defaultSkin;
 
@@ -429,9 +431,10 @@ class _Section {
 }
 
 class _IconSkin {
-  const _IconSkin(this.emoji, this.bg);
-  final String emoji;
+  const _IconSkin(this.icon, this.bg, this.fg);
+  final IconData icon;
   final Color bg;
+  final Color fg;
 }
 
 class _NotificationCard extends StatelessWidget {
@@ -474,16 +477,17 @@ class _NotificationCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: skin.bg,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      skin.emoji,
-                      style: const TextStyle(fontSize: 18),
+                    child: Icon(
+                      skin.icon,
+                      size: 20,
+                      color: skin.fg,
                     ),
                   ),
                   const SizedBox(width: 12),
