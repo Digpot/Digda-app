@@ -229,7 +229,16 @@ class _GroupListScreenState extends State<GroupListScreen> {
                         onRetry: _refresh,
                       );
                     }
-                    final groups = snap.data ?? const <GroupRoomListItem>[];
+                    final raw = snap.data ?? const <GroupRoomListItem>[];
+                    final groups = [...raw]
+                      ..sort((a, b) {
+                        // 삭제 예정 항목은 맨 아래
+                        if (a.isDeleteScheduled != b.isDeleteScheduled) {
+                          return a.isDeleteScheduled ? 1 : -1;
+                        }
+                        // 같은 섹션 내에서는 최근 활동 기준 내림차순 (최신이 위)
+                        return b.lastActivityAt.compareTo(a.lastActivityAt);
+                      });
                     return LayoutBuilder(
                       builder: (context, viewport) {
                         final content = Padding(
