@@ -2,6 +2,14 @@ import '../../common/models/common_models.dart';
 
 /// 7번 도메인(Diary) DTO 정의.
 
+DateTime _parseUtc(String s) {
+  if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+    return DateTime.parse(s);
+  }
+  if (s.contains('T')) return DateTime.parse('${s}Z');
+  return DateTime.parse(s);
+}
+
 class DiarySummary {
   DiarySummary({
     required this.id,
@@ -36,7 +44,7 @@ class DiarySummary {
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
       commentCount: (json['commentCount'] as num? ?? 0).toInt(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: _parseUtc(json['createdAt'] as String),
     );
   }
 }
@@ -93,8 +101,8 @@ class Diary {
       imageUrl: json['imageUrl'] as String?,
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: _parseUtc(json['createdAt'] as String),
+      updatedAt: _parseUtc(json['updatedAt'] as String),
     );
   }
 }

@@ -2,6 +2,14 @@ import '../../group_room/models/group_room_models.dart';
 
 /// 4번 도메인(Invite) DTO 정의.
 
+DateTime _parseUtc(String s) {
+  if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+    return DateTime.parse(s);
+  }
+  if (s.contains('T')) return DateTime.parse('${s}Z');
+  return DateTime.parse(s);
+}
+
 class InviteCode {
   InviteCode({required this.code, required this.expiresAt});
 
@@ -11,7 +19,7 @@ class InviteCode {
   factory InviteCode.fromJson(Map<String, dynamic> json) {
     return InviteCode(
       code: json['code'] as String,
-      expiresAt: DateTime.parse(json['expiresAt'] as String),
+      expiresAt: _parseUtc(json['expiresAt'] as String),
     );
   }
 }
@@ -40,7 +48,7 @@ class InvitePreview {
       thumbnailImage: json['thumbnailImage'] as String?,
       memberCount: (json['memberCount'] as num).toInt(),
       maxMembers: (json['maxMembers'] as num).toInt(),
-      expiresAt: DateTime.parse(json['expiresAt'] as String),
+      expiresAt: _parseUtc(json['expiresAt'] as String),
     );
   }
 }

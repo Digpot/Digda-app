@@ -335,7 +335,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                       } else {
                         showDialog(
                           context: context,
-                          builder: (context) => AlertDialog(
+                          builder: (dialogCtx) => AlertDialog(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -360,7 +360,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                             actions: [
                               TextButton(
                                 onPressed: () {
-                                  Navigator.of(context).pop();
+                                  Navigator.of(dialogCtx).pop();
                                   setState(() => _selectedDay = null);
                                 },
                                 child: const Text(
@@ -375,10 +375,10 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                               ),
                               TextButton(
                                 onPressed: () {
-                                  Navigator.of(context).pop();
+                                  Navigator.of(dialogCtx).pop();
                                   setState(() => _selectedDay = null);
                                   Navigator.of(context)
-                                      .pushNamed('/write-diary')
+                                      .pushNamed('/write-diary', arguments: selectedDay)
                                       .then((_) {
                                     if (mounted) _loadMonth();
                                   });

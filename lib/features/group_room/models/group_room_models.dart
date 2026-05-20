@@ -1,5 +1,20 @@
 /// 3번 도메인(GroupRoom) DTO 정의.
 
+/// 서버에서 수신한 datetime 문자열을 UTC로 파싱한다.
+/// 타임존 정보 없는 문자열(예: "2025-05-21T12:00:00")은 UTC로 간주해 9시간 오차를 방지.
+DateTime _parseUtc(String s) {
+  if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+    return DateTime.parse(s);
+  }
+  if (s.contains('T')) return DateTime.parse('${s}Z');
+  return DateTime.parse(s);
+}
+
+DateTime? _tryParseUtc(String? s) {
+  if (s == null) return null;
+  return _parseUtc(s);
+}
+
 class GroupRoom {
   GroupRoom({
     required this.id,
@@ -29,10 +44,8 @@ class GroupRoom {
       memberCount: (json['memberCount'] as num? ?? 0).toInt(),
       thumbnailImage: json['thumbnailImage'] as String?,
       ownerId: json['ownerId']?.toString(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      deleteScheduledAt: json['deleteScheduledAt'] != null
-          ? DateTime.tryParse(json['deleteScheduledAt'] as String)
-          : null,
+      createdAt: _parseUtc(json['createdAt'] as String),
+      deleteScheduledAt: _tryParseUtc(json['deleteScheduledAt'] as String?),
     );
   }
 }
@@ -70,11 +83,9 @@ class GroupRoomListItem {
       memberCount: (json['memberCount'] as num).toInt(),
       maxMembers: (json['maxMembers'] as num).toInt(),
       myRole: json['myRole'] as String? ?? 'member',
-      lastActivityAt: DateTime.parse(json['lastActivityAt'] as String),
+      lastActivityAt: _parseUtc(json['lastActivityAt'] as String),
       isDeleteScheduled: json['isDeleteScheduled'] as bool? ?? false,
-      deleteScheduledAt: json['deleteScheduledAt'] != null
-          ? DateTime.tryParse(json['deleteScheduledAt'] as String)
-          : null,
+      deleteScheduledAt: _tryParseUtc(json['deleteScheduledAt'] as String?),
     );
   }
 }
@@ -166,7 +177,7 @@ class CreateGroupRoomResult {
       groupRoom: GroupRoom.fromJson(json['groupRoom'] as Map<String, dynamic>),
       inviteCode: json['inviteCode'] as String,
       inviteCodeExpiresAt:
-          DateTime.parse(json['inviteCodeExpiresAt'] as String),
+          _parseUtc(json['inviteCodeExpiresAt'] as String),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/di.dart';
+import '../../core/network/error_message.dart';
 import '../../theme/colors.dart';
 import '../../features/user/models/user_models.dart';
 
@@ -190,12 +191,35 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _showCodeInputSheet(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _CodeInputBottomSheet(),
-    );
+    ).then((groupName) {
+      if (groupName != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '"$groupName" 그룹방에 참여했어요!',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.white,
+              ),
+            ),
+            backgroundColor: AppColors.gray900,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
   }
 
   Widget _buildProfileSection(BuildContext context, UserProfile? profile) {
@@ -388,7 +412,10 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
   final List<FocusNode> _focusNodes =
       List.generate(_codeLength, (_) => FocusNode());
 
+  bool _submitting = false;
+
   bool get _isFilled => _controllers.every((c) => c.text.isNotEmpty);
+  String get _enteredCode => _controllers.map((c) => c.text).join();
 
   @override
   void dispose() {
@@ -408,6 +435,68 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
       _focusNodes[index - 1].requestFocus();
     }
     setState(() {});
+  }
+
+  Future<void> _onSubmit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    final code = _enteredCode;
+    try {
+      await Di.inviteRepository.validate(code);
+      if (!mounted) return;
+      final result = await Di.inviteRepository.join(code);
+      if (!mounted) return;
+      // 등록 완료 — bottom sheet 닫고 그룹명 반환(부모가 스낵바 표시)
+      Navigator.of(context).pop(result.groupRoom.name);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showErrorDialog(errorMessageOf(e, fallback: '유효하지 않은 초대 코드예요'));
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          '초대 코드 오류',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -511,14 +600,7 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: _isFilled
-                  ? () {
-                      final code = _controllers.map((c) => c.text).join();
-                      Navigator.of(context).pop();
-                      Navigator.of(context)
-                          .pushNamed('/code-input', arguments: code);
-                    }
-                  : null,
+              onPressed: (_isFilled && !_submitting) ? _onSubmit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 disabledBackgroundColor: AppColors.gray200,
@@ -528,12 +610,14 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
                 ),
               ),
               child: Text(
-                '참여하기',
+                _submitting ? '참여 중...' : '참여하기',
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
-                  color: _isFilled ? AppColors.white : AppColors.gray400,
+                  color: (_isFilled && !_submitting)
+                      ? AppColors.white
+                      : AppColors.gray400,
                 ),
               ),
             ),

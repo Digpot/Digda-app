@@ -2,6 +2,14 @@ import '../../common/models/common_models.dart';
 
 /// 6번 도메인(Schedule) DTO 정의.
 
+DateTime _parseUtc(String s) {
+  if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+    return DateTime.parse(s);
+  }
+  if (s.contains('T')) return DateTime.parse('${s}Z');
+  return DateTime.parse(s);
+}
+
 class Schedule {
   Schedule({
     required this.id,
@@ -47,7 +55,7 @@ class Schedule {
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
       commentCount: (json['commentCount'] as num? ?? 0).toInt(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: _parseUtc(json['createdAt'] as String),
     );
   }
 }

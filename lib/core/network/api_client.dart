@@ -157,8 +157,9 @@ class _AuthInterceptor extends Interceptor {
     final isUnauthorized = err.response?.statusCode == 401;
     final alreadyRetried = req.extra['retried'] == true;
     final isRefreshCall = req.path.endsWith('/auth/refresh');
+    final skipAuth = req.extra['skipAuth'] == true;
 
-    if (isUnauthorized && !alreadyRetried && !isRefreshCall) {
+    if (isUnauthorized && !alreadyRetried && !isRefreshCall && !skipAuth) {
       final refreshed = await _client._refreshTokens();
       if (refreshed) {
         req.extra['retried'] = true;

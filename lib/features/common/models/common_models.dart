@@ -1,5 +1,13 @@
 /// 공통 객체 — 여러 도메인에서 재사용.
 
+DateTime _parseUtc(String s) {
+  if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+    return DateTime.parse(s);
+  }
+  if (s.contains('T')) return DateTime.parse('${s}Z');
+  return DateTime.parse(s);
+}
+
 class UserSummary {
   UserSummary({required this.id, required this.name, this.profileImage});
 
@@ -37,7 +45,7 @@ class CommentEntity {
       text: json['text'] as String,
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: _parseUtc(json['createdAt'] as String),
     );
   }
 }
