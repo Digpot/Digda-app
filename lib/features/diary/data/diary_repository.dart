@@ -39,8 +39,17 @@ class DiaryRepository {
       query: {'month': _month(month)},
     );
     return (res.data!['dates'] as List? ?? [])
-        .map((e) => DateTime.parse(e as String))
+        .map((e) => _parseUtcDate(e as String))
         .toList();
+  }
+
+  /// 서버의 timezone-naive datetime 문자열을 UTC로 파싱 후 로컬 시간으로 변환.
+  DateTime _parseUtcDate(String s) {
+    if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+      return DateTime.parse(s).toLocal();
+    }
+    if (s.contains('T')) return DateTime.parse('${s}Z').toLocal();
+    return DateTime.parse(s).toLocal();
   }
 
   /// 7-3. 일기 상세.

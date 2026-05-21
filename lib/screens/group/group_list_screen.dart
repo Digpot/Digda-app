@@ -590,14 +590,15 @@ class _InviteCodeBottomSheetState extends State<_InviteCodeBottomSheet> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            '코드는 24시간 후 만료됩니다',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w400,
-              fontSize: 12,
-              color: AppColors.gray400,
+          const Center(
+            child: Text(
+              '코드는 24시간 후 만료됩니다',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+                color: AppColors.gray400,
+              ),
             ),
           ),
         ],
