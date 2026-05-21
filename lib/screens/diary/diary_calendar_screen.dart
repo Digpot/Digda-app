@@ -516,6 +516,25 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   void _showDatePickerBottomSheet() {
     DateTime pickerFocusedDay = DateTime.now();
     DateTime? pickerSelectedDay = DateTime.now();
+    Set<DateTime> pickerDiaryDates = {};
+    String _pickerLoadedKey = '';
+
+    Future<void> loadPickerDiaries(StateSetter setModalState) async {
+      final key = '${pickerFocusedDay.year}-${pickerFocusedDay.month}';
+      if (_pickerLoadedKey == key) return;
+      _pickerLoadedKey = key;
+      final groupId = Di.activeGroup.groupRoomId;
+      if (groupId == null) return;
+      try {
+        final dates = await Di.diaryRepository.calendar(groupId, pickerFocusedDay);
+        if (mounted) {
+          setModalState(() {
+            pickerDiaryDates =
+                dates.map((d) => DateTime.utc(d.year, d.month, d.day)).toSet();
+          });
+        }
+      } catch (_) {}
+    }
 
     showModalBottomSheet(
       context: context,
@@ -524,6 +543,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            loadPickerDiaries(setModalState);
             return Container(
               decoration: const BoxDecoration(
                 color: AppColors.white,
@@ -719,6 +739,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                       },
                       onPageChanged: (focusedDay) {
                         setModalState(() => pickerFocusedDay = focusedDay);
+                        loadPickerDiaries(setModalState);
                       },
                     ),
                   ),
@@ -738,7 +759,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                   selected.month,
                                   selected.day,
                                 );
-                                if (_getDiariesForDay(selectedUtc).isNotEmpty) {
+                                if (pickerDiaryDates.contains(selectedUtc)) {
                                   Navigator.of(context).pop();
                                   _showDuplicateDiaryDialog();
                                 } else {

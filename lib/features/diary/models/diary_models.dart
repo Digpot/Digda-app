@@ -37,7 +37,7 @@ class DiarySummary {
     return DiarySummary(
       id: json['id'].toString(),
       title: json['title'] as String,
-      date: DateTime.parse(json['date'] as String),
+      date: _parseUtc(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
       imageUrl: json['imageUrl'] as String?,
@@ -95,7 +95,7 @@ class Diary {
       id: json['id'].toString(),
       title: json['title'] as String,
       content: json['content'] as String,
-      date: DateTime.parse(json['date'] as String),
+      date: _parseUtc(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
       imageUrl: json['imageUrl'] as String?,
