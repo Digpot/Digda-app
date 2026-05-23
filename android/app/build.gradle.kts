@@ -79,5 +79,4 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    implementation("com.navercorp.nid:oauth:5.10.0")
 }
