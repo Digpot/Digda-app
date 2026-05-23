@@ -14,7 +14,7 @@ class MainActivity : FlutterFragmentActivity() {
         // 네이버 앱 SSO 는 기기에 따라 no_catagorized_error 를 반환한다.
         // CUSTOMTABS 로 고정해 항상 브라우저 기반 OAuth 로 처리한다.
         try {
-            NaverIdLoginSDK.setBehavior(NidOAuthBehavior.CUSTOMTABS)
+            NaverIdLoginSDK.INSTANCE.setBehavior(NidOAuthBehavior.CUSTOMTABS)
         } catch (_: Exception) {}
     }
 }
