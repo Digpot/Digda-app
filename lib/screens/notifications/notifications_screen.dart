@@ -250,6 +250,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _IconSkin(Icons.event_available_rounded, Color(0xFFE8F0FE), Color(0xFF1A73E8)),
     'schedule_updated':
         _IconSkin(Icons.edit_calendar_rounded, Color(0xFFE0F7FA), Color(0xFF00838F)),
+    // 일정 리마인더 — 하루 전(티얼: 차분한 예고), 당일(딥 코랄: 가장 강조)
+    'schedule_day_before':
+        _IconSkin(Icons.event_note_rounded, Color(0xFFE0F2F1), Color(0xFF00897B)),
+    'schedule_today':
+        _IconSkin(Icons.notifications_active_rounded, Color(0xFFFFCCBC), Color(0xFFBF360C)),
     // 일기 — 핑크
     'diary_written':
         _IconSkin(Icons.auto_stories_rounded, Color(0xFFFFE3EC), Color(0xFFE91E63)),
