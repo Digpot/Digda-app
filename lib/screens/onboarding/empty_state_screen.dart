@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/di.dart';
+import '../../core/network/error_message.dart';
 import '../../core/route_observer.dart';
 import '../../theme/colors.dart';
 import '../../widgets/notification_bell_icon.dart';
@@ -224,6 +225,8 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
   final List<FocusNode> _focusNodes =
       List.generate(_codeLength, (_) => FocusNode());
 
+  bool _submitting = false;
+
   bool get _isFilled => _controllers.every((c) => c.text.isNotEmpty);
 
   @override
@@ -248,10 +251,76 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
     setState(() {});
   }
 
-  void _onSubmit() {
+  Future<void> _onSubmit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
     final code = _enteredCode;
-    Navigator.of(context).pop(); // 바텀시트 닫기
-    Navigator.of(context).pushNamed('/code-input', arguments: code);
+    try {
+      await Di.inviteRepository.validate(code);
+      if (!mounted) return;
+      final result = await Di.inviteRepository.join(code);
+      if (!mounted) return;
+      Di.activeGroup.enter(
+        groupRoomId: result.groupRoom.id,
+        groupRoomName: result.groupRoom.name,
+        isOwner: false,
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/group-home',
+        (route) => false,
+        arguments: {
+          'name': result.groupRoom.name,
+          'members': result.memberships.length,
+          'isOwner': false,
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showErrorDialog(errorMessageOf(e, fallback: '유효하지 않은 초대 코드예요'));
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '초대 코드 오류',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -352,8 +421,8 @@ class _CodeInputBottomSheetState extends State<CodeInputBottomSheet> {
           ),
           const SizedBox(height: 32),
           PrimaryButton(
-            text: '참여하기',
-            onPressed: _isFilled ? _onSubmit : null,
+            text: _submitting ? '참여 중...' : '참여하기',
+            onPressed: (_isFilled && !_submitting) ? _onSubmit : null,
           ),
         ],
       ),

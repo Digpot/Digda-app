@@ -304,7 +304,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       color: AppColors.gray900,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   const Text(
                     '알림',
                     style: TextStyle(

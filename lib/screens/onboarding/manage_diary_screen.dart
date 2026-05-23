@@ -89,6 +89,22 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     }
   }
 
+  Future<void> _leaveGroup() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _busy = true);
+    try {
+      await Di.membershipRepository.leave(groupId);
+      Di.activeGroup.clear();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
   Future<void> _softDelete() async {
     final groupId = Di.activeGroup.groupRoomId;
     if (groupId == null) return;
@@ -195,6 +211,7 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
             _buildMembersSection(),
             const SizedBox(height: 16),
             if (_isOwner && !_isDeleted) _buildDeleteButton(),
+            if (!_isOwner) _buildLeaveButton(),
             const SizedBox(height: 40),
           ],
         ),
@@ -446,6 +463,35 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
     );
   }
 
+  Widget _buildLeaveButton() {
+    return GestureDetector(
+      onTap: _busy ? null : _showLeaveGroupDialog,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.gray200),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.exit_to_app_outlined, size: 20, color: AppColors.gray700),
+            SizedBox(width: 10),
+            Text(
+              '그룹방 나가기',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDeleteButton() {
     return GestureDetector(
       onTap: _busy ? null : _showDeleteRoomDialog,
@@ -507,6 +553,63 @@ class _ManageDiaryScreenState extends State<ManageDiaryScreen> {
             onPressed: _load,
             child: const Text(
               '다시 시도',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLeaveGroupDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '그룹방을 나갈까요?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: const Text(
+          '나가면 이 그룹방의 일정과 일기를\n더 이상 볼 수 없게 됩니다.',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _leaveGroup();
+            },
+            child: const Text(
+              '나가기',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w600,
