@@ -127,30 +127,10 @@ class _GroupListScreenState extends State<GroupListScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await Di.groupRoomRepository.recover(g.id);
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            '"${g.name}" 그룹방을 복구했어요',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-              color: AppColors.white,
-            ),
-          ),
-          backgroundColor: AppColors.gray900,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      showInfoDialog(context, '그룹방 복구', '"${g.name}" 그룹방을 복구했어요');
       await _refresh();
     } catch (e) {
       if (!mounted) return;

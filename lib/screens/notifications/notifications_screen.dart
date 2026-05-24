@@ -46,28 +46,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _showToast(String message) {
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            color: AppColors.white,
-          ),
-        ),
-        backgroundColor: AppColors.gray900,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(milliseconds: 1800),
-      ),
-    );
+    showInfoDialog(context, '알림', message);
   }
 
   void _markAllRead() {
@@ -159,7 +138,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             .toList();
       });
       Di.notificationRepository.markRead(n.id).ignore();
-      _showToast('읽음 처리했어요');
     }
     if (!mounted) return;
     // 관련 화면으로 딥링크.

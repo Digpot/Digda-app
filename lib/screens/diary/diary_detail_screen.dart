@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/diary_paper.dart';
 
 class DiaryDetailScreen extends StatefulWidget {
   const DiaryDetailScreen({super.key});
@@ -19,15 +20,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   String? _errorMessage;
   DiaryDetail? _detail;
   String? _diaryId;
-
-  static const _weatherIcons = [
-    (Icons.wb_sunny_outlined, Color(0xFFFBBF24)),
-    (Icons.wb_cloudy_outlined, AppColors.gray400),
-    (Icons.grain, AppColors.blue),
-    (Icons.ac_unit, AppColors.saturdayBlue),
-  ];
-
-  static const _moodEmojis = ['😊', '😍', '😂', '🥰'];
 
   @override
   void didChangeDependencies() {
@@ -71,8 +63,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   Future<void> _onEditTap() async {
     setState(() => _showMenu = false);
-    await Navigator.of(context)
-        .pushNamed('/edit-diary', arguments: _diaryId);
+    await Navigator.of(context).pushNamed('/edit-diary', arguments: _diaryId);
     if (!mounted) return;
     _load();
   }
@@ -125,12 +116,12 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: DiaryStyle.accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.delete_outline_rounded,
-                color: AppColors.primary,
+                color: DiaryStyle.accent,
                 size: 24,
               ),
             ),
@@ -141,7 +132,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
                 fontSize: 17,
-                color: AppColors.gray900,
+                color: DiaryStyle.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
@@ -151,7 +142,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w400,
                 fontSize: 14,
-                color: AppColors.gray500,
+                color: DiaryStyle.textSecondary,
               ),
             ),
             const SizedBox(height: 24),
@@ -187,7 +178,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     child: ElevatedButton(
                       onPressed: _confirmDelete,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: DiaryStyle.accent,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -214,71 +205,29 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     );
   }
 
-  String _formatDate(DateTime d) {
-    const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-    return '${d.year}년 ${d.month}월 ${d.day}일 ${weekdays[d.weekday - 1]}';
-  }
-
-  String _formatCreatedAt(DateTime t) {
-    final h = t.hour;
-    final period = h < 12 ? '오전' : '오후';
-    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-    return '${t.year}.${t.month.toString().padLeft(2, '0')}.${t.day.toString().padLeft(2, '0')} '
-        '$period $hour12:${t.minute.toString().padLeft(2, '0')}에 작성';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF5),
+      backgroundColor: DiaryStyle.pageBg,
       body: SafeArea(
         child: Stack(
           children: [
             Column(
               children: [
-                Container(
-                  color: const Color(0xFFFFFDF5),
-                  height: 52,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_rounded,
-                          size: 18,
-                          color: AppColors.gray900,
-                        ),
-                      ),
-                      const Spacer(),
-                      if (_detail != null)
-                        IconButton(
-                          onPressed: () =>
-                              setState(() => _showMenu = !_showMenu),
-                          icon: const Icon(
-                            Icons.more_horiz_rounded,
-                            size: 22,
-                            color: AppColors.gray700,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                _buildAppBar(),
                 Expanded(child: _buildBody()),
               ],
             ),
             if (_showMenu) ...[
-              GestureDetector(
-                onTap: () => setState(() => _showMenu = false),
-                child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  color: Colors.transparent,
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => setState(() => _showMenu = false),
+                  child: Container(color: Colors.transparent),
                 ),
               ),
               Positioned(
-                top: 48,
-                right: 16,
+                top: 46,
+                right: 14,
                 child: _buildDropdownMenu(),
               ),
             ],
@@ -288,9 +237,45 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     );
   }
 
+  Widget _buildAppBar() {
+    return Container(
+      color: DiaryStyle.pageBg,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: SizedBox(
+        height: 44,
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(
+                Icons.arrow_back_ios_rounded,
+                size: 18,
+                color: DiaryStyle.textPrimary,
+              ),
+              splashRadius: 22,
+            ),
+            const Spacer(),
+            if (_detail != null)
+              IconButton(
+                onPressed: () => setState(() => _showMenu = !_showMenu),
+                icon: const Icon(
+                  Icons.more_horiz_rounded,
+                  size: 22,
+                  color: DiaryStyle.textPrimary,
+                ),
+                splashRadius: 22,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: DiaryStyle.accent),
+      );
     }
     if (_errorMessage != null) {
       return Center(
@@ -322,7 +307,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
-                  color: AppColors.primary,
+                  color: DiaryStyle.accent,
                 ),
               ),
             ),
@@ -331,316 +316,345 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       );
     }
     final diary = _detail!.diary;
+    final weather = diaryWeatherOf(diary.weather);
+    final mood = diaryMoodOf(diary.mood);
     return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        DiaryStyle.pagePadding,
+        8,
+        DiaryStyle.pagePadding,
+        32,
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border:
-                  Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 3,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(12)),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: Row(
-                    children: [
-                      Text(
-                        _formatDate(diary.date),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 13,
-                          color: AppColors.gray400,
-                        ),
-                      ),
-                      const Spacer(),
-                      _buildWeatherTag(diary.weather),
-                      const SizedBox(width: 6),
-                      _buildMoodTag(diary.mood),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    diary.title,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 20,
-                      color: AppColors.gray900,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF5F0),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: diary.imageUrl != null && diary.imageUrl!.isNotEmpty
-                      ? Image.network(
-                          diary.imageUrl!,
-                          width: double.infinity,
-                          height: 200,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                        )
-                      : _imagePlaceholder(),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border: Border.all(color: AppColors.gray100),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  height: 3,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(12)),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                  child: _buildRuledText(diary.content),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border: Border.all(color: AppColors.gray100),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: diary.createdBy.profileImage != null &&
-                          diary.createdBy.profileImage!.isNotEmpty
-                      ? Image.network(diary.createdBy.profileImage!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _avatarFallback(diary.createdBy.name))
-                      : _avatarFallback(diary.createdBy.name),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        diary.createdBy.name,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: AppColors.gray900,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatCreatedAt(diary.createdAt),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 12,
-                          color: AppColors.gray400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Material(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    onTap: _onEditTap,
-                    borderRadius: BorderRadius.circular(20),
-                    splashColor: AppColors.white.withValues(alpha: 0.3),
-                    highlightColor: AppColors.white.withValues(alpha: 0.15),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        '수정하기',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 40),
+          _buildHeaderCard(diary, weather, mood),
+          const SizedBox(height: DiaryStyle.sectionGap),
+          if (diary.imageUrl != null && diary.imageUrl!.isNotEmpty) ...[
+            _buildPhotoCard(diary.imageUrl!),
+            const SizedBox(height: DiaryStyle.sectionGap),
+          ],
+          _buildContentCard(diary.content),
+          const SizedBox(height: DiaryStyle.sectionGap),
+          _buildAuthorCard(diary),
         ],
       ),
     );
   }
 
-  Widget _imagePlaceholder() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+  // ── 헤더 카드 ────────────────────────────────────────────────
+  Widget _buildHeaderCard(
+    Diary diary,
+    DiaryWeatherOption weather,
+    DiaryMoodOption mood,
+  ) {
+    return DiaryPaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const DiaryCardAccentBar(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '날짜',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          color: DiaryStyle.labelBrown,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        formatDiaryDate(diary.date),
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: DiaryStyle.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildReadOnlyChip(
+                  icon: weather.icon,
+                  iconColor: weather.color,
+                  label: weather.label,
+                ),
+                const SizedBox(width: 8),
+                _buildReadOnlyChip(
+                  emoji: mood.emoji,
+                  label: mood.label,
+                ),
+              ],
+            ),
           ),
-          child: const Icon(
-            Icons.photo_rounded,
-            size: 24,
-            color: AppColors.primary,
+          Container(height: 1, color: DiaryStyle.cardBorder),
+          Container(
+            color: const Color(0xFFFFF8EE),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 40,
+                  child: Text(
+                    '제목',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: DiaryStyle.labelBrown,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 18,
+                  color: DiaryStyle.cardBorder,
+                  margin: const EdgeInsets.only(right: 12),
+                ),
+                Expanded(
+                  child: Text(
+                    diary.title,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      height: 1.4,
+                      color: DiaryStyle.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          '사진 없음',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            fontSize: 12,
-            color: AppColors.gray400,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _avatarFallback(String name) {
+  Widget _buildReadOnlyChip({
+    IconData? icon,
+    Color? iconColor,
+    String? emoji,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: DiaryStyle.accentSoft,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null)
+            Icon(icon, size: 14, color: iconColor)
+          else if (emoji != null)
+            Text(emoji, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: DiaryStyle.accent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 사진 카드 ────────────────────────────────────────────────
+  Widget _buildPhotoCard(String imageUrl) {
+    return DiaryPaperCard(
+      child: AspectRatio(
+        aspectRatio: 4 / 3,
+        child: Image.network(
+          imageUrl,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return Container(
+              color: const Color(0xFFFFF5F0),
+              child: const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: DiaryStyle.accent,
+                  ),
+                ),
+              ),
+            );
+          },
+          errorBuilder: (_, __, ___) => Container(
+            color: const Color(0xFFFFF5F0),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.broken_image_outlined,
+                      size: 32, color: DiaryStyle.labelBrown),
+                  SizedBox(height: 6),
+                  Text(
+                    '사진을 불러올 수 없어요',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      color: DiaryStyle.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 본문 카드 (읽기 전용 줄공책) ─────────────────────────────
+  Widget _buildContentCard(String content) {
+    return DiaryPaperCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const DiaryCardAccentBar(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.menu_book_rounded,
+                  size: 18,
+                  color: DiaryStyle.labelBrown,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  '오늘의 이야기',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: DiaryStyle.labelBrown,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+            child: _RuledText(text: content),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 작성자 카드 ─────────────────────────────────────────────
+  Widget _buildAuthorCard(Diary diary) {
+    final author = diary.createdBy;
+    final initial = author.name.isNotEmpty ? author.name[0] : '?';
+    return DiaryPaperCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: DiaryStyle.accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: (author.profileImage != null &&
+                    author.profileImage!.isNotEmpty)
+                ? Image.network(
+                    author.profileImage!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _avatarFallback(initial),
+                  )
+                : _avatarFallback(initial),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  author.name,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: DiaryStyle.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatDiaryTimestamp(diary.createdAt)}에 작성',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
+                    color: DiaryStyle.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Material(
+            color: DiaryStyle.accent,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              onTap: _onEditTap,
+              borderRadius: BorderRadius.circular(20),
+              splashColor: AppColors.white.withValues(alpha: 0.3),
+              highlightColor: AppColors.white.withValues(alpha: 0.15),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Text(
+                  '수정하기',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarFallback(String initial) {
     return Center(
       child: Text(
-        name.isNotEmpty ? name[0] : '?',
+        initial,
         style: const TextStyle(
           fontFamily: 'Inter',
           fontWeight: FontWeight.w700,
           fontSize: 16,
-          color: AppColors.primary,
+          color: DiaryStyle.accent,
         ),
       ),
-    );
-  }
-
-  Widget _buildWeatherTag(int weather) {
-    final entry = (weather >= 0 && weather < _weatherIcons.length)
-        ? _weatherIcons[weather]
-        : _weatherIcons[0];
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(child: Icon(entry.$1, size: 18, color: entry.$2)),
-    );
-  }
-
-  Widget _buildMoodTag(int mood) {
-    final emoji = (mood >= 0 && mood < _moodEmojis.length)
-        ? _moodEmojis[mood]
-        : _moodEmojis[0];
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Text(emoji, style: const TextStyle(fontSize: 16)),
-      ),
-    );
-  }
-
-  Widget _buildRuledText(String text) {
-    final lines = text.split('\n');
-    const lineHeight = 44.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ...lines.map((line) {
-          return Container(
-            width: double.infinity,
-            height: lineHeight,
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppColors.gray100, width: 1),
-              ),
-            ),
-            alignment: Alignment.bottomLeft,
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              line,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                fontSize: 15,
-                color: AppColors.gray800,
-              ),
-            ),
-          );
-        }),
-        ...List.generate(3, (_) {
-          return Container(
-            width: double.infinity,
-            height: lineHeight,
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppColors.gray100, width: 1),
-              ),
-            ),
-          );
-        }),
-      ],
     );
   }
 
@@ -649,23 +663,46 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       width: 148,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          GestureDetector(
+            onTap: _onEditTap,
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined,
+                      size: 18, color: DiaryStyle.textPrimary),
+                  SizedBox(width: 10),
+                  Text(
+                    '편집',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: DiaryStyle.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: AppColors.gray100,
+          ),
           GestureDetector(
             onTap: _onDeleteTap,
             behavior: HitTestBehavior.opaque,
@@ -674,7 +711,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               child: Row(
                 children: [
                   Icon(Icons.delete_outline_rounded,
-                      size: 18, color: AppColors.primary),
+                      size: 18, color: DiaryStyle.accent),
                   SizedBox(width: 10),
                   Text(
                     '삭제',
@@ -682,11 +719,52 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w500,
                       fontSize: 14,
-                      color: AppColors.primary,
+                      color: DiaryStyle.accent,
                     ),
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 본문 줄공책 — 읽기 전용. 텍스트는 정확히 [DiaryStyle.rowHeight] 간격으로 정렬.
+class _RuledText extends StatelessWidget {
+  const _RuledText({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(
+      fontFamily: 'Inter',
+      fontWeight: FontWeight.w400,
+      fontSize: DiaryStyle.contentFontSize,
+      height: DiaryStyle.contentLineHeight,
+      color: DiaryStyle.textPrimary,
+    );
+    const strut = StrutStyle(
+      fontSize: DiaryStyle.contentFontSize,
+      height: DiaryStyle.contentLineHeight,
+      forceStrutHeight: true,
+      leading: 0,
+    );
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minHeight: DiaryStyle.rowHeight * 8,
+      ),
+      child: Stack(
+        children: [
+          const DiaryRuledBackground(),
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              text.isEmpty ? ' ' : text,
+              style: style,
+              strutStyle: strut,
             ),
           ),
         ],

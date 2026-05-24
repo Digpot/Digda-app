@@ -2,6 +2,22 @@ import '../../common/models/common_models.dart';
 
 /// 9번 도메인(Todo) DTO 정의.
 
+/// 서버에서 수신한 datetime 문자열을 UTC로 파싱한다.
+/// 타임존 정보가 없는 문자열(예: "2025-05-21T12:00:00")은 UTC로 간주해
+/// 한국 시간(KST = UTC+9) 표기에서 9시간 어긋남이 발생하지 않도록 한다.
+DateTime _parseUtc(String s) {
+  if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
+    return DateTime.parse(s);
+  }
+  if (s.contains('T')) return DateTime.parse('${s}Z');
+  return DateTime.parse(s);
+}
+
+DateTime? _tryParseUtc(String? s) {
+  if (s == null) return null;
+  return _parseUtc(s);
+}
+
 class Todo {
   Todo({
     required this.id,
@@ -26,15 +42,13 @@ class Todo {
       id: json['id'].toString(),
       text: json['text'] as String,
       completed: json['completed'] as bool? ?? false,
-      completedAt: json['completedAt'] != null
-          ? DateTime.tryParse(json['completedAt'] as String)
-          : null,
+      completedAt: _tryParseUtc(json['completedAt'] as String?),
       completedBy: json['completedBy'] != null
           ? UserSummary.fromJson(json['completedBy'] as Map<String, dynamic>)
           : null,
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: _parseUtc(json['createdAt'] as String),
     );
   }
 }
