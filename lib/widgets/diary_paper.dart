@@ -165,75 +165,159 @@ String formatDiaryTimestamp(DateTime t) {
       '$period $hour12:${local.minute.toString().padLeft(2, '0')}';
 }
 
-/// 줄공책 베이스라인을 그리는 CustomPaint 백그라운드.
-/// 첫 줄은 [firstLineY] (baseline 살짝 아래) 에, 후속 줄은 [rowHeight] 간격으로 그린다.
-/// — TextField/Text 가 동일한 strut height 로 [rowHeight] 라인 박스를 유지하면
-///   descender 가 줄에 살짝 닿는 공책 느낌으로 정렬된다.
-class DiaryRuledBackground extends StatelessWidget {
-  const DiaryRuledBackground({
+/// 본문 줄공책 텍스트의 공용 TextStyle / StrutStyle.
+///
+/// `_RuledText` / `_RuledTextField` / 측정용 TextPainter 가 동일한 메트릭을
+/// 공유해야 줄 위치가 어긋나지 않는다. 한 곳에서만 정의한다.
+const TextStyle diaryContentTextStyle = TextStyle(
+  fontFamily: 'Inter',
+  fontWeight: FontWeight.w400,
+  fontSize: DiaryStyle.contentFontSize,
+  height: DiaryStyle.contentLineHeight,
+  color: DiaryStyle.textPrimary,
+);
+
+const StrutStyle diaryContentStrutStyle = StrutStyle(
+  fontFamily: 'Inter',
+  fontSize: DiaryStyle.contentFontSize,
+  height: DiaryStyle.contentLineHeight,
+  forceStrutHeight: true,
+  leading: 0,
+  leadingDistribution: TextLeadingDistribution.even,
+);
+
+/// 줄공책 컨테이너. 자식 위젯(읽기 전용 [Text] 또는 [TextField]) 의
+/// 실제 줄 baseline 을 런타임에 측정해서 정확히 그 자리에 가로줄을 그어준다.
+///
+/// **고정 픽셀 오프셋(firstLineY 같은 상수) 으로 줄을 그리던 이전 구조의 문제**
+///   - 글꼴 fallback (한글 Noto Sans CJK 등) 마다 실제 baseline 위치가 다름
+///   - Android 버전·이모지 폰트·OEM 폰트 메트릭 차이로 한 환경에서 맞춰도 다른
+///     환경에서 깨짐
+///   - 행마다 누적 오차가 생겨 multi-line 입력 시 줄을 뚫는 케이스 발생
+///
+/// **이 위젯의 동작**
+///   1. [LayoutBuilder] 로 현재 가용 가로폭을 얻고
+///   2. 동일한 `TextStyle`/`StrutStyle` 로 [TextPainter] 를 만든 뒤 측정용 텍스트를
+///      레이아웃해 [TextPainter.computeLineMetrics] 로 각 줄의 실측 baseline 을 받음
+///   3. 측정된 baseline 마다 descent + 안전 마진(`_kBaselineToLineGap`) 아래에 줄을 그어,
+///      텍스트가 자연스럽게 줄 위에 앉도록 함
+///   4. 내용이 짧을 때도 공책 룩을 유지하려고 [minRows] 까지 행 간격으로 외삽
+///
+/// TextField 사용처는 [textForMeasure] 에 컨트롤러 텍스트를 매 빌드마다 흘려넣고
+/// controller 의 [TextEditingController.addListener] 로 setState 를 트리거해야 한다.
+class RuledContentBox extends StatelessWidget {
+  const RuledContentBox({
     super.key,
-    this.rowHeight = DiaryStyle.rowHeight,
+    required this.child,
+    required this.textForMeasure,
+    this.minRows = 8,
     this.lineColor = DiaryStyle.ruledLine,
-    this.topOffset = 0,
-    this.firstLineY = DiaryStyle.firstLineY,
   });
 
-  final double rowHeight;
+  /// 본문을 그릴 위젯 — `Text(...)` 또는 `TextField(...)`.
+  final Widget child;
+
+  /// 줄 위치 측정을 위해 [TextPainter] 에 흘려넣는 텍스트.
+  /// 읽기 전용은 본문 그대로, 편집은 controller.text 를 그대로 넘긴다.
+  final String textForMeasure;
+
+  /// 빈 영역도 공책 룩으로 보이게 최소로 그릴 줄 수.
+  final int minRows;
+
+  /// 줄 색상.
   final Color lineColor;
-  final double topOffset;
-  final double firstLineY;
+
+  /// 측정된 baseline 으로부터 줄을 얼마나 아래에 그을지(px).
+  /// Inter descent (≈ 3.5) + 한글 fallback descent 여유까지 포함해 보수적으로 7px.
+  static const double _kBaselineToLineGap = 7.0;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: CustomPaint(
-          painter: _RuledPainter(
-            rowHeight: rowHeight,
-            lineColor: lineColor,
-            topOffset: topOffset,
-            firstLineY: firstLineY,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        // 빈 문자열이면 strut 만으로 1행이 잡히도록 공백 한 칸을 측정 텍스트로.
+        final measureText = textForMeasure.isEmpty ? ' ' : textForMeasure;
+
+        final painter = TextPainter(
+          text: TextSpan(text: measureText, style: diaryContentTextStyle),
+          strutStyle: diaryContentStrutStyle,
+          textDirection: TextDirection.ltr,
+          textHeightBehavior: const TextHeightBehavior(
+            leadingDistribution: TextLeadingDistribution.even,
           ),
-        ),
-      ),
+        )..layout(maxWidth: width);
+
+        final metrics = painter.computeLineMetrics();
+        final lineYs = <double>[
+          for (final m in metrics) m.baseline + _kBaselineToLineGap,
+        ];
+
+        // 내용이 짧으면 마지막 측정 줄 위치를 기점으로 rowHeight 간격으로 외삽.
+        const rowGap = DiaryStyle.rowHeight;
+        var lastY = lineYs.isEmpty
+            ? DiaryStyle.firstLineY - rowGap // 안전한 시작점(루프에서 +rowGap)
+            : lineYs.last;
+        while (lineYs.length < minRows) {
+          lastY += rowGap;
+          lineYs.add(lastY);
+        }
+
+        final measuredHeight = painter.height;
+        final minHeight = minRows * rowGap;
+        final containerMinHeight =
+            measuredHeight > minHeight ? measuredHeight : minHeight;
+
+        return ConstrainedBox(
+          constraints: BoxConstraints(minHeight: containerMinHeight),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _MeasuredLinesPainter(
+                      ys: lineYs,
+                      color: lineColor,
+                    ),
+                  ),
+                ),
+              ),
+              child,
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
-class _RuledPainter extends CustomPainter {
-  _RuledPainter({
-    required this.rowHeight,
-    required this.lineColor,
-    required this.topOffset,
-    required this.firstLineY,
-  });
+class _MeasuredLinesPainter extends CustomPainter {
+  _MeasuredLinesPainter({required this.ys, required this.color});
 
-  final double rowHeight;
-  final Color lineColor;
-  final double topOffset;
-  final double firstLineY;
+  final List<double> ys;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (rowHeight <= 0) return;
     final paint = Paint()
-      ..color = lineColor
+      ..color = color
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
-    // 첫 줄을 baseline 살짝 아래(firstLineY) 에, 그 이후로는 한 행 간격(rowHeight) 마다.
-    double y = topOffset + firstLineY;
-    while (y < size.height) {
+    for (final y in ys) {
+      if (y < 0 || y > size.height) continue;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-      y += rowHeight;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _RuledPainter old) =>
-      old.rowHeight != rowHeight ||
-      old.lineColor != lineColor ||
-      old.topOffset != topOffset ||
-      old.firstLineY != firstLineY;
+  bool shouldRepaint(covariant _MeasuredLinesPainter old) {
+    if (old.color != color) return true;
+    if (old.ys.length != ys.length) return true;
+    for (var i = 0; i < ys.length; i++) {
+      if (old.ys[i] != ys[i]) return true;
+    }
+    return false;
+  }
 }
 
 /// 공용 페이퍼 카드 — 작성/수정/조회 모든 섹션의 외곽 컨테이너.

@@ -116,108 +116,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _onNotificationTap(AppNotification n) async {
-    // 안읽음 알림은 사용자가 의도치 않게 한 번 탭으로 읽음 처리되는 걸 막기 위해
-    // 확인 다이얼로그를 거친다(모두읽음 과 동일한 UX). 읽음 상태면 바로 딥링크.
-    if (!n.isRead) {
-      final confirmed = await _confirmMarkRead();
-      if (!mounted || confirmed != true) return;
-      // 낙관적 UI 업데이트 후 서버 요청.
-      setState(() {
-        _items = _items
-            .map((it) => it.id == n.id
-                ? AppNotification(
-                    id: it.id,
-                    type: it.type,
-                    title: it.title,
-                    message: it.message,
-                    groupRoomId: it.groupRoomId,
-                    groupRoomName: it.groupRoomName,
-                    relatedId: it.relatedId,
-                    relatedType: it.relatedType,
-                    isRead: true,
-                    createdAt: it.createdAt,
-                  )
-                : it)
-            .toList();
-      });
-      Di.notificationRepository.markRead(n.id).ignore();
-    }
+    // 탭하면 다른 화면으로 이동시키지 않고 그 자리에서 읽음 처리만 한다.
+    // (예전엔 팝업 띄우고 확인 후 그룹 홈/일정 상세로 점프했지만, 사용자가
+    // 보던 알림 목록에서 갑자기 다른 화면으로 끌려가는 UX 가 어색했다.)
+    if (n.isRead) return;
     if (!mounted) return;
-    // 관련 화면으로 딥링크.
-    if (n.groupRoomId.isNotEmpty) {
-      Di.activeGroup.enter(
-        groupRoomId: n.groupRoomId,
-        groupRoomName: n.groupRoomName,
-        isOwner: Di.activeGroup.isOwner,
-      );
-    }
-    if (n.relatedType == 'schedule' && n.relatedId != null) {
-      Navigator.of(context)
-          .pushNamed('/schedule-detail', arguments: n.relatedId);
-    } else if (n.relatedType == 'diary' && n.relatedId != null) {
-      Navigator.of(context)
-          .pushNamed('/diary-detail', arguments: n.relatedId);
-    } else if (n.groupRoomId.isNotEmpty) {
-      Navigator.of(context).pushNamed(
-        '/group-home',
-        arguments: {'name': n.groupRoomName},
-      );
-    }
-  }
-
-  Future<bool?> _confirmMarkRead() {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          '알림 확인',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-            color: AppColors.gray900,
-          ),
-        ),
-        content: const Text(
-          '이 알림을 읽음 처리할까요?',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: AppColors.gray700,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(
-              '취소',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: AppColors.gray500,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              '확인',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    setState(() {
+      _items = _items
+          .map((it) => it.id == n.id
+              ? AppNotification(
+                  id: it.id,
+                  type: it.type,
+                  title: it.title,
+                  message: it.message,
+                  groupRoomId: it.groupRoomId,
+                  groupRoomName: it.groupRoomName,
+                  relatedId: it.relatedId,
+                  relatedType: it.relatedType,
+                  isRead: true,
+                  createdAt: it.createdAt,
+                )
+              : it)
+          .toList();
+    });
+    Di.notificationRepository.markRead(n.id).ignore();
   }
 
   /// 와이어프레임 기준 시간 표기:
