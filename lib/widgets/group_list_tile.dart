@@ -10,7 +10,10 @@ class GroupListTile extends StatelessWidget {
   final IconData groupIcon;
   final Color groupIconBg;
   final Color groupIconColor;
-  final bool showActions;
+  /// 초대코드 공유 아이콘 노출 여부 — 보통 방장에게만 켠다.
+  final bool showShare;
+  /// 톱니바퀴 아이콘 노출 여부 — 일반 멤버에게도 탈퇴 진입점으로 사용.
+  final bool showSettings;
   final bool isDeleteScheduled;
   /// 삭제 예약 만료 시각. 주어지면 카운트다운(HH:MM:SS) 으로 표시한다.
   final DateTime? deleteScheduledAt;
@@ -30,7 +33,8 @@ class GroupListTile extends StatelessWidget {
     this.groupIcon = Icons.group,
     this.groupIconBg = AppColors.gray50,
     this.groupIconColor = AppColors.gray500,
-    this.showActions = false,
+    this.showShare = false,
+    this.showSettings = false,
     this.isDeleteScheduled = false,
     this.deleteScheduledAt,
     this.onTap,
@@ -200,7 +204,7 @@ class GroupListTile extends StatelessWidget {
                   ),
                 ),
               ),
-            if (showActions) ...[
+            if (showShare) ...[
               GestureDetector(
                 onTap: onShare,
                 child: const Icon(
@@ -209,7 +213,9 @@ class GroupListTile extends StatelessWidget {
                   color: AppColors.gray700,
                 ),
               ),
-              const SizedBox(width: 12),
+              if (showSettings) const SizedBox(width: 12),
+            ],
+            if (showSettings)
               GestureDetector(
                 onTap: onSettings,
                 child: const Icon(
@@ -218,7 +224,6 @@ class GroupListTile extends StatelessWidget {
                   color: AppColors.gray700,
                 ),
               ),
-            ],
           ],
         ),
       ),

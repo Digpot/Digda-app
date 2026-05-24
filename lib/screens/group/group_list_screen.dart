@@ -250,7 +250,9 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                       groupIcon: skin.icon,
                                       groupIconBg: skin.bg,
                                       groupIconColor: skin.fg,
-                                      showActions: g.isOwner && !g.isDeleteScheduled,
+                                      // 공유는 방장만, 톱니바퀴(설정/탈퇴 진입점)는 모든 멤버에게.
+                                      showShare: g.isOwner && !g.isDeleteScheduled,
+                                      showSettings: !g.isDeleteScheduled,
                                       isDeleteScheduled: g.isDeleteScheduled,
                                       deleteScheduledAt: g.deleteScheduledAt,
                                       onCountdownExpired: () =>
@@ -264,8 +266,13 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                           groupRoomName: g.name,
                                           isOwner: g.isOwner,
                                         );
+                                        // 방장은 그룹방 정보 편집 화면, 일반 멤버는
+                                        // 탈퇴 가능한 관리 화면으로 직행.
+                                        final route = g.isOwner
+                                            ? '/update-diary'
+                                            : '/manage-diary';
                                         Navigator.of(context)
-                                            .pushNamed('/update-diary')
+                                            .pushNamed(route)
                                             .then((_) => _refresh());
                                       },
                                       // 삭제 예정 그룹은 owner 에게 즉시 복구 버튼 노출.
