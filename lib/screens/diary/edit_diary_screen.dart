@@ -839,7 +839,10 @@ class _DiaryAppBar extends StatelessWidget {
   }
 }
 
-class _RuledTextField extends StatelessWidget {
+/// 줄공책 위에 쓰는 입력 위젯 (수정 화면).
+/// [RuledContentBox] 가 controller.text 의 실측 baseline 으로 줄을 그어
+/// 글꼴 fallback (한글 등) 환경에서도 줄이 어긋나지 않게 한다.
+class _RuledTextField extends StatefulWidget {
   const _RuledTextField({
     required this.controller,
     required this.focusNode,
@@ -853,62 +856,68 @@ class _RuledTextField extends StatelessWidget {
   final VoidCallback onChanged;
 
   @override
+  State<_RuledTextField> createState() => _RuledTextFieldState();
+}
+
+class _RuledTextFieldState extends State<_RuledTextField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_rebuild);
+  }
+
+  @override
+  void didUpdateWidget(covariant _RuledTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_rebuild);
+      widget.controller.addListener(_rebuild);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const style = TextStyle(
-      fontFamily: 'Inter',
-      fontWeight: FontWeight.w400,
-      fontSize: DiaryStyle.contentFontSize,
-      height: DiaryStyle.contentLineHeight,
-      color: DiaryStyle.textPrimary,
-    );
-    // strut 에 fontFamily 가 비면 플랫폼 기본 폰트로 baseline 이 계산되어
-    // Inter 와 어긋날 수 있다. 명시적으로 'Inter' 동기화 + 균등 leading.
-    const strut = StrutStyle(
-      fontFamily: 'Inter',
-      fontSize: DiaryStyle.contentFontSize,
-      height: DiaryStyle.contentLineHeight,
-      forceStrutHeight: true,
-      leading: 0,
-      leadingDistribution: TextLeadingDistribution.even,
-    );
-    return Stack(
-      children: [
-        const DiaryRuledBackground(),
-        ConstrainedBox(
-          constraints: const BoxConstraints(
-            minHeight: DiaryStyle.rowHeight * 8,
+    return RuledContentBox(
+      textForMeasure: widget.controller.text,
+      child: TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        maxLength: widget.maxLength,
+        maxLines: null,
+        cursorColor: DiaryStyle.accent,
+        style: diaryContentTextStyle,
+        strutStyle: diaryContentStrutStyle,
+        textAlignVertical: TextAlignVertical.top,
+        keyboardType: TextInputType.multiline,
+        textInputAction: TextInputAction.newline,
+        decoration: const InputDecoration(
+          hintText: '오늘의 소중한 순간을 기록해보세요...',
+          hintStyle: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: DiaryStyle.contentFontSize,
+            height: DiaryStyle.contentLineHeight,
+            color: DiaryStyle.textPlaceholder,
           ),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            maxLength: maxLength,
-            maxLines: null,
-            cursorColor: DiaryStyle.accent,
-            style: style,
-            strutStyle: strut,
-            textAlignVertical: TextAlignVertical.top,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            decoration: const InputDecoration(
-              hintText: '오늘의 소중한 순간을 기록해보세요...',
-              hintStyle: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                fontSize: DiaryStyle.contentFontSize,
-                height: DiaryStyle.contentLineHeight,
-                color: DiaryStyle.textPlaceholder,
-              ),
-              hintMaxLines: 1,
-              border: InputBorder.none,
-              isCollapsed: true,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              counterText: '',
-            ),
-            onChanged: (_) => onChanged(),
-          ),
+          hintMaxLines: 1,
+          border: InputBorder.none,
+          isCollapsed: true,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+          counterText: '',
         ),
-      ],
+        onChanged: (_) => widget.onChanged(),
+      ),
     );
   }
 }

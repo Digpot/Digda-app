@@ -732,50 +732,25 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
 }
 
-/// 본문 줄공책 — 읽기 전용. 텍스트 strut 이 [DiaryStyle.rowHeight] 라인 박스를 강제하고
-/// painter 는 baseline 살짝 아래(firstLineY)에 줄을 그어 공책처럼 정렬된다.
+/// 본문 줄공책 — 읽기 전용. [RuledContentBox] 가 실측 baseline 으로 줄을 긋는다.
 class _RuledText extends StatelessWidget {
   const _RuledText({required this.text});
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(
-      fontFamily: 'Inter',
-      fontWeight: FontWeight.w400,
-      fontSize: DiaryStyle.contentFontSize,
-      height: DiaryStyle.contentLineHeight,
-      color: DiaryStyle.textPrimary,
-    );
-    // strut 의 fontFamily 가 비면 플랫폼 기본 폰트로 line metrics 가 계산되어
-    // Inter 의 baseline 과 어긋날 수 있다. fontFamily 를 명시해 동기화.
-    const strut = StrutStyle(
-      fontFamily: 'Inter',
-      fontSize: DiaryStyle.contentFontSize,
-      height: DiaryStyle.contentLineHeight,
-      forceStrutHeight: true,
-      leading: 0,
-      leadingDistribution: TextLeadingDistribution.even,
-    );
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minHeight: DiaryStyle.rowHeight * 8,
-      ),
-      child: Stack(
-        children: [
-          const DiaryRuledBackground(),
-          SizedBox(
-            width: double.infinity,
-            child: Text(
-              text.isEmpty ? ' ' : text,
-              style: style,
-              strutStyle: strut,
-              textHeightBehavior: const TextHeightBehavior(
-                leadingDistribution: TextLeadingDistribution.even,
-              ),
-            ),
+    return RuledContentBox(
+      textForMeasure: text,
+      child: SizedBox(
+        width: double.infinity,
+        child: Text(
+          text.isEmpty ? ' ' : text,
+          style: diaryContentTextStyle,
+          strutStyle: diaryContentStrutStyle,
+          textHeightBehavior: const TextHeightBehavior(
+            leadingDistribution: TextLeadingDistribution.even,
           ),
-        ],
+        ),
       ),
     );
   }
