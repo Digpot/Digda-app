@@ -192,8 +192,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   }
 
   String _formatCommentTime(DateTime t) {
-    final h = t.hour;
-    final m = t.minute;
+    final local = t.toLocal();
+    final h = local.hour;
+    final m = local.minute;
     final period = h < 12 ? '오전' : '오후';
     final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
     return '$period $hour12:${m.toString().padLeft(2, '0')}';

@@ -20,36 +20,17 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
 
   Future<void> _executeDelete() async {
     // 다이얼로그 컨텍스트(이미 dismiss됨) 가 아닌, 화면 자체의 컨텍스트로
-    // Navigator/Messenger 를 미리 캡처해 async 경계 후에도 안전하게 사용.
+    // Navigator 를 미리 캡처해 async 경계 후에도 안전하게 사용.
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _processing = true);
     try {
       await Di.authSession.deleteAccount();
       if (!mounted) return;
       navigator.pushNamedAndRemoveUntil('/login', (route) => false);
-      // 새 화면이 push 된 다음 토스트가 표시되도록 한 프레임 뒤에 보여준다.
+      // 새 화면이 push 된 다음 다이얼로그가 표시되도록 한 프레임 뒤에 보여준다.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: const Text(
-              '회원 탈퇴가 완료되었습니다',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: AppColors.white,
-              ),
-            ),
-            backgroundColor: AppColors.gray900,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        final ctx = navigator.context;
+        showInfoDialog(ctx, '회원 탈퇴 완료', '회원 탈퇴가 완료되었습니다.');
       });
     } catch (e) {
       if (!mounted) return;

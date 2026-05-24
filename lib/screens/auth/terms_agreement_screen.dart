@@ -8,6 +8,12 @@ import '../../theme/text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/primary_button.dart';
 
+/// 소셜 로그인 직후 노출되는 약관 동의 화면.
+///
+/// App Store / Play Store / KISA 가이드 준수를 위해 항목마다 다음을 명시:
+///   - 수집 항목, 이용 목적, 보유 기간
+///   - 필수/선택 구분
+///   - 선택 항목 거부 시에도 서비스 이용 가능함을 안내
 class TermsAgreementScreen extends StatefulWidget {
   const TermsAgreementScreen({super.key, this.loginType = 'kakao'});
 
@@ -65,6 +71,39 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
     }
   }
 
+  static const List<_ConsentItem> _items = [
+    _ConsentItem(
+      label: '이용약관 동의',
+      description: '서비스 이용을 위한 권리·의무, 운영 규칙',
+      isRequired: true,
+      detailType: 'terms',
+    ),
+    _ConsentItem(
+      label: '개인정보 수집 및 이용 동의',
+      description: '수집: 이름·이메일·프로필 사진 / 목적: 회원 식별·서비스 제공 / 보유: 탈퇴 시까지',
+      isRequired: true,
+      detailType: 'privacy',
+    ),
+    _ConsentItem(
+      label: '만 14세 이상입니다',
+      description: '만 14세 미만은 이용이 제한됩니다',
+      isRequired: true,
+      detailType: null,
+    ),
+    _ConsentItem(
+      label: '마케팅 정보 수신 동의',
+      description: '이벤트·혜택 안내 (거부해도 서비스 이용 가능)',
+      isRequired: false,
+      detailType: 'marketing',
+    ),
+    _ConsentItem(
+      label: '푸시 알림 수신 동의',
+      description: '그룹 활동·일정 알림 (거부해도 서비스 이용 가능)',
+      isRequired: false,
+      detailType: null,
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,7 +114,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 60),
+              const SizedBox(height: 40),
               const Text(
                 '서비스 이용을 위해',
                 style: AppTextStyles.heading2,
@@ -84,28 +123,52 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                 '약관에 동의해주세요',
                 style: AppTextStyles.heading2,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
+              const Text(
+                '필수 항목 동의 후 서비스를 시작할 수 있어요.\n선택 항목은 거부해도 서비스 이용에 제한이 없습니다.',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 13,
+                  height: 1.5,
+                  color: AppColors.gray500,
+                ),
+              ),
+              const SizedBox(height: 24),
               _buildCheckAll(),
-              const SizedBox(height: 32),
-              _buildCheckItem(0, '이용약관 동의', true),
-              const SizedBox(height: 36),
-              _buildCheckItem(1, '개인정보 수집 및 이용 동의', true),
-              const SizedBox(height: 36),
-              _buildCheckItem(2, '만 14세 이상입니다', true),
-              const SizedBox(height: 36),
-              Container(height: 1, color: AppColors.gray100),
-              const SizedBox(height: 36),
-              _buildCheckItem(3, '마케팅 정보 수신 동의', false),
-              const SizedBox(height: 36),
-              _buildCheckItem(4, '푸시 알림 수신 동의', false),
-              const Spacer(),
+              const SizedBox(height: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      for (int i = 0; i < _items.length; i++) ...[
+                        _buildCheckItem(i, _items[i]),
+                        if (i == 2)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 1,
+                              color: AppColors.gray100,
+                            ),
+                          )
+                        else
+                          const SizedBox(height: 16),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Center(
                 child: PrimaryButton(
                   text: _submitting ? '처리 중...' : '동의하고 시작하기',
-                  onPressed: (_allRequiredChecked && !_submitting) ? _submit : null,
+                  onPressed:
+                      (_allRequiredChecked && !_submitting) ? _submit : null,
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -131,9 +194,11 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
               color: _checkAll ? AppColors.primary : AppColors.gray300,
             ),
             const SizedBox(width: 12),
-            const Text(
-              '전체 동의',
-              style: AppTextStyles.title,
+            const Expanded(
+              child: Text(
+                '전체 동의 (선택 항목 포함)',
+                style: AppTextStyles.title,
+              ),
             ),
             const SizedBox(width: 16),
           ],
@@ -142,84 +207,112 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
     );
   }
 
-  String? _getDetailType(int index) {
-    switch (index) {
-      case 0:
-        return 'terms';
-      case 1:
-        return 'privacy';
-      case 3:
-        return 'marketing';
-      default:
-        return null;
-    }
-  }
-
-  Widget _buildCheckItem(int index, String label, bool isRequired) {
+  Widget _buildCheckItem(int index, _ConsentItem item) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
             onTap: () => _toggleItem(index, !_checks[index]),
-            child: Row(
-              children: [
-                Icon(
-                  _checks[index]
-                      ? Icons.check_box
-                      : Icons.check_box_outline_blank,
-                  size: 22,
-                  color:
-                      _checks[index] ? AppColors.primary : AppColors.gray300,
-                ),
-                const SizedBox(width: 12),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                _checks[index]
+                    ? Icons.check_box
+                    : Icons.check_box_outline_blank,
+                size: 22,
+                color:
+                    _checks[index] ? AppColors.primary : AppColors.gray300,
+              ),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: GestureDetector(
               onTap: () => _toggleItem(index, !_checks[index]),
-              child: Text(
-                label,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.gray900,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          item.label,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: item.isRequired
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : AppColors.gray100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.isRequired ? '필수' : '선택',
+                          style: AppTextStyles.tiny.copyWith(
+                            color: item.isRequired
+                                ? AppColors.primary
+                                : AppColors.gray500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.description,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      height: 1.5,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (item.detailType != null) ...[
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context)
+                    .pushNamed('/terms-detail', arguments: item.detailType);
+              },
+              child: const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.gray400,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: isRequired
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.gray100,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              isRequired ? '필수' : '선택',
-              style: AppTextStyles.tiny.copyWith(
-                color: isRequired ? AppColors.primary : AppColors.gray500,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: () {
-              final type = _getDetailType(index);
-              if (type != null) {
-                Navigator.of(context)
-                    .pushNamed('/terms-detail', arguments: type);
-              }
-            },
-            child: const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: AppColors.gray400,
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _ConsentItem {
+  const _ConsentItem({
+    required this.label,
+    required this.description,
+    required this.isRequired,
+    required this.detailType,
+  });
+
+  final String label;
+  final String description;
+  final bool isRequired;
+  final String? detailType;
 }

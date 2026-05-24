@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../features/user/models/user_models.dart';
 
 /// 디그팟 개인정보처리방침 호스팅 URL.
@@ -181,12 +182,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _openPrivacyPolicy(BuildContext context) async {
     final uri = Uri.parse(_privacyPolicyUrl);
-    final messenger = ScaffoldMessenger.of(context);
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('브라우저를 열 수 없어요')),
-      );
+      showErrorDialog(context, '브라우저를 열 수 없어요');
     }
   }
 
@@ -198,26 +196,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       builder: (context) => const _CodeInputBottomSheet(),
     ).then((groupName) {
       if (groupName != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '"$groupName" 그룹방에 참여했어요!',
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: AppColors.white,
-              ),
-            ),
-            backgroundColor: AppColors.gray900,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        showInfoDialog(context, '그룹방 참여', '"$groupName" 그룹방에 참여했어요!');
       }
     });
   }
