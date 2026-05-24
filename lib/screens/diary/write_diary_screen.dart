@@ -317,7 +317,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
           Container(height: 1, color: DiaryStyle.cardBorder),
           // 제목 입력
           Container(
-            color: const Color(0xFFFFF8EE),
+            color: AppColors.gray50,
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -603,7 +603,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
       child: Container(
         height: 200,
         decoration: const BoxDecoration(
-          color: Color(0xFFFFF5F0),
+          color: AppColors.gray50,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -807,11 +807,15 @@ class _RuledTextField extends StatelessWidget {
       height: DiaryStyle.contentLineHeight,
       color: DiaryStyle.textPrimary,
     );
+    // strut 에 fontFamily 가 비면 플랫폼 기본 폰트로 baseline 이 계산되어
+    // Inter 와 어긋날 수 있다. 명시적으로 'Inter' 동기화 + 균등 leading.
     const strut = StrutStyle(
+      fontFamily: 'Inter',
       fontSize: DiaryStyle.contentFontSize,
       height: DiaryStyle.contentLineHeight,
       forceStrutHeight: true,
       leading: 0,
+      leadingDistribution: TextLeadingDistribution.even,
     );
     return Stack(
       children: [

@@ -6,48 +6,50 @@ import '../theme/colors.dart';
 
 /// 그림일기 화면(작성/수정/조회) 공용 디자인 시스템.
 ///
-/// 한국 초등 그림일기의 정서(원고지·줄공책·아기자기함)를
-/// 모던한 커플 다이어리 톤으로 재해석. 작성/수정/조회 화면이
-/// 같은 카드·라벨·라인 스타일을 공유해 통일감을 유지.
+/// 메인 앱(캘린더·그룹 리스트·일정 상세) 의 화이트+그레이 토큰을 그대로 가져와
+/// 같은 시스템을 공유한다. 베이지·브라운 같은 별도 종이 팔레트는 일관성을
+/// 깼던 원인이라 제거. 공책 정체성은 줄(ruledLine) + 옅은 카드 보더로만 표현.
 class DiaryStyle {
   DiaryStyle._();
 
-  // ── 종이/배경 ────────────────────────────────────────────────
-  /// 페이지 베이스 — 따뜻한 크림 컬러
-  static const Color pageBg = Color(0xFFFFFBF2);
+  // ── 페이지/카드 ──────────────────────────────────────────────
+  /// 페이지 배경 — 메인 앱과 동일한 화이트
+  static const Color pageBg = AppColors.white;
 
-  /// 카드 베이스
-  static const Color cardBg = Color(0xFFFFFFFF);
+  /// 카드 배경 — 화이트
+  static const Color cardBg = AppColors.white;
 
-  /// 카드 외곽선 — 옅은 베이지
-  static const Color cardBorder = Color(0xFFEFE5D2);
+  /// 카드 외곽선 — 메인 앱 공통 옅은 보더
+  static const Color cardBorder = AppColors.gray100;
 
-  /// 카드 그림자 — 따뜻한 베이지 계열
-  static Color cardShadow = const Color(0xFFB89F73).withValues(alpha: 0.08);
+  /// 카드 그림자 — 사용하지 않는다. 메인 앱이 그림자 없는 플랫 보더 카드.
+  /// (남겨두면 기존 코드 호환을 위해 transparent 로)
+  static const Color cardShadow = Color(0x00000000);
 
   // ── 강조/포인트 ──────────────────────────────────────────────
   /// 메인 핑크 (primary 와 통일)
   static const Color accent = AppColors.primary;
 
-  /// 옅은 핑크 — 헤더 띠/뱃지 배경
+  /// 옅은 핑크 — 칩/뱃지 배경
   static const Color accentSoft = Color(0xFFFFEDED);
 
-  /// 헤더 라벨 톤(은은한 브라운)
-  static const Color labelBrown = Color(0xFFB8A07A);
+  /// 섹션 라벨 톤 — 메인 앱 보조 텍스트와 동일.
+  /// (예전 baseline 인 brown 베이지를 대체. 이름은 호환을 위해 유지)
+  static const Color labelBrown = AppColors.gray500;
 
   // ── 텍스트 ──────────────────────────────────────────────────
-  /// 본문 텍스트 — 약간 따뜻한 다크 그레이
-  static const Color textPrimary = Color(0xFF2E2A24);
+  /// 본문 텍스트 — 메인 앱 기본 텍스트
+  static const Color textPrimary = AppColors.gray900;
 
   /// 보조 텍스트
-  static const Color textSecondary = Color(0xFF8A8275);
+  static const Color textSecondary = AppColors.gray500;
 
   /// 옅은 텍스트(플레이스홀더)
-  static const Color textPlaceholder = Color(0xFFC8BFAE);
+  static const Color textPlaceholder = AppColors.gray400;
 
   // ── 줄공책 ──────────────────────────────────────────────────
-  /// 줄공책 베이스라인 색
-  static const Color ruledLine = Color(0xFFF0E6D2);
+  /// 줄공책 베이스라인 색 — 베이지 대신 옅은 그레이로 모던하게.
+  static const Color ruledLine = AppColors.gray100;
 
   /// 입력 한 줄 높이(px) — fontSize × lineHeight 와 정확히 같아야
   /// 베이스라인과 캐럿이 어긋나지 않는다. (15 × 2.933 ≒ 44)
@@ -59,10 +61,29 @@ class DiaryStyle {
   /// 본문 line-height factor (rowHeight / contentFontSize)
   static const double contentLineHeight = rowHeight / contentFontSize;
 
+  /// 첫 번째 underline 의 y 위치. 행 맨 아래(44) 가 아니라 계산된
+  /// 1행 baseline 살짝 아래에 두어, 공책처럼 텍스트가 줄 위에 자연스럽게
+  /// 앉도록 한다.
+  ///
+  /// Inter 15px × strut height 2.933 / leadingDistribution=even 기준:
+  ///   - 행 박스 44 안에서 half-leading ≈ 13, ascent ≈ 14.4
+  ///   - 1행 baseline ≈ 13 + 14.4 = 27.4
+  ///   - Inter descent ≈ 3.5
+  ///   - 한글 fallback(Noto Sans CJK) descent 추가 여유까지 포함해
+  ///     baseline 아래 6~7px 에 줄을 그으면 descender 가 줄에 가볍게 닿는
+  ///     공책 룩이면서 어떤 fallback 글꼴이 와도 줄을 뚫지 않는다.
+  /// 후속 줄은 [rowHeight] 간격으로 그린다.
+  static const double firstLineY = 34.0;
+
   // ── 라운드/간격 ──────────────────────────────────────────────
-  static const double cardRadius = 18;
-  static const double sectionGap = 14;
-  static const double pagePadding = 18;
+  /// 메인 앱 radiusLarge(16) 와 통일.
+  static const double cardRadius = 16;
+
+  /// 메인 앱 spacing12 와 통일.
+  static const double sectionGap = 12;
+
+  /// 메인 앱 가로 패딩 20 과 통일.
+  static const double pagePadding = 20;
 }
 
 /// 날씨 옵션 — 작성/수정/조회 공통
@@ -145,18 +166,22 @@ String formatDiaryTimestamp(DateTime t) {
 }
 
 /// 줄공책 베이스라인을 그리는 CustomPaint 백그라운드.
-/// TextField/Text 와 동일한 [rowHeight] 를 사용하면 줄에 정확히 정렬됨.
+/// 첫 줄은 [firstLineY] (baseline 살짝 아래) 에, 후속 줄은 [rowHeight] 간격으로 그린다.
+/// — TextField/Text 가 동일한 strut height 로 [rowHeight] 라인 박스를 유지하면
+///   descender 가 줄에 살짝 닿는 공책 느낌으로 정렬된다.
 class DiaryRuledBackground extends StatelessWidget {
   const DiaryRuledBackground({
     super.key,
     this.rowHeight = DiaryStyle.rowHeight,
     this.lineColor = DiaryStyle.ruledLine,
     this.topOffset = 0,
+    this.firstLineY = DiaryStyle.firstLineY,
   });
 
   final double rowHeight;
   final Color lineColor;
   final double topOffset;
+  final double firstLineY;
 
   @override
   Widget build(BuildContext context) {
@@ -167,6 +192,7 @@ class DiaryRuledBackground extends StatelessWidget {
             rowHeight: rowHeight,
             lineColor: lineColor,
             topOffset: topOffset,
+            firstLineY: firstLineY,
           ),
         ),
       ),
@@ -179,11 +205,13 @@ class _RuledPainter extends CustomPainter {
     required this.rowHeight,
     required this.lineColor,
     required this.topOffset,
+    required this.firstLineY,
   });
 
   final double rowHeight;
   final Color lineColor;
   final double topOffset;
+  final double firstLineY;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -192,8 +220,8 @@ class _RuledPainter extends CustomPainter {
       ..color = lineColor
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
-    // 첫 줄은 topOffset + rowHeight 위치에 그린다 (텍스트가 줄 위에 앉도록).
-    double y = topOffset + rowHeight;
+    // 첫 줄을 baseline 살짝 아래(firstLineY) 에, 그 이후로는 한 행 간격(rowHeight) 마다.
+    double y = topOffset + firstLineY;
     while (y < size.height) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
       y += rowHeight;
@@ -204,7 +232,8 @@ class _RuledPainter extends CustomPainter {
   bool shouldRepaint(covariant _RuledPainter old) =>
       old.rowHeight != rowHeight ||
       old.lineColor != lineColor ||
-      old.topOffset != topOffset;
+      old.topOffset != topOffset ||
+      old.firstLineY != firstLineY;
 }
 
 /// 공용 페이퍼 카드 — 작성/수정/조회 모든 섹션의 외곽 컨테이너.
@@ -222,19 +251,13 @@ class DiaryPaperCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 메인 앱 카드와 동일한 플랫 룩: 그림자 없이 1px 보더 + 라운드.
     return Container(
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: DiaryStyle.cardBg,
         borderRadius: BorderRadius.circular(DiaryStyle.cardRadius),
         border: Border.all(color: DiaryStyle.cardBorder, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: DiaryStyle.cardShadow,
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: padding == null ? child : Padding(padding: padding!, child: child),
     );
