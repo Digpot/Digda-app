@@ -398,7 +398,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           ),
           Container(height: 1, color: DiaryStyle.cardBorder),
           Container(
-            color: const Color(0xFFFFF8EE),
+            color: AppColors.gray50,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -487,7 +487,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             return Container(
-              color: const Color(0xFFFFF5F0),
+              color: AppColors.gray50,
               child: const Center(
                 child: SizedBox(
                   width: 28,
@@ -501,7 +501,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             );
           },
           errorBuilder: (_, __, ___) => Container(
-            color: const Color(0xFFFFF5F0),
+            color: AppColors.gray50,
             child: const Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -732,7 +732,8 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
 }
 
-/// 본문 줄공책 — 읽기 전용. 텍스트는 정확히 [DiaryStyle.rowHeight] 간격으로 정렬.
+/// 본문 줄공책 — 읽기 전용. 텍스트 strut 이 [DiaryStyle.rowHeight] 라인 박스를 강제하고
+/// painter 는 baseline 살짝 아래(firstLineY)에 줄을 그어 공책처럼 정렬된다.
 class _RuledText extends StatelessWidget {
   const _RuledText({required this.text});
   final String text;
@@ -746,11 +747,15 @@ class _RuledText extends StatelessWidget {
       height: DiaryStyle.contentLineHeight,
       color: DiaryStyle.textPrimary,
     );
+    // strut 의 fontFamily 가 비면 플랫폼 기본 폰트로 line metrics 가 계산되어
+    // Inter 의 baseline 과 어긋날 수 있다. fontFamily 를 명시해 동기화.
     const strut = StrutStyle(
+      fontFamily: 'Inter',
       fontSize: DiaryStyle.contentFontSize,
       height: DiaryStyle.contentLineHeight,
       forceStrutHeight: true,
       leading: 0,
+      leadingDistribution: TextLeadingDistribution.even,
     );
     return ConstrainedBox(
       constraints: const BoxConstraints(
@@ -765,6 +770,9 @@ class _RuledText extends StatelessWidget {
               text.isEmpty ? ' ' : text,
               style: style,
               strutStyle: strut,
+              textHeightBehavior: const TextHeightBehavior(
+                leadingDistribution: TextLeadingDistribution.even,
+              ),
             ),
           ),
         ],
