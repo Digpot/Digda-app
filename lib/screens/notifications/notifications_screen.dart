@@ -116,9 +116,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _onNotificationTap(AppNotification n) async {
-    // 읽지 않은 알림이면 즉시 UI 업데이트(낙관적 처리) 후 서버 요청.
+    // 안읽음 알림은 사용자가 의도치 않게 한 번 탭으로 읽음 처리되는 걸 막기 위해
+    // 확인 다이얼로그를 거친다(모두읽음 과 동일한 UX). 읽음 상태면 바로 딥링크.
     if (!n.isRead) {
-      if (!mounted) return;
+      final confirmed = await _confirmMarkRead();
+      if (!mounted || confirmed != true) return;
+      // 낙관적 UI 업데이트 후 서버 요청.
       setState(() {
         _items = _items
             .map((it) => it.id == n.id
@@ -160,6 +163,61 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         arguments: {'name': n.groupRoomName},
       );
     }
+  }
+
+  Future<bool?> _confirmMarkRead() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '알림 확인',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: const Text(
+          '이 알림을 읽음 처리할까요?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 와이어프레임 기준 시간 표기:

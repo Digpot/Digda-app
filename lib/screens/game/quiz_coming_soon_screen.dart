@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
-import '../../widgets/center_title_header.dart';
 
 class QuizComingSoonScreen extends StatelessWidget {
   const QuizComingSoonScreen({super.key});
@@ -13,9 +12,25 @@ class QuizComingSoonScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            CenterTitleHeader(
-              title: '퀴즈',
-              onBack: () => Navigator.of(context).pop(),
+            // 하단 탭 진입점이라 뒤로가기 없이 좌측 정렬 타이틀로 통일
+            // (그룹 홈·캘린더·일기 탭과 동일 패턴).
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: SizedBox(
+                height: 36,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '퀴즈',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                ),
+              ),
             ),
             const Spacer(flex: 2),
             Container(

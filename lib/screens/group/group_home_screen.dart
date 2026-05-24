@@ -105,20 +105,10 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              // 그룹 홈은 하단 탭 진입점이므로 뒤로가기 화살표 없이
+              // 다른 탭(캘린더·일기·퀴즈) 과 동일한 좌측 정렬 타이틀로 통일.
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      Di.activeGroup.clear();
-                      Navigator.of(context).pop();
-                    },
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      size: 14,
-                      color: AppColors.gray900,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       dynamicName,
