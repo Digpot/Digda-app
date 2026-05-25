@@ -83,7 +83,7 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         );
         imageId = uploaded.id;
       }
-      await Di.diaryRepository.create(
+      final created = await Di.diaryRepository.create(
         groupId,
         DiaryWriteRequest.create(
           title: _titleController.text.trim(),
@@ -95,7 +95,10 @@ class _WriteDiaryScreenState extends State<WriteDiaryScreen> {
         ),
       );
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pushReplacementNamed(
+        '/diary-detail',
+        arguments: created.id,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);

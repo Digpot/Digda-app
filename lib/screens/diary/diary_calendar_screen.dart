@@ -57,7 +57,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
             .map((d) => DateTime.utc(d.year, d.month, d.day))
             .toSet();
         _monthDiaries = list.diaries;
-        _recent = list.diaries.take(5).toList();
+        _recent = list.diaries.take(3).toList();
       });
     } catch (e) {
       if (!mounted) return;
