@@ -1,11 +1,19 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/common/models/common_models.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/diary_paper.dart';
+import 'diary_delete_sheet.dart';
 
+/// 일기 상세 — docs/re/reDiary_read.png 스펙 기반 리뉴얼.
 class DiaryDetailScreen extends StatefulWidget {
   const DiaryDetailScreen({super.key});
 
@@ -14,12 +22,26 @@ class DiaryDetailScreen extends StatefulWidget {
 }
 
 class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
-  bool _showMenu = false;
+  static const Color _coral = Color(0xFFFF6B6B);
+  static const Color _coralSoft = Color(0xFFFFEDED);
+  static const Color _ink = Color(0xFF191F28);
+  static const Color _sub = Color(0xFF4E5968);
+  static const Color _muted = Color(0xFF8B95A1);
+  static const Color _line = Color(0xFFF2F4F6);
+  static const Color _chipBg = Color(0xFFF6F7F9);
+
   bool _loading = true;
-  bool _argsConsumed = false;
   String? _errorMessage;
-  DiaryDetail? _detail;
+  bool _argsConsumed = false;
   String? _diaryId;
+
+  DiaryDetail? _detail;
+  int _heroIndex = 0;
+  late final PageController _photoController = PageController();
+
+  final TextEditingController _commentController = TextEditingController();
+  final FocusNode _commentFocus = FocusNode();
+  bool _commentSending = false;
 
   @override
   void didChangeDependencies() {
@@ -29,6 +51,14 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is String) _diaryId = args;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _photoController.dispose();
+    _commentController.dispose();
+    _commentFocus.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -51,6 +81,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       setState(() {
         _detail = detail;
         _loading = false;
+        if (_heroIndex >= detail.diary.imageUrls.length) _heroIndex = 0;
       });
     } catch (e) {
       if (!mounted) return;
@@ -61,581 +92,548 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     }
   }
 
-  Future<void> _onEditTap() async {
-    setState(() => _showMenu = false);
-    await Navigator.of(context).pushNamed('/edit-diary', arguments: _diaryId);
-    if (!mounted) return;
-    _load();
-  }
-
-  Future<void> _confirmDelete() async {
+  Future<void> _toggleLike() async {
+    final detail = _detail;
     final groupId = Di.activeGroup.groupRoomId;
-    final diaryId = _diaryId;
-    if (groupId == null || diaryId == null) {
-      Navigator.of(context).pop();
-      Navigator.of(context).pop();
-      return;
-    }
+    if (detail == null || groupId == null) return;
+    final original = detail.diary;
+    final optimistic = _replaceDiary(
+      original.copyWith(
+        likedByMe: !original.likedByMe,
+        likeCount: original.likedByMe
+            ? (original.likeCount - 1).clamp(0, 1 << 30)
+            : original.likeCount + 1,
+      ),
+    );
+    setState(() => _detail = optimistic);
     try {
-      await Di.diaryRepository.delete(groupId, diaryId);
+      final res =
+          await Di.diaryRepository.toggleLike(groupId, original.id);
       if (!mounted) return;
-      Navigator.of(context).pop(); // 시트 닫기
-      Navigator.of(context).pop(); // detail 닫기
+      setState(() => _detail = _replaceDiary(
+            optimistic.diary.copyWith(
+              likedByMe: res.likedByMe,
+              likeCount: res.likeCount,
+            ),
+          ));
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop();
+      setState(() => _detail = _replaceDiary(original));
       showErrorDialog(context, errorMessageOf(e));
     }
   }
 
-  void _onDeleteTap() {
-    setState(() => _showMenu = false);
-    showModalBottomSheet(
+  Future<void> _toggleReaction(DiaryReactionType type) async {
+    final detail = _detail;
+    final groupId = Di.activeGroup.groupRoomId;
+    if (detail == null || groupId == null) return;
+    try {
+      final res = await Di.diaryRepository
+          .toggleReaction(groupId, detail.diary.id, type);
+      if (!mounted) return;
+      setState(() => _detail = _replaceDiary(
+            detail.diary.copyWith(reactions: res.reactions),
+          ));
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
+  DiaryDetail _replaceDiary(Diary diary) =>
+      DiaryDetail(diary: diary, comments: _detail!.comments);
+
+  Future<void> _sendComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty || _commentSending) return;
+    final groupId = Di.activeGroup.groupRoomId;
+    final detail = _detail;
+    if (groupId == null || detail == null) return;
+    setState(() => _commentSending = true);
+    try {
+      final created = await Di.commentRepository.writeOnDiary(
+        groupRoomId: groupId,
+        diaryId: detail.diary.id,
+        text: text,
+      );
+      if (!mounted) return;
+      _commentController.clear();
+      _commentFocus.unfocus();
+      setState(() {
+        _detail = DiaryDetail(
+          diary: detail.diary,
+          comments: [...detail.comments, created],
+        );
+        _commentSending = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _commentSending = false);
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
+  Future<void> _onEditTap() async {
+    final diaryId = _diaryId;
+    if (diaryId == null) return;
+    await Navigator.of(context)
+        .pushNamed('/edit-diary', arguments: diaryId);
+    if (!mounted) return;
+    _load();
+  }
+
+  void _openMoreMenu() {
+    final detail = _detail;
+    if (detail == null) return;
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(builder: (ctx) {
+      return _MoreMenuOverlay(
+        onClose: () => entry.remove(),
+        onEdit: () {
+          entry.remove();
+          _onEditTap();
+        },
+        onShare: () {
+          entry.remove();
+          _showCopiedToast('공유 기능은 곧 제공돼요');
+        },
+        onCopyLink: () {
+          entry.remove();
+          Clipboard.setData(
+            ClipboardData(text: '디그팟 일기 #${detail.diary.id}'),
+          );
+          _showCopiedToast('링크를 복사했어요');
+        },
+        onDelete: _isMine
+            ? () {
+                entry.remove();
+                _openDeleteSheet();
+              }
+            : null,
+      );
+    });
+    overlay.insert(entry);
+  }
+
+  void _openDeleteSheet() {
+    final detail = _detail;
+    if (detail == null) return;
+    showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (_) => DiaryDeleteSheet(
+        diary: detail.diary,
+        commentCount: detail.comments.length,
+        onConfirm: _confirmDelete,
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final diaryId = _diaryId;
+    if (groupId == null || diaryId == null) return false;
+    try {
+      await Di.diaryRepository.delete(groupId, diaryId);
+      if (mounted) {
+        Navigator.of(context).pop();
+        _showCopiedToast('일기를 삭제했어요');
+      }
+      return true;
+    } catch (e) {
+      if (mounted) showErrorDialog(context, errorMessageOf(e));
+      return false;
+    }
+  }
+
+  void _showCopiedToast(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: _ink,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.gray200,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: DiaryStyle.accent.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.delete_outline_rounded,
-                color: DiaryStyle.accent,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '일기를 삭제할까요?',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-                color: DiaryStyle.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              '삭제한 일기는 되돌릴 수 없어요',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                fontSize: 14,
-                color: DiaryStyle.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.gray200),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        '취소',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: AppColors.gray700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _confirmDelete,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: DiaryStyle.accent,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        '삭제',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-          ],
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: AppColors.white,
+          ),
         ),
       ),
     );
+  }
+
+  bool get _isMine {
+    final detail = _detail;
+    if (detail == null) return false;
+    final myId = Di.userSession.profile?.id;
+    return myId != null && detail.diary.createdBy.id == myId;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DiaryStyle.pageBg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _buildAppBar(),
-                Expanded(child: _buildBody()),
-              ],
-            ),
-            if (_showMenu) ...[
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: () => setState(() => _showMenu = false),
-                  child: Container(color: Colors.transparent),
-                ),
-              ),
-              Positioned(
-                top: 46,
-                right: 14,
-                child: _buildDropdownMenu(),
-              ),
-            ],
-          ],
-        ),
-      ),
+      backgroundColor: AppColors.white,
+      body: _loading
+          ? _buildLoading()
+          : _errorMessage != null
+              ? _buildError()
+              : _buildContent(context),
     );
   }
 
-  Widget _buildAppBar() {
-    return Container(
-      color: DiaryStyle.pageBg,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: SizedBox(
-        height: 44,
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(
-                Icons.arrow_back_ios_rounded,
-                size: 18,
-                color: DiaryStyle.textPrimary,
-              ),
-              splashRadius: 22,
-            ),
-            const Spacer(),
-            if (_detail != null)
-              IconButton(
-                onPressed: () => setState(() => _showMenu = !_showMenu),
-                icon: const Icon(
-                  Icons.more_horiz_rounded,
-                  size: 22,
-                  color: DiaryStyle.textPrimary,
-                ),
-                splashRadius: 22,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: DiaryStyle.accent),
+  Widget _buildLoading() => const Center(
+        child: CircularProgressIndicator(color: _coral),
       );
-    }
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline,
-                size: 48, color: AppColors.gray400),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                  color: AppColors.gray700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: _load,
-              child: const Text(
-                '다시 시도',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: DiaryStyle.accent,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    final diary = _detail!.diary;
-    final weather = diaryWeatherOf(diary.weather);
-    final mood = diaryMoodOf(diary.mood);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        DiaryStyle.pagePadding,
-        8,
-        DiaryStyle.pagePadding,
-        32,
-      ),
-      child: Column(
-        children: [
-          _buildHeaderCard(diary, weather, mood),
-          const SizedBox(height: DiaryStyle.sectionGap),
-          if (diary.imageUrl != null && diary.imageUrl!.isNotEmpty) ...[
-            _buildPhotoCard(diary.imageUrl!),
-            const SizedBox(height: DiaryStyle.sectionGap),
-          ],
-          _buildContentCard(diary.content),
-          const SizedBox(height: DiaryStyle.sectionGap),
-          _buildAuthorCard(diary),
-        ],
-      ),
-    );
-  }
 
-  // ── 헤더 카드 ────────────────────────────────────────────────
-  Widget _buildHeaderCard(
-    Diary diary,
-    DiaryWeatherOption weather,
-    DiaryMoodOption mood,
-  ) {
-    return DiaryPaperCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildError() {
+    return SafeArea(
+      child: Stack(
         children: [
-          const DiaryCardAccentBar(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '날짜',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w500,
-                          fontSize: 11,
-                          color: DiaryStyle.labelBrown,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        formatDiaryDate(diary.date),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: DiaryStyle.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildReadOnlyChip(
-                  icon: weather.icon,
-                  iconColor: weather.color,
-                  label: weather.label,
-                ),
-                const SizedBox(width: 8),
-                _buildReadOnlyChip(
-                  emoji: mood.emoji,
-                  label: mood.label,
-                ),
-              ],
-            ),
-          ),
-          Container(height: 1, color: DiaryStyle.cardBorder),
-          Container(
-            color: AppColors.gray50,
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(
-                  width: 40,
-                  child: Text(
-                    '제목',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: DiaryStyle.labelBrown,
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 18,
-                  color: DiaryStyle.cardBorder,
-                  margin: const EdgeInsets.only(right: 12),
-                ),
-                Expanded(
-                  child: Text(
-                    diary.title,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      height: 1.4,
-                      color: DiaryStyle.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReadOnlyChip({
-    IconData? icon,
-    Color? iconColor,
-    String? emoji,
-    required String label,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: DiaryStyle.accentSoft,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null)
-            Icon(icon, size: 14, color: iconColor)
-          else if (emoji != null)
-            Text(emoji, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              color: DiaryStyle.accent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── 사진 카드 ────────────────────────────────────────────────
-  Widget _buildPhotoCard(String imageUrl) {
-    return DiaryPaperCard(
-      child: AspectRatio(
-        aspectRatio: 4 / 3,
-        child: Image.network(
-          imageUrl,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return Container(
-              color: AppColors.gray50,
-              child: const Center(
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: DiaryStyle.accent,
-                  ),
-                ),
-              ),
-            );
-          },
-          errorBuilder: (_, __, ___) => Container(
-            color: AppColors.gray50,
-            child: const Center(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.broken_image_outlined,
-                      size: 32, color: DiaryStyle.labelBrown),
-                  SizedBox(height: 6),
+                  const Icon(Icons.error_outline,
+                      size: 48, color: _muted),
+                  const SizedBox(height: 12),
                   Text(
-                    '사진을 불러올 수 없어요',
-                    style: TextStyle(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 12,
-                      color: DiaryStyle.textSecondary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: _sub,
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _load,
+                    child: const Text('다시 시도'),
                   ),
                 ],
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  // ── 본문 카드 (읽기 전용 줄공책) ─────────────────────────────
-  Widget _buildContentCard(String content) {
-    return DiaryPaperCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const DiaryCardAccentBar(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.menu_book_rounded,
-                  size: 18,
-                  color: DiaryStyle.labelBrown,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  '오늘의 이야기',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: DiaryStyle.labelBrown,
-                  ),
-                ),
-              ],
+          Positioned(
+            top: 12,
+            left: 12,
+            child: _CircleIconButton(
+              icon: Icons.arrow_back_ios_new_rounded,
+              onTap: () => Navigator.of(context).pop(),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-            child: _RuledText(text: content),
           ),
         ],
       ),
     );
   }
 
-  // ── 작성자 카드 ─────────────────────────────────────────────
-  Widget _buildAuthorCard(Diary diary) {
-    final author = diary.createdBy;
-    final initial = author.name.isNotEmpty ? author.name[0] : '?';
-    return DiaryPaperCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+  Widget _buildContent(BuildContext context) {
+    final diary = _detail!.diary;
+    final mediaQuery = MediaQuery.of(context);
+    final heroHeight = mediaQuery.size.height * 0.45;
+    final bottomInsets = mediaQuery.viewInsets.bottom;
+
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(bottom: 110 + bottomInsets),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHero(diary, heroHeight),
+                    Transform.translate(
+                      offset: const Offset(0, -40),
+                      child: _buildSheet(diary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: mediaQuery.padding.top + 12,
+          child: _buildFloatingBar(diary),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _buildCommentBar(),
+        ),
+      ],
+    );
+  }
+
+  // ── Hero photo ───────────────────────────────────────────────────────
+  Widget _buildHero(Diary diary, double height) {
+    final urls = diary.imageUrls;
+    if (urls.isEmpty) {
+      return Container(
+        height: height,
+        color: _chipBg,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_outlined, size: 48, color: _muted),
+      );
+    }
+    return SizedBox(
+      height: height,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _photoController,
+            itemCount: urls.length,
+            onPageChanged: (i) => setState(() => _heroIndex = i),
+            itemBuilder: (_, index) => Image.network(
+              urls[index],
+              fit: BoxFit.cover,
+              width: double.infinity,
+              errorBuilder: (_, __, ___) => Container(
+                color: _chipBg,
+                alignment: Alignment.center,
+                child: const Icon(Icons.broken_image_outlined,
+                    size: 36, color: _muted),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.35),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.45],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (urls.length > 1)
+            Positioned(
+              right: 16,
+              bottom: 56,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${_heroIndex + 1}/${urls.length}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Floating bar ─────────────────────────────────────────────────────
+  Widget _buildFloatingBar(Diary diary) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: DiaryStyle.accent.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: (author.profileImage != null &&
-                    author.profileImage!.isNotEmpty)
-                ? Image.network(
-                    author.profileImage!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _avatarFallback(initial),
-                  )
-                : _avatarFallback(initial),
+          _CircleIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () => Navigator.of(context).pop(),
           ),
+          const Spacer(),
+          _CircleIconButton(
+            icon: diary.likedByMe
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            iconColor: diary.likedByMe ? _coral : AppColors.white,
+            onTap: _toggleLike,
+          ),
+          const SizedBox(width: 10),
+          _CircleIconButton(
+            icon: Icons.more_horiz_rounded,
+            onTap: _openMoreMenu,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── White sheet ──────────────────────────────────────────────────────
+  Widget _buildSheet(Diary diary) {
+    final author = diary.createdBy;
+    final dateText = _formatDate(diary.date);
+    final groupName = Di.activeGroup.groupRoomName ?? '그룹';
+    final timeText = _relativeTime(diary.createdAt);
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildChips(diary),
+          const SizedBox(height: 16),
+          Text(
+            diary.title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w800,
+              fontSize: 26,
+              height: 1.25,
+              letterSpacing: -0.5,
+              color: _ink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            dateText,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: _muted,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _buildAuthorRow(author.name, groupName, timeText,
+              author.profileImage),
+          const SizedBox(height: 18),
+          Text(
+            diary.content,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 16,
+              height: 1.7,
+              color: _ink,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildReactionRow(diary),
+          const SizedBox(height: 24),
+          _buildCommentSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChips(Diary diary) {
+    final weather = diaryWeatherOf(diary.weather);
+    final mood = diaryMoodOf(diary.mood);
+    final chips = <Widget>[
+      _MetaChip(
+        label: weather.label,
+        emoji: weather.emoji,
+        background: const Color(0xFFFEF3C7),
+        foreground: const Color(0xFFB45309),
+      ),
+      _MetaChip(
+        label: mood.label,
+        emoji: mood.emoji,
+        background: _coralSoft,
+        foreground: _coral,
+      ),
+      if ((diary.location ?? '').isNotEmpty)
+        _MetaChip(
+          label: diary.location!,
+          emoji: '📍',
+          background: const Color(0xFFEDE9FE),
+          foreground: const Color(0xFF6D28D9),
+        ),
+    ];
+    return Wrap(spacing: 8, runSpacing: 8, children: chips);
+  }
+
+  Widget _buildAuthorRow(
+    String name,
+    String groupName,
+    String timeText,
+    String? profileImage,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: _line),
+          bottom: BorderSide(color: _line),
+        ),
+      ),
+      child: Row(
+        children: [
+          _Avatar(name: name, image: profileImage, size: 44),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  author.name,
+                  name,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: DiaryStyle.textPrimary,
+                    fontSize: 15,
+                    color: _ink,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${formatDiaryTimestamp(diary.createdAt)}에 작성',
+                  '$groupName · $timeText',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w400,
                     fontSize: 12,
-                    color: DiaryStyle.textSecondary,
+                    color: _muted,
                   ),
                 ),
               ],
             ),
           ),
-          Material(
-            color: DiaryStyle.accent,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              onTap: _onEditTap,
-              borderRadius: BorderRadius.circular(20),
-              splashColor: AppColors.white.withValues(alpha: 0.3),
-              highlightColor: AppColors.white.withValues(alpha: 0.15),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Text(
-                  '수정하기',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: AppColors.white,
-                  ),
-                ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: _coralSoft,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              '함께 보기',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: _coral,
               ),
             ),
           ),
@@ -644,86 +642,278 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     );
   }
 
-  Widget _avatarFallback(String initial) {
-    return Center(
-      child: Text(
-        initial,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w700,
-          fontSize: 16,
-          color: DiaryStyle.accent,
+  Widget _buildReactionRow(Diary diary) {
+    final byType = {for (final r in diary.reactions) r.type: r};
+    return Row(
+      children: [
+        for (final t in DiaryReactionType.values)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _ReactionPill(
+              emoji: _emojiOf(t),
+              count: byType[t]?.count ?? 0,
+              active: byType[t]?.reactedByMe ?? false,
+              onTap: () => _toggleReaction(t),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCommentSection() {
+    final comments = _detail?.comments ?? const [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '댓글 ${comments.length}',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            color: _ink,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (comments.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              '첫 댓글을 남겨보세요.',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: _muted,
+              ),
+            ),
+          )
+        else
+          for (final c in comments)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _CommentRow(comment: c),
+            ),
+      ],
+    );
+  }
+
+  // ── Bottom sticky comment bar ────────────────────────────────────────
+  Widget _buildCommentBar() {
+    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+    final myName = Di.userSession.profile?.name ?? '나';
+    final myImage = Di.userSession.profile?.profileImage;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          color: AppColors.white.withValues(alpha: 0.96),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            10,
+            10 + bottomPad + MediaQuery.of(context).padding.bottom,
+          ),
+          child: Row(
+            children: [
+              _Avatar(name: myName, image: myImage, size: 36),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _chipBg,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: TextField(
+                    controller: _commentController,
+                    focusNode: _commentFocus,
+                    cursorColor: _coral,
+                    maxLength: 200,
+                    minLines: 1,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendComment(),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: _ink,
+                    ),
+                    decoration: const InputDecoration(
+                      isCollapsed: true,
+                      counterText: '',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      hintText: '댓글로 마음을 남겨보세요',
+                      hintStyle: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: _muted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _sendComment,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: _coral,
+                    shape: BoxShape.circle,
+                  ),
+                  child: _commentSending
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.arrow_upward_rounded,
+                          size: 20,
+                          color: AppColors.white,
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDropdownMenu() {
-    return Container(
-      width: 148,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+  static String _formatDate(DateTime d) {
+    final weekday =
+        ['월', '화', '수', '목', '금', '토', '일'][d.weekday - 1];
+    return DateFormat('yyyy년 M월 d일').format(d) + ' · $weekday요일';
+  }
+
+  static String _relativeTime(DateTime t) {
+    final diff = DateTime.now().difference(t.toLocal());
+    if (diff.inMinutes < 1) return '방금 전';
+    if (diff.inHours < 1) return '${diff.inMinutes}분 전';
+    if (diff.inDays < 1) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return DateFormat('M월 d일').format(t.toLocal());
+  }
+
+  static String _emojiOf(DiaryReactionType t) {
+    switch (t) {
+      case DiaryReactionType.heart:
+        return '❤️';
+      case DiaryReactionType.cry:
+        return '🥹';
+      case DiaryReactionType.sparkle:
+        return '✨';
+      case DiaryReactionType.laugh:
+        return '😆';
+      case DiaryReactionType.fire:
+        return '🔥';
+    }
+  }
+}
+
+extension on Diary {
+  Diary copyWith({
+    int? likeCount,
+    bool? likedByMe,
+    List<DiaryReactionSummary>? reactions,
+  }) {
+    return Diary(
+      id: id,
+      title: title,
+      content: content,
+      date: date,
+      weather: weather,
+      mood: mood,
+      location: location,
+      imageUrls: imageUrls,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      likeCount: likeCount ?? this.likeCount,
+      likedByMe: likedByMe ?? this.likedByMe,
+      reactions: reactions ?? this.reactions,
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Sub widgets
+// ──────────────────────────────────────────────────────────────────────
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    this.iconColor = AppColors.white,
+  });
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
           ),
-        ],
+        ),
       ),
-      child: Column(
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({
+    required this.label,
+    required this.emoji,
+    required this.background,
+    required this.foreground,
+  });
+  final String label;
+  final String emoji;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            onTap: _onEditTap,
-            behavior: HitTestBehavior.opaque,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined,
-                      size: 18, color: DiaryStyle.textPrimary),
-                  SizedBox(width: 10),
-                  Text(
-                    '편집',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      color: DiaryStyle.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            color: AppColors.gray100,
-          ),
-          GestureDetector(
-            onTap: _onDeleteTap,
-            behavior: HitTestBehavior.opaque,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Icon(Icons.delete_outline_rounded,
-                      size: 18, color: DiaryStyle.accent),
-                  SizedBox(width: 10),
-                  Text(
-                    '삭제',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      color: DiaryStyle.accent,
-                    ),
-                  ),
-                ],
-              ),
+          Text(emoji, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: foreground,
             ),
           ),
         ],
@@ -732,26 +922,363 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
 }
 
-/// 본문 줄공책 — 읽기 전용. [RuledContentBox] 가 실측 baseline 으로 줄을 긋는다.
-class _RuledText extends StatelessWidget {
-  const _RuledText({required this.text});
-  final String text;
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.name, required this.image, required this.size});
+  final String name;
+  final String? image;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    return RuledContentBox(
-      textForMeasure: text,
-      child: SizedBox(
-        width: double.infinity,
+    final initial = name.isNotEmpty ? name[0] : '?';
+    final hasImage = image != null && image!.isNotEmpty;
+    return Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFFFFEDED),
+      ),
+      child: hasImage
+          ? Image.network(image!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _fallback(initial))
+          : _fallback(initial),
+    );
+  }
+
+  Widget _fallback(String initial) => Center(
         child: Text(
-          text.isEmpty ? ' ' : text,
-          style: diaryContentTextStyle,
-          strutStyle: diaryContentStrutStyle,
-          textHeightBehavior: const TextHeightBehavior(
-            leadingDistribution: TextLeadingDistribution.even,
+          initial,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: size * 0.4,
+            color: const Color(0xFFFF6B6B),
           ),
         ),
+      );
+}
+
+class _ReactionPill extends StatelessWidget {
+  const _ReactionPill({
+    required this.emoji,
+    required this.count,
+    required this.active,
+    required this.onTap,
+  });
+  final String emoji;
+  final int count;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFFFEDED) : const Color(0xFFF6F7F9),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: active ? const Color(0xFFFF6B6B) : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: active
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFF4E5968),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _CommentRow extends StatelessWidget {
+  const _CommentRow({required this.comment});
+  final CommentEntity comment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Avatar(
+            name: comment.createdBy.name,
+            image: comment.createdBy.profileImage,
+            size: 36),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6F7F9),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      comment.createdBy.name,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: Color(0xFF4E5968),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      comment.text,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        height: 1.5,
+                        color: Color(0xFF191F28),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _relativeTime(comment.createdAt),
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                  color: Color(0xFF8B95A1),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String _relativeTime(DateTime t) {
+    final diff = DateTime.now().difference(t.toLocal());
+    if (diff.inMinutes < 1) return '방금 전';
+    if (diff.inHours < 1) return '${diff.inMinutes}분 전';
+    if (diff.inDays < 1) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return DateFormat('M월 d일').format(t.toLocal());
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// More menu (popover)
+// ──────────────────────────────────────────────────────────────────────
+
+class _MoreMenuOverlay extends StatelessWidget {
+  const _MoreMenuOverlay({
+    required this.onClose,
+    required this.onEdit,
+    required this.onShare,
+    required this.onCopyLink,
+    this.onDelete,
+  });
+  final VoidCallback onClose;
+  final VoidCallback onEdit;
+  final VoidCallback onShare;
+  final VoidCallback onCopyLink;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.of(context).padding.top + 56;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onClose,
+          ),
+        ),
+        Positioned(
+          right: 16,
+          top: top,
+          child: _AnimatedAppear(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 200,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _MoreMenuRow(
+                      icon: Icons.edit_outlined,
+                      label: '수정하기',
+                      onTap: onEdit,
+                    ),
+                    _MoreMenuRow(
+                      icon: Icons.share_outlined,
+                      label: '공유하기',
+                      onTap: onShare,
+                    ),
+                    _MoreMenuRow(
+                      icon: Icons.link_rounded,
+                      label: '링크 복사',
+                      onTap: onCopyLink,
+                    ),
+                    if (onDelete != null) ...[
+                      const Divider(
+                        height: 8,
+                        thickness: 1,
+                        color: Color(0xFFF2F4F6),
+                        indent: 8,
+                        endIndent: 8,
+                      ),
+                      _MoreMenuRow(
+                        icon: Icons.delete_outline_rounded,
+                        label: '삭제하기',
+                        iconColor: const Color(0xFFFF6B6B),
+                        labelColor: const Color(0xFFFF6B6B),
+                        iconBg: const Color(0xFFFFEDED),
+                        onTap: onDelete!,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MoreMenuRow extends StatelessWidget {
+  const _MoreMenuRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.iconColor = const Color(0xFF4E5968),
+    this.labelColor = const Color(0xFF191F28),
+    this.iconBg = const Color(0xFFF6F7F9),
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color iconColor;
+  final Color labelColor;
+  final Color iconBg;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: labelColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedAppear extends StatefulWidget {
+  const _AnimatedAppear({required this.child});
+  final Widget child;
+
+  @override
+  State<_AnimatedAppear> createState() => _AnimatedAppearState();
+}
+
+class _AnimatedAppearState extends State<_AnimatedAppear>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+  )..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, child) {
+        final t = Curves.easeOut.transform(_c.value);
+        return Opacity(
+          opacity: t,
+          child: Transform.scale(
+            scale: 0.95 + 0.05 * t,
+            alignment: Alignment.topRight,
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }

@@ -92,21 +92,25 @@ const List<DiaryWeatherOption> diaryWeatherOptions = [
     icon: Icons.wb_sunny_rounded,
     label: '맑음',
     color: Color(0xFFFBBF24),
+    emoji: '☀️',
   ),
   DiaryWeatherOption(
     icon: Icons.wb_cloudy_rounded,
-    label: '흐림',
+    label: '구름',
     color: AppColors.gray400,
+    emoji: '⛅',
   ),
   DiaryWeatherOption(
     icon: Icons.grain_rounded,
     label: '비',
     color: AppColors.blue,
+    emoji: '🌧',
   ),
   DiaryWeatherOption(
     icon: Icons.ac_unit_rounded,
     label: '눈',
     color: AppColors.saturdayBlue,
+    emoji: '❄️',
   ),
 ];
 
@@ -115,18 +119,21 @@ class DiaryWeatherOption {
     required this.icon,
     required this.label,
     required this.color,
+    required this.emoji,
   });
   final IconData icon;
   final String label;
   final Color color;
+  final String emoji;
 }
 
-/// 기분 옵션 — emoji + label
+/// 기분 옵션 — emoji + label (서버 mood 인덱스 0..4)
 const List<DiaryMoodOption> diaryMoodOptions = [
   DiaryMoodOption(emoji: '😊', label: '행복'),
-  DiaryMoodOption(emoji: '😍', label: '사랑'),
-  DiaryMoodOption(emoji: '😂', label: '웃음'),
-  DiaryMoodOption(emoji: '🥰', label: '뿌듯'),
+  DiaryMoodOption(emoji: '😌', label: '평온'),
+  DiaryMoodOption(emoji: '😔', label: '슬픔'),
+  DiaryMoodOption(emoji: '😤', label: '화남'),
+  DiaryMoodOption(emoji: '🥱', label: '피곤'),
 ];
 
 class DiaryMoodOption {

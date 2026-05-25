@@ -89,4 +89,25 @@ class DiaryRepository {
   Future<void> delete(String groupRoomId, String diaryId) async {
     await _api.delete<void>('/group-rooms/$groupRoomId/diaries/$diaryId');
   }
+
+  /// 7-7. 일기 좋아요 토글.
+  Future<DiaryLikeResult> toggleLike(String groupRoomId, String diaryId) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/diaries/$diaryId/like',
+    );
+    return DiaryLikeResult.fromJson(res.data!);
+  }
+
+  /// 7-8. 일기 이모지 리액션 토글.
+  Future<DiaryReactionToggleResult> toggleReaction(
+    String groupRoomId,
+    String diaryId,
+    DiaryReactionType type,
+  ) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/diaries/$diaryId/reactions',
+      body: {'type': type.wire},
+    );
+    return DiaryReactionToggleResult.fromJson(res.data!);
+  }
 }

@@ -10,6 +10,49 @@ DateTime _parseUtc(String s) {
   return DateTime.parse(s);
 }
 
+/// 이모지 리액션 종류. 서버 enum 과 일치.
+enum DiaryReactionType {
+  heart('HEART'),
+  cry('CRY'),
+  sparkle('SPARKLE'),
+  laugh('LAUGH'),
+  fire('FIRE');
+
+  const DiaryReactionType(this.wire);
+
+  /// 서버에서 받은 enum name 문자열.
+  final String wire;
+
+  static DiaryReactionType? tryParse(String? s) {
+    if (s == null) return null;
+    for (final t in values) {
+      if (t.wire == s) return t;
+    }
+    return null;
+  }
+}
+
+class DiaryReactionSummary {
+  DiaryReactionSummary({
+    required this.type,
+    required this.count,
+    required this.reactedByMe,
+  });
+
+  final DiaryReactionType type;
+  final int count;
+  final bool reactedByMe;
+
+  factory DiaryReactionSummary.fromJson(Map<String, dynamic> json) {
+    return DiaryReactionSummary(
+      type: DiaryReactionType.tryParse(json['type'] as String?) ??
+          DiaryReactionType.heart,
+      count: (json['count'] as num? ?? 0).toInt(),
+      reactedByMe: json['reactedByMe'] as bool? ?? false,
+    );
+  }
+}
+
 class DiarySummary {
   DiarySummary({
     required this.id,
@@ -17,20 +60,28 @@ class DiarySummary {
     required this.date,
     required this.weather,
     required this.mood,
-    this.imageUrl,
+    this.location,
+    this.thumbnailUrl,
+    required this.imageCount,
     required this.createdBy,
     required this.commentCount,
+    required this.likeCount,
+    required this.likedByMe,
     required this.createdAt,
   });
 
   final String id;
   final String title;
   final DateTime date;
-  final int weather; // 0 맑음 / 1 흐림 / 2 비 / 3 눈
-  final int mood; // 0 행복 / 1 사랑 / 2 웃음 / 3 뿌듯
-  final String? imageUrl;
+  final int weather; // 0 맑음 / 1 구름 / 2 비 / 3 눈
+  final int mood; // 0 행복 / 1 평온 / 2 슬픔 / 3 화남 / 4 피곤
+  final String? location;
+  final String? thumbnailUrl;
+  final int imageCount;
   final UserSummary createdBy;
   final int commentCount;
+  final int likeCount;
+  final bool likedByMe;
   final DateTime createdAt;
 
   factory DiarySummary.fromJson(Map<String, dynamic> json) {
@@ -40,10 +91,14 @@ class DiarySummary {
       date: _parseUtc(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
-      imageUrl: json['imageUrl'] as String?,
+      location: json['location'] as String?,
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      imageCount: (json['imageCount'] as num? ?? 0).toInt(),
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
       commentCount: (json['commentCount'] as num? ?? 0).toInt(),
+      likeCount: (json['likeCount'] as num? ?? 0).toInt(),
+      likedByMe: json['likedByMe'] as bool? ?? false,
       createdAt: _parseUtc(json['createdAt'] as String),
     );
   }
@@ -73,10 +128,14 @@ class Diary {
     required this.date,
     required this.weather,
     required this.mood,
-    this.imageUrl,
+    this.location,
+    required this.imageUrls,
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
+    required this.likeCount,
+    required this.likedByMe,
+    required this.reactions,
   });
 
   final String id;
@@ -85,10 +144,14 @@ class Diary {
   final DateTime date;
   final int weather;
   final int mood;
-  final String? imageUrl;
+  final String? location;
+  final List<String> imageUrls;
   final UserSummary createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int likeCount;
+  final bool likedByMe;
+  final List<DiaryReactionSummary> reactions;
 
   factory Diary.fromJson(Map<String, dynamic> json) {
     return Diary(
@@ -98,11 +161,20 @@ class Diary {
       date: _parseUtc(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
-      imageUrl: json['imageUrl'] as String?,
+      location: json['location'] as String?,
+      imageUrls: ((json['imageUrls'] as List?) ?? const [])
+          .map((e) => e as String)
+          .toList(),
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
       createdAt: _parseUtc(json['createdAt'] as String),
       updatedAt: _parseUtc(json['updatedAt'] as String),
+      likeCount: (json['likeCount'] as num? ?? 0).toInt(),
+      likedByMe: json['likedByMe'] as bool? ?? false,
+      reactions: ((json['reactions'] as List?) ?? const [])
+          .map((e) =>
+              DiaryReactionSummary.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
@@ -123,7 +195,36 @@ class DiaryDetail {
   }
 }
 
-/// 작성/수정 공용 요청. imageId 만 null 의미가 있음(이미지 삭제).
+class DiaryLikeResult {
+  DiaryLikeResult({required this.likedByMe, required this.likeCount});
+
+  final bool likedByMe;
+  final int likeCount;
+
+  factory DiaryLikeResult.fromJson(Map<String, dynamic> json) =>
+      DiaryLikeResult(
+        likedByMe: json['likedByMe'] as bool? ?? false,
+        likeCount: (json['likeCount'] as num? ?? 0).toInt(),
+      );
+}
+
+class DiaryReactionToggleResult {
+  DiaryReactionToggleResult({required this.reactions});
+
+  final List<DiaryReactionSummary> reactions;
+
+  factory DiaryReactionToggleResult.fromJson(Map<String, dynamic> json) =>
+      DiaryReactionToggleResult(
+        reactions: ((json['reactions'] as List?) ?? const [])
+            .map((e) =>
+                DiaryReactionSummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// 작성/수정 공용 요청.
+/// - [imageIds] : null=변경없음(수정시), 빈배열=이미지전부제거, 값=교체. 작성시엔 null=빈배열로 송신.
+/// - [location] : null=변경없음(수정시) 또는 미지정(작성시)
 class DiaryWriteRequest {
   const DiaryWriteRequest({
     this.title,
@@ -131,7 +232,8 @@ class DiaryWriteRequest {
     this.date,
     this.weather,
     this.mood,
-    this.imageId = unset,
+    this.location = unset,
+    this.imageIds = unset,
   });
 
   factory DiaryWriteRequest.create({
@@ -140,7 +242,8 @@ class DiaryWriteRequest {
     required DateTime date,
     required int weather,
     required int mood,
-    String? imageId,
+    String? location,
+    required List<String> imageIds,
   }) {
     return DiaryWriteRequest(
       title: title,
@@ -148,7 +251,8 @@ class DiaryWriteRequest {
       date: date,
       weather: weather,
       mood: mood,
-      imageId: imageId,
+      location: location,
+      imageIds: imageIds,
     );
   }
 
@@ -157,7 +261,8 @@ class DiaryWriteRequest {
   final DateTime? date;
   final int? weather;
   final int? mood;
-  final Object? imageId; // null=이미지 제거, unset=변경 없음
+  final Object? location; // unset=변경없음, null/빈문자열=제거, String=설정
+  final Object? imageIds; // unset=변경없음, List<String>(빈배열=제거, 값=교체)
 
   static const Object unset = Object();
 
@@ -170,7 +275,8 @@ class DiaryWriteRequest {
     if (date != null) body['date'] = f(date!);
     if (weather != null) body['weather'] = weather;
     if (mood != null) body['mood'] = mood;
-    if (!identical(imageId, unset)) body['imageId'] = imageId;
+    if (!identical(location, unset)) body['location'] = location;
+    if (!identical(imageIds, unset)) body['imageIds'] = imageIds;
     return body;
   }
 }
