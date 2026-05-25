@@ -26,4 +26,8 @@ class Env {
   static String get appleServiceId => dotenv.maybeGet('APPLE_SERVICE_ID') ?? '';
   static String get appleRedirectUri =>
       dotenv.maybeGet('APPLE_REDIRECT_URI') ?? '';
+
+  /// 카카오 로컬(지도) 검색 REST API 키. 비어 있으면 장소 검색 비활성.
+  static String get kakaoRestApiKey =>
+      dotenv.maybeGet('KAKAO_REST_API_KEY') ?? '';
 }
