@@ -855,7 +855,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
 
   Widget _buildDiaryItem(DiarySummary diary, int index) {
     final color = _accentPalette[index % _accentPalette.length];
-    final hasImage = diary.imageUrl != null && diary.imageUrl!.isNotEmpty;
+    final hasImage =
+        diary.thumbnailUrl != null && diary.thumbnailUrl!.isNotEmpty;
 
     return GestureDetector(
       onTap: () => Navigator.of(context)
@@ -912,7 +913,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  diary.imageUrl!,
+                  diary.thumbnailUrl!,
                   width: 52,
                   height: 52,
                   fit: BoxFit.cover,
