@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
+import '../../features/place/data/kakao_place_search.dart';
+import '../../features/place/models/place_models.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
@@ -148,10 +150,11 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
 
   Future<void> _pickPhoto() async {
     if (!_canAddImage) return;
-    final file = await pickImage(context);
-    if (file == null || !mounted) return;
+    final remaining = _maxImages - _totalImages;
+    final files = await pickImages(context, limit: remaining);
+    if (files.isEmpty || !mounted) return;
     setState(() {
-      _newFiles.add(file);
+      _newFiles.addAll(files.take(remaining));
       _dirty = true;
     });
   }
@@ -930,101 +933,20 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
     );
   }
 
-  void _openLocationSheet() {
-    showModalBottomSheet(
+  Future<void> _openLocationSheet() async {
+    final picked = await showModalBottomSheet<String?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD1D6DB),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '장소',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: _ink,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                autofocus: true,
-                controller: _locationController,
-                cursorColor: _coral,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: _ink,
-                ),
-                decoration: InputDecoration(
-                  hintText: '예: 성수동 카페',
-                  hintStyle: const TextStyle(color: _muted),
-                  filled: true,
-                  fillColor: _chipBg,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => Navigator.of(context).pop(),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    setState(() => _dirty = true);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _coral,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '확인',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (_) => _LocationSearchSheet(
+        initialQuery: _locationController.text,
       ),
     );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _locationController.text = picked;
+      _dirty = true;
+    });
   }
 
   static String _formatDate(DateTime d) {
@@ -1095,4 +1017,325 @@ class _DottedPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DottedPainter old) =>
       old.color != color || old.radius != radius;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 장소 검색 시트 — 카카오 로컬 키워드 검색
+// ──────────────────────────────────────────────────────────────────────
+
+class _LocationSearchSheet extends StatefulWidget {
+  const _LocationSearchSheet({required this.initialQuery});
+  final String initialQuery;
+
+  @override
+  State<_LocationSearchSheet> createState() => _LocationSearchSheetState();
+}
+
+class _LocationSearchSheetState extends State<_LocationSearchSheet> {
+  static const Color _coral = Color(0xFFFF6B6B);
+  static const Color _ink = Color(0xFF191F28);
+  static const Color _sub = Color(0xFF4E5968);
+  static const Color _muted = Color(0xFF8B95A1);
+  static const Color _line = Color(0xFFF2F4F6);
+  static const Color _chipBg = Color(0xFFF6F7F9);
+
+  final KakaoPlaceSearch _search = KakaoPlaceSearch();
+  late final TextEditingController _queryController =
+      TextEditingController(text: widget.initialQuery);
+  List<PlaceSummary> _results = const [];
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialQuery.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _runSearch());
+    }
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _runSearch() async {
+    final q = _queryController.text.trim();
+    if (q.isEmpty || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final list = await _search.search(q);
+      if (!mounted) return;
+      setState(() {
+        _results = list;
+        _busy = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = '검색에 실패했어요. 잠시 후 다시 시도해주세요.';
+      });
+    }
+  }
+
+  void _pickFreeText() {
+    final q = _queryController.text.trim();
+    if (q.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).pop(q);
+  }
+
+  void _pickPlace(PlaceSummary p) {
+    Navigator.of(context).pop(p.name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final keyboard = mediaQuery.viewInsets.bottom;
+    final sheetHeight = mediaQuery.size.height * 0.78;
+    final isConfigured = _search.isConfigured;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboard),
+      child: Container(
+        height: sheetHeight,
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1D6DB),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              '장소 검색',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                letterSpacing: -0.3,
+                color: _ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      autofocus: true,
+                      controller: _queryController,
+                      cursorColor: _coral,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _runSearch(),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: _ink,
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: _chipBg,
+                        prefixIcon: const Icon(Icons.search, color: _muted),
+                        hintText: isConfigured
+                            ? '장소 또는 주소를 검색해보세요'
+                            : '검색 키 미설정 — 직접 입력만 가능',
+                        hintStyle: const TextStyle(color: _muted),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: isConfigured ? _runSearch : null,
+                    child: Container(
+                      height: 48,
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 18),
+                      decoration: BoxDecoration(
+                        color: isConfigured ? _coral : _line,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '검색',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: isConfigured ? AppColors.white : _muted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(child: _buildBody(isConfigured)),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16, 8, 16, 12 + mediaQuery.padding.bottom * 0.5,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: _pickFreeText,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFD1D6DB)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    '입력한 그대로 저장',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: _sub,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(bool isConfigured) {
+    if (!isConfigured) {
+      return const _SheetHint(
+        icon: Icons.vpn_key_outlined,
+        title: '카카오 검색 키가 설정돼 있지 않아요',
+        message: '직접 입력 후 "입력한 그대로 저장"으로 사용해주세요.',
+      );
+    }
+    if (_busy) {
+      return const Center(child: CircularProgressIndicator(color: _coral));
+    }
+    if (_error != null) {
+      return _SheetHint(
+        icon: Icons.error_outline,
+        title: '검색 실패',
+        message: _error!,
+      );
+    }
+    if (_results.isEmpty) {
+      return const _SheetHint(
+        icon: Icons.search_off,
+        title: '검색 결과가 없어요',
+        message: '키워드를 다르게 입력하거나 직접 저장해보세요.',
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      itemCount: _results.length,
+      separatorBuilder: (_, __) =>
+          const Divider(height: 1, color: _line),
+      itemBuilder: (_, index) {
+        final p = _results[index];
+        return ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          leading: const Icon(Icons.place_outlined, color: _coral),
+          title: Text(
+            p.name,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: _ink,
+            ),
+          ),
+          subtitle: Text(
+            p.roadAddressName.isNotEmpty
+                ? p.roadAddressName
+                : p.addressName,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              color: _muted,
+            ),
+          ),
+          onTap: () => _pickPlace(p),
+        );
+      },
+    );
+  }
+}
+
+class _SheetHint extends StatelessWidget {
+  const _SheetHint({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: const Color(0xFF8B95A1)),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: Color(0xFF4E5968),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                color: Color(0xFF8B95A1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
