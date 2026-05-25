@@ -205,7 +205,7 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
 
     setState(() => _saving = true);
     try {
-      // 1. 새 파일 업로드 후 id 수집
+      // 1. 새로 첨부된 파일들 업로드 → upload id 수집
       final newIds = <String>[];
       for (final file in _newFiles) {
         final uploaded = await Di.uploadRepository.uploadImage(
@@ -215,41 +215,29 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
         newIds.add(uploaded.id);
       }
 
-      // 2. 최종 imageIds: 기존 URL → upload id 매핑이 없으므로,
-      //    서버는 imageIds 받으면 URL 로 변환해서 *전체 교체*. 그래서 기존도 다시 보내야 함.
-      //    기존 URL 은 그 URL 자체를 서버에 다시 업로드 ID로 보낼 수 없음 → 호환 필드 사용.
-      //    임시 처리: 기존 URL을 유지하려면 그대로 두고, *변경된 경우만* imageIds 전송.
-      //    create 모드는 newIds 그대로 사용.
-      //    edit 모드는 한 장이라도 기존을 제거했거나 새로 추가했으면 전체 다시 송신
-      //    (이때 기존 URL은 서버에서 그 URL 그대로 들어있어야 하므로,
-      //     서버 update 가 imageIds 만 받고 url로 변환하는 구조라면
-      //     실제로는 기존 URL을 재참조할 방법이 없다.)
-      //
-      //    👉 따라서 edit 모드 + 이미지 변경 시에는 보유 중인 모든 사진을
-      //       새 업로드로 다시 만들어 보낼 수밖에 없다. 단기 우회.
-      //
-      //    create 모드는 newIds 그대로.
+      // 2. imageIds 빌드.
+      //    서버(DiaryServiceImpl.resolveImageUrls)는 항목별로 판별:
+      //      · "http(s)://..." → 기존 사진 URL 그대로 보존
+      //      · 숫자 → UploadedImage lookup
+      //    그래서 클라는 _existingUrls(현재 화면에 남아있는 기존 사진들의 URL)
+      //    + newIds(새로 업로드한 id) 를 *그대로 순서대로* 합쳐 보내면 된다.
       final isEdit = widget.mode == DiaryFormMode.edit;
+      final combined = <String>[..._existingUrls, ...newIds];
 
-      Object? imageIdsField = DiaryWriteRequest.unset;
+      Object? imageIdsField;
       if (isEdit) {
         final originalUrls = _original?.imageUrls ?? const <String>[];
-        final urlsUnchanged =
-            _newFiles.isEmpty && _listEquals(originalUrls, _existingUrls);
-        if (!urlsUnchanged) {
-          // 변경 — 기존 URL은 그대로 두고 새로 업로드된 것만 추가하기 위해
-          // 빈 placeholder ID 는 보내지 않음. 서버는 imageIds 가 있으면 교체 모드.
-          // 보존하고 싶은 기존 사진이 있다면 사용자가 다시 첨부해야 한다.
-          imageIdsField = newIds;
-        }
+        final unchanged =
+            newIds.isEmpty && _listEquals(originalUrls, _existingUrls);
+        imageIdsField =
+            unchanged ? DiaryWriteRequest.unset : combined;
       } else {
-        imageIdsField = newIds;
+        imageIdsField = combined;
       }
 
       // location
       final loc = _locationController.text.trim();
-      final Object? locField =
-          isEdit ? (loc.isEmpty ? null : loc) : (loc.isEmpty ? null : loc);
+      final Object? locField = loc.isEmpty ? null : loc;
 
       if (isEdit) {
         await Di.diaryRepository.update(
@@ -277,7 +265,7 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             weather: _weather,
             mood: _mood,
             location: loc.isEmpty ? null : loc,
-            imageIds: newIds,
+            imageIds: combined,
           ),
         );
         if (!mounted) return;
