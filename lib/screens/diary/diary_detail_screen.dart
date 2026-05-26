@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di.dart';
@@ -92,37 +91,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     }
   }
 
-  Future<void> _toggleLike() async {
-    final detail = _detail;
-    final groupId = Di.activeGroup.groupRoomId;
-    if (detail == null || groupId == null) return;
-    final original = detail.diary;
-    final optimistic = _replaceDiary(
-      original.copyWith(
-        likedByMe: !original.likedByMe,
-        likeCount: original.likedByMe
-            ? (original.likeCount - 1).clamp(0, 1 << 30)
-            : original.likeCount + 1,
-      ),
-    );
-    setState(() => _detail = optimistic);
-    try {
-      final res =
-          await Di.diaryRepository.toggleLike(groupId, original.id);
-      if (!mounted) return;
-      setState(() => _detail = _replaceDiary(
-            optimistic.diary.copyWith(
-              likedByMe: res.likedByMe,
-              likeCount: res.likeCount,
-            ),
-          ));
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _detail = _replaceDiary(original));
-      showErrorDialog(context, errorMessageOf(e));
-    }
-  }
-
   Future<void> _toggleReaction(DiaryReactionType type) async {
     final detail = _detail;
     final groupId = Di.activeGroup.groupRoomId;
@@ -193,17 +161,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         onEdit: () {
           entry.remove();
           _onEditTap();
-        },
-        onShare: () {
-          entry.remove();
-          _showCopiedToast('공유 기능은 곧 제공돼요');
-        },
-        onCopyLink: () {
-          entry.remove();
-          Clipboard.setData(
-            ClipboardData(text: '디그팟 일기 #${detail.diary.id}'),
-          );
-          _showCopiedToast('링크를 복사했어요');
         },
         onDelete: _isMine
             ? () {
@@ -600,14 +557,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           ),
           const Spacer(),
           _CircleIconButton(
-            icon: diary.likedByMe
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            iconColor: diary.likedByMe ? _coral : AppColors.white,
-            onTap: _toggleLike,
-          ),
-          const SizedBox(width: 10),
-          _CircleIconButton(
             icon: Icons.more_horiz_rounded,
             onTap: _openMoreMenu,
           ),
@@ -747,23 +696,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: _coralSoft,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text(
-              '함께 보기',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: _coral,
-              ),
             ),
           ),
         ],
@@ -980,11 +912,9 @@ class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
     required this.icon,
     required this.onTap,
-    this.iconColor = AppColors.white,
   });
   final IconData icon;
   final VoidCallback onTap;
-  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1000,7 +930,7 @@ class _CircleIconButton extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.35),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 20, color: iconColor),
+            child: Icon(icon, size: 20, color: AppColors.white),
           ),
         ),
       ),
@@ -1229,14 +1159,10 @@ class _MoreMenuOverlay extends StatelessWidget {
   const _MoreMenuOverlay({
     required this.onClose,
     required this.onEdit,
-    required this.onShare,
-    required this.onCopyLink,
     this.onDelete,
   });
   final VoidCallback onClose;
   final VoidCallback onEdit;
-  final VoidCallback onShare;
-  final VoidCallback onCopyLink;
   final VoidCallback? onDelete;
 
   @override
@@ -1277,16 +1203,6 @@ class _MoreMenuOverlay extends StatelessWidget {
                       icon: Icons.edit_outlined,
                       label: '수정하기',
                       onTap: onEdit,
-                    ),
-                    _MoreMenuRow(
-                      icon: Icons.share_outlined,
-                      label: '공유하기',
-                      onTap: onShare,
-                    ),
-                    _MoreMenuRow(
-                      icon: Icons.link_rounded,
-                      label: '링크 복사',
-                      onTap: onCopyLink,
                     ),
                     if (onDelete != null) ...[
                       const Divider(

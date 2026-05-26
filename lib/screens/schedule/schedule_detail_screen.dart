@@ -721,74 +721,47 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     );
   }
 
+  // 일기 상세(_MoreMenuOverlay) 와 동일한 팝오버 스타일.
+  // 카드 폭/그림자/아이콘 박스/삭제 강조 톤을 맞춰 두 화면이 같은 더보기 메뉴를 갖도록 통일.
   Widget _buildDropdownMenu() {
     return Material(
-      elevation: 0,
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.transparent,
       child: Container(
-        width: 140,
+        width: 200,
+        padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GestureDetector(
+            _MoreMenuRow(
+              icon: Icons.edit_outlined,
+              label: '수정하기',
               onTap: _onEditTap,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_outlined,
-                        size: 18, color: AppColors.gray700),
-                    SizedBox(width: 10),
-                    Text(
-                      '편집',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                        color: AppColors.gray900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
-            Container(
-              height: 1,
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              color: AppColors.gray100,
+            const Divider(
+              height: 8,
+              thickness: 1,
+              color: Color(0xFFF2F4F6),
+              indent: 8,
+              endIndent: 8,
             ),
-            GestureDetector(
+            _MoreMenuRow(
+              icon: Icons.delete_outline_rounded,
+              label: '삭제하기',
+              iconColor: const Color(0xFFFF6B6B),
+              labelColor: const Color(0xFFFF6B6B),
+              iconBg: const Color(0xFFFFEDED),
               onTap: _onDeleteTap,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline,
-                        size: 18, color: AppColors.primary),
-                    SizedBox(width: 10),
-                    Text(
-                      '삭제',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -860,6 +833,59 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// 일기 상세(diary_detail_screen.dart) 의 _MoreMenuRow 와 같은 모양.
+// 두 화면 모두에서 동일한 더보기 메뉴 시각 톤을 유지하기 위해 동일하게 정의.
+class _MoreMenuRow extends StatelessWidget {
+  const _MoreMenuRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.iconColor = const Color(0xFF4E5968),
+    this.labelColor = const Color(0xFF191F28),
+    this.iconBg = const Color(0xFFF6F7F9),
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color iconColor;
+  final Color labelColor;
+  final Color iconBg;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: labelColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
