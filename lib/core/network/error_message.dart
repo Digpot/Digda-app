@@ -41,7 +41,7 @@ String errorMessageOf(Object e, {String fallback = '요청을 처리할 수 없�
 String? _maskKnownStatus(int status) {
   switch (status) {
     case 413:
-      return '사진 용량이 너무 커요. 50MB 이하로 올려주세요.';
+      return '사진 용량이 너무 커요. 100MB 이하로 올려주세요.';
     case 502:
     case 503:
     case 504:

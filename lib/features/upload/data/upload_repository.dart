@@ -9,7 +9,7 @@ class UploadRepository {
 
   final ApiClient _api;
 
-  /// 12-1. 이미지 업로드 (PNG/JPEG, 최대 5MB).
+  /// 12-1. 이미지 업로드 (PNG/JPEG, 최대 100MB).
   ///
   /// [filePath] — 로컬 파일 경로 (image_picker 결과의 `XFile.path` 등)
   /// [purpose] — 업로드 용도 (`profile` / `group_thumbnail` / `diary`)

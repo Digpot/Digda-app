@@ -7,7 +7,7 @@ import '../theme/colors.dart';
 ///
 /// image_picker의 maxWidth/maxHeight/imageQuality 파라미터는 OEM 환경에 따라
 /// 일부 픽처가 메모리 부족으로 실패하는 케이스가 있어, **원본 그대로 받는다**.
-/// 서버는 50MB 까지 허용하므로 일반 폰 카메라 원본(20~40MB) 도 통과.
+/// 서버는 100MB 까지 허용하므로 일반 폰 카메라 원본(20~40MB) 도 통과.
 ///
 /// 다중 선택 시 카메라 옵션은 단일 촬영(1장)으로 fallback.
 Future<List<File>> pickImages(BuildContext context, {int limit = 10}) async {
