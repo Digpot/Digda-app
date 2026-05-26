@@ -345,15 +345,14 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     final diary = _detail!.diary;
     final mediaQuery = MediaQuery.of(context);
     final heroHeight = mediaQuery.size.height * 0.45;
-    final bottomInsets = mediaQuery.viewInsets.bottom;
 
-    return Stack(
+    return Column(
       children: [
-        Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: 110 + bottomInsets),
+        Expanded(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -365,21 +364,16 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   ],
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                left: 0,
+                right: 0,
+                top: mediaQuery.padding.top + 12,
+                child: _buildFloatingBar(diary),
+              ),
+            ],
+          ),
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          top: mediaQuery.padding.top + 12,
-          child: _buildFloatingBar(diary),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _buildCommentBar(),
-        ),
+        _buildCommentBar(),
       ],
     );
   }
@@ -700,92 +694,89 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   // ── Bottom sticky comment bar ────────────────────────────────────────
   Widget _buildCommentBar() {
-    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
-    final myName = Di.userSession.profile?.name ?? '나';
-    final myImage = Di.userSession.profile?.profileImage;
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          color: AppColors.white.withValues(alpha: 0.96),
-          padding: EdgeInsets.fromLTRB(
-            16,
-            10,
-            10,
-            10 + bottomPad + MediaQuery.of(context).padding.bottom,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
-          child: Row(
-            children: [
-              _Avatar(name: myName, image: myImage, size: 36),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _chipBg,
-                    borderRadius: BorderRadius.circular(999),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        10,
+        16,
+        MediaQuery.of(context).padding.bottom + 10,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              height: 40,
+              decoration: BoxDecoration(
+                color: _chipBg,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TextField(
+                controller: _commentController,
+                focusNode: _commentFocus,
+                cursorColor: _coral,
+                maxLength: 200,
+                maxLines: 1,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendComment(),
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: _ink,
+                ),
+                decoration: const InputDecoration(
+                  isCollapsed: true,
+                  counterText: '',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 13),
+                  hintText: '댓글로 마음을 남겨보세요',
+                  hintStyle: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: _muted,
                   ),
-                  child: TextField(
-                    controller: _commentController,
-                    focusNode: _commentFocus,
-                    cursorColor: _coral,
-                    maxLength: 200,
-                    minLines: 1,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendComment(),
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      color: _ink,
-                    ),
-                    decoration: const InputDecoration(
-                      isCollapsed: true,
-                      counterText: '',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
-                      hintText: '댓글로 마음을 남겨보세요',
-                      hintStyle: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                        color: _muted,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _sendComment,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: _coral,
+                shape: BoxShape.circle,
+              ),
+              child: _commentSending
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.white,
                       ),
+                    )
+                  : const Icon(
+                      Icons.arrow_upward_rounded,
+                      size: 20,
+                      color: AppColors.white,
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _sendComment,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: _coral,
-                    shape: BoxShape.circle,
-                  ),
-                  child: _commentSending
-                      ? const Padding(
-                          padding: EdgeInsets.all(10),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.white,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.arrow_upward_rounded,
-                          size: 20,
-                          color: AppColors.white,
-                        ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
