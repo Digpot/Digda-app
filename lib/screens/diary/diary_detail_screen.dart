@@ -382,12 +382,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   Widget _buildHero(Diary diary, double height) {
     final urls = diary.imageUrls;
     if (urls.isEmpty) {
-      return Container(
-        height: height,
-        color: _chipBg,
-        alignment: Alignment.center,
-        child: const Icon(Icons.image_outlined, size: 48, color: _muted),
-      );
+      return _buildEmptyHero(diary);
     }
     return SizedBox(
       height: height,
@@ -451,6 +446,146 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         ],
       ),
     );
+  }
+
+  // 사진이 없는 일기일 때 hero 자리. 회색 placeholder 대신 mood·weather 컬러로
+  // 분위기를 살린 컴팩트한 카드. 높이를 줄여 sheet 본문이 자연스럽게 위로 올라온다.
+  Widget _buildEmptyHero(Diary diary) {
+    final mood = diaryMoodOf(diary.mood);
+    final weather = diaryWeatherOf(diary.weather);
+    final palette = _moodPalette(diary.mood);
+
+    return Container(
+      height: 240,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [palette.$1, palette.$2],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -36,
+            right: -36,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -20,
+            left: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.14),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.25),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.4],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 92,
+                  height: 92,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    mood.emoji,
+                    style: const TextStyle(fontSize: 48),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(weather.emoji,
+                          style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${weather.label} · ${mood.label}',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // mood 인덱스(0..4) 별 그라데이션 컬러쌍. 본문 위 hero 자리에서 분위기를 짧게 전달.
+  (Color, Color) _moodPalette(int mood) {
+    switch (mood) {
+      case 0: // 행복
+        return (const Color(0xFFFFB199), const Color(0xFFFF6B6B));
+      case 1: // 평온
+        return (const Color(0xFF8FDDC5), const Color(0xFF5BA8E0));
+      case 2: // 슬픔
+        return (const Color(0xFF9BB5DD), const Color(0xFF5063A6));
+      case 3: // 화남
+        return (const Color(0xFFFFAE8A), const Color(0xFFE85D5D));
+      case 4: // 피곤
+        return (const Color(0xFFC3A9E0), const Color(0xFF8E7AB5));
+      default:
+        return (const Color(0xFFFFB199), const Color(0xFFFF6B6B));
+    }
   }
 
   // ── Floating bar ─────────────────────────────────────────────────────
