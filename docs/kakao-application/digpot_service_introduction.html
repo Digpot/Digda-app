@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>디그팟 서비스 소개 및 카카오 로컬 API 활용 안내</title>
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 22mm 18mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    color: #1f2933;
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+    font-size: 11pt;
+    line-height: 1.62;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1, h2, h3 { color: #d23a3a; margin: 0 0 8px 0; line-height: 1.3; }
+  h1 { font-size: 26pt; letter-spacing: -0.6px; }
+  h2 {
+    font-size: 16pt;
+    margin-top: 22px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ffd0d0;
+  }
+  h3 { font-size: 12.5pt; color: #1f2933; margin-top: 18px; }
+  p { margin: 6px 0 8px 0; }
+  ul, ol { margin: 6px 0 10px 22px; padding: 0; }
+  li { margin: 3px 0; }
+  strong { color: #b8302a; }
+  code { font-family: "Consolas", "Monaco", monospace; font-size: 10pt; background: #f4f4f6; padding: 1px 4px; border-radius: 3px; }
+
+  .cover {
+    height: 245mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    page-break-after: always;
+  }
+  .cover .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border: 1.5px solid #d23a3a;
+    color: #d23a3a;
+    border-radius: 999px;
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+  }
+  .cover h1 { font-size: 34pt; margin-bottom: 18px; }
+  .cover .subtitle { font-size: 14pt; color: #555; margin-bottom: 40px; }
+  .cover .meta { font-size: 11pt; color: #777; line-height: 1.8; }
+  .cover .accent { color: #d23a3a; font-weight: 700; }
+
+  .section { page-break-inside: avoid; }
+  .page-break { page-break-before: always; }
+
+  .infobox {
+    background: #fff5f5;
+    border-left: 4px solid #d23a3a;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+  .infobox strong { color: #b8302a; }
+  .note {
+    background: #f4f6fb;
+    border-left: 4px solid #5b87e5;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 12px 0;
+    font-size: 10.5pt;
+  }
+  table th, table td {
+    border: 1px solid #e1e5ea;
+    padding: 7px 9px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table th {
+    background: #fff5f5;
+    color: #b8302a;
+    font-weight: 700;
+  }
+  table tr:nth-child(even) td { background: #fafbfc; }
+
+  .flow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+    margin: 14px 0 4px 0;
+  }
+  .flow-item {
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+    page-break-inside: avoid;
+  }
+  .flow-step {
+    display: inline-block;
+    background: #d23a3a;
+    color: #fff;
+    font-weight: 700;
+    font-size: 10pt;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-bottom: 6px;
+  }
+  .flow-title { font-weight: 700; font-size: 11pt; margin-bottom: 4px; color: #1f2933; }
+  .flow-desc { font-size: 9.8pt; color: #4b5563; line-height: 1.55; }
+  .flow-item img {
+    width: 100%;
+    height: 220px;
+    object-fit: contain;
+    background: #f7f8fa;
+    border-radius: 6px;
+    margin-top: 8px;
+  }
+  .flow-item.highlight {
+    border: 2px solid #d23a3a;
+    background: #fff8f8;
+  }
+
+  .stack-shots {
+    display: flex;
+    gap: 14px;
+    margin: 10px 0;
+    page-break-inside: avoid;
+  }
+  .stack-shots > div {
+    flex: 1;
+    text-align: center;
+  }
+  .stack-shots img {
+    width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    border: 1px solid #e1e5ea;
+    border-radius: 6px;
+  }
+  .stack-shots .caption { font-size: 9.5pt; color: #6b7280; margin-top: 6px; }
+
+  .pillrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px 0; }
+  .pill {
+    background: #fff;
+    border: 1px solid #d23a3a;
+    color: #d23a3a;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 10pt;
+    font-weight: 600;
+  }
+
+  .footer-line {
+    text-align: center;
+    color: #9aa3ad;
+    font-size: 9.5pt;
+    border-top: 1px solid #eceff3;
+    padding-top: 10px;
+    margin-top: 22px;
+  }
+
+  .cta-line {
+    margin: 10px 0;
+    padding: 10px 14px;
+    background: linear-gradient(90deg, #fff5f5 0%, #ffffff 100%);
+    border-left: 4px solid #d23a3a;
+    font-weight: 600;
+    color: #1f2933;
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================= COVER ======================= -->
+<section class="cover">
+  <span class="badge">KAKAO LOCAL API · REVIEW DOCUMENT</span>
+  <h1>디그팟(DigPot)</h1>
+  <p class="subtitle">그룹 다이어리 · 일정 공유 모바일 서비스<br/>카카오 로컬 API 활용 신청 보충 자료</p>
+  <div class="meta">
+    문서 버전 1.0 · 2026년 5월 26일<br/>
+    <span class="accent">DateDiary</span> · 담당자 chltmdgh517@naver.com<br/>
+    플랫폼 Android · iOS (Flutter)
+  </div>
+  <div style="margin-top:50px; font-size:10pt; color:#9aa3ad;">
+    본 문서는 카카오 디벨로퍼스 비즈니스 정보 심사 시 요청된<br/>
+    <strong>“이용 동선을 포함한 서비스 화면”</strong> 보충 자료입니다.
+  </div>
+</section>
+
+<!-- ======================= 1. 거절 사유 대응 ======================= -->
+<section class="section">
+  <h2>1. 본 문서를 제출하는 이유</h2>
+  <div class="infobox">
+    <strong>카카오 심사 답변 인용:</strong><br/>
+    “해당 서비스는 (회원가입 후 이용 가능한) 서비스로 원활한 심사 진행이 어렵습니다.
+    정확히 어떤 서비스인지 확인할 수 있도록 <strong>이용 동선을 포함한 사이트 화면</strong>을 첨부해 주세요.”
+  </div>
+  <p>
+    디그팟은 <strong>가족·연인·친구 등 친밀한 소그룹이 일기와 일정을 비공개로 공유</strong>하는 모바일 앱이기 때문에,
+    구조상 비회원 둘러보기(public landing)가 존재하지 않습니다. 일기와 일정은 그룹 멤버에게만 노출되는 사적인
+    정보이므로, 카카오·네이버·애플 소셜 로그인 후 그룹을 생성·참여해야만 본 화면들이 표시됩니다.
+  </p>
+  <p>
+    이 문서는 카카오 심사 담당자가 앱을 직접 설치·가입하지 않고도 <strong>전체 이용 동선과 카카오 로컬 API 가 호출되는 정확한 지점</strong>을
+    한 번에 확인할 수 있도록, 각 단계 화면을 와이어프레임/실 캡처로 정리한 보충 자료입니다.
+  </p>
+  <div class="note">
+    필요 시 카카오 심사 담당자께 <strong>테스트 계정 + 초대 코드</strong>를 메일로 즉시 발급해 드릴 수 있으며,
+    <code>iOS TestFlight</code> 또는 <code>Android APK</code> 빌드 전달도 가능합니다. (메일: chltmdgh517@naver.com)
+  </div>
+</section>
+
+<!-- ======================= 2. 서비스 개요 ======================= -->
+<section class="section">
+  <h2>2. 디그팟은 어떤 서비스인가</h2>
+  <h3>2-1. 한 줄 정의</h3>
+  <p><strong>“가족·연인·친구 그룹이 사진·일기·일정을 함께 기록하고 회상하는 비공개 그룹 다이어리 앱.”</strong></p>
+
+  <h3>2-2. 핵심 기능</h3>
+  <table>
+    <tr><th style="width:24%">기능</th><th>설명</th></tr>
+    <tr><td>그룹 생성·참여</td><td>초대 코드로 친밀한 사람들끼리 비공개 그룹 결성. 멤버 외 외부 노출 없음.</td></tr>
+    <tr><td>일정 캘린더</td><td>그룹 일정 공유, 참가자 지정, 알림 기능</td></tr>
+    <tr><td><strong>그림일기 (★)</strong></td><td>날짜·기분·날씨·<strong>장소</strong>·사진·본문 을 한 장의 일기로 저장. <strong>본 신청의 대상 기능</strong></td></tr>
+    <tr><td>리액션·댓글</td><td>좋아요 / 이모지 5종 / 댓글 — 그룹 멤버 간 공감 표현</td></tr>
+    <tr><td>알림</td><td>그룹 활동 푸시 알림 (FCM)</td></tr>
+    <tr><td>마이페이지</td><td>프로필 수정, 알림 설정, 개인정보 처리방침</td></tr>
+  </table>
+
+  <h3>2-3. 비즈니스/운영 정보</h3>
+  <div class="pillrow">
+    <span class="pill">운영 DateDiary</span>
+    <span class="pill">출시 단계 베타</span>
+    <span class="pill">정식 출시 준비</span>
+    <span class="pill">백엔드 Spring Boot / MySQL</span>
+    <span class="pill">앱 Flutter</span>
+    <span class="pill">스토리지 AWS S3</span>
+  </div>
+</section>
+
+<!-- ======================= 3. 카카오 로컬 API ======================= -->
+<section class="section page-break">
+  <h2>3. 카카오 로컬 API 가 왜 필요한가</h2>
+
+  <h3>3-1. 사용 위치 — 그림일기 작성 화면 단 한 곳</h3>
+  <p>
+    그림일기는 <strong>날짜·사진·기분·날씨·장소·본문</strong>의 6개 메타 필드로 구성됩니다.
+    이 중 “장소”는 사용자가 <strong>그날 다녀온 카페·식당·관광지·공원 등의 이름</strong>을 일기에 함께 기록하기 위한 필드입니다.
+  </p>
+  <p>
+    사용자가 장소 이름을 직접 키보드로 입력하게 하면 <strong>오타·표기 불일치</strong>(예: “스타벅스 성수점” vs “스타벅스 성수1호점”)
+    가 발생해 일기 데이터의 정합성과 회상 편의가 크게 떨어집니다. 그래서 우리는 <strong>카카오 로컬 키워드 검색 API</strong> 를
+    이 한 지점에서만 호출하여, 사용자가 키워드를 검색해 정식 상호명을 선택하도록 합니다.
+  </p>
+
+  <div class="cta-line">
+    호출 API: <code>GET https://dapi.kakao.com/v2/local/search/keyword.json</code><br/>
+    인증: <code>Authorization: KakaoAK &lt;REST_API_KEY&gt;</code>
+  </div>
+
+  <h3>3-2. 카카오 로컬 API 를 선택한 이유</h3>
+  <ul>
+    <li><strong>국내 장소 데이터 품질</strong> — 한국 사용자의 일기에 등장할 카페·식당·골목 가게는 카카오 로컬이 가장 정확하고 풍부합니다.</li>
+    <li><strong>한글 키워드 매칭</strong> — “성수동 카페”, “이태원 와인바” 같은 한글 자연어 검색이 자연스럽게 작동합니다.</li>
+    <li><strong>가벼운 REST 통신</strong> — 카카오맵 SDK 임베드 없이 단일 GET 요청만으로 일기 작성 흐름에 매끄럽게 끼워 넣을 수 있습니다.</li>
+    <li><strong>심사 단계 카카오 로컬 도입 사례 다수</strong> — 일기/메모 앱이 장소 메타데이터로 카카오 로컬을 활용하는 표준적 패턴입니다.</li>
+  </ul>
+
+  <h3>3-3. 데이터 보호 — 카카오로 보내는 것 / 우리 서버에 저장하는 것</h3>
+  <table>
+    <tr><th style="width:32%">데이터</th><th>카카오로 전송</th><th>자체 서버 저장</th></tr>
+    <tr><td>사용자 ID / 프로필</td><td>❌ 전송 안 함</td><td>✅ (소셜 로그인 토큰 + 닉네임)</td></tr>
+    <tr><td>일기 본문 · 사진</td><td>❌ 전송 안 함</td><td>✅ (그룹 멤버만 열람)</td></tr>
+    <tr><td>검색 키워드 (예: “성수동 카페”)</td><td>✅ 사용자가 검색 버튼 눌렀을 때만</td><td>❌ 저장 안 함</td></tr>
+    <tr><td>선택한 장소의 이름 문자열</td><td>—</td><td>✅ <code>diary.location</code> 컬럼 1개</td></tr>
+    <tr><td>좌표 · 도로명주소 · 카테고리 · place_id</td><td>—</td><td>❌ 저장 안 함</td></tr>
+  </table>
+  <div class="infobox">
+    즉, 우리는 <strong>카카오가 공개하는 장소 이름 문자열</strong>만 일기 1건당 1개 저장합니다.
+    좌표나 카카오 내부 식별자(place_id), 카테고리 정보 등은 저장하지 않으며, 일기 자체가 그룹 비공개이므로
+    이 장소 정보 또한 그룹 외부로 노출되지 않습니다.
+  </div>
+</section>
+
+<!-- ======================= 4. 이용 동선 ======================= -->
+<section class="section page-break">
+  <h2>4. 이용 동선 — 첫 진입부터 카카오 로컬 호출까지</h2>
+  <p>
+    심사 담당자가 앱을 설치하지 않고도 전체 흐름을 따라갈 수 있도록, 첫 진입부터
+    카카오 로컬 API 호출 시점까지 8단계를 차례로 정리합니다. <strong>4-6 단계</strong>가 본 신청의 핵심 호출 지점입니다.
+  </p>
+
+  <div class="flow">
+    <div class="flow-item">
+      <span class="flow-step">STEP 1</span>
+      <div class="flow-title">앱 진입 — 스플래시</div>
+      <div class="flow-desc">디그팟 브랜드 스플래시. 1~2초 후 로그인 또는 그룹 홈으로 자동 이동.</div>
+      <img src="../../design/wireframes/images/S1-Splash.png" alt="splash" />
+    </div>
+    <div class="flow-item">
+      <span class="flow-step">STEP 2</span>
+      <div class="flow-title">소셜 로그인</div>
+      <div class="flow-desc">카카오 · 네이버 · 애플 소셜 로그인만 지원. 자체 ID/PW 가입 절차 없음. 약관 동의 1회 후 즉시 가입 완료.</div>
+      <img src="../../design/wireframes/images/S2-1-Social_Login.png" alt="social-login" />
+    </div>
+    <div class="flow-item">
+      <span class="flow-step">STEP 3</span>
+      <div class="flow-title">그룹 생성 또는 초대 코드 입력</div>
+      <div class="flow-desc">새 그룹을 만들거나, 친구가 공유해 준 6자리 초대 코드를 입력해 참여. 그룹은 비공개 — 외부 노출 없음.</div>
+      <img src="../../design/wireframes/images/S3A-1-Code_Input.png" alt="invite-code" />
+    </div>
+    <div class="flow-item">
+      <span class="flow-step">STEP 4</span>
+      <div class="flow-title">그룹 홈 진입</div>
+      <div class="flow-desc">하단 탭에서 <strong>“그림일기”</strong> 선택. 월별 캘린더에 일기 작성일이 표시됨.</div>
+      <img src="../../design/wireframes/images/S6-Diary_Calendar.png" alt="diary-calendar" />
+    </div>
+    <div class="flow-item highlight">
+      <span class="flow-step">STEP 5 ★</span>
+      <div class="flow-title">일기 작성 화면 — 메타 영역</div>
+      <div class="flow-desc">날짜·기분·날씨를 고른 뒤 <strong>“장소 추가하기”</strong> 칩을 탭하면 검색 시트가 열립니다.</div>
+      <img src="../../design/wireframes/images/S6-2-Write_Diary.png" alt="write-diary" />
+    </div>
+    <div class="flow-item highlight">
+      <span class="flow-step">STEP 6 ★★ 핵심 호출 지점</span>
+      <div class="flow-title">장소 검색 — 카카오 로컬 API 호출</div>
+      <div class="flow-desc">키워드를 입력하고 검색을 누르면 <code>/v2/local/search/keyword.json</code> 이 호출되어 결과 리스트가 표시됩니다. 사용자는 원하는 장소를 탭해 선택합니다.</div>
+      <img src="./reference_diary_form.png" alt="kakao-local-search" />
+    </div>
+    <div class="flow-item">
+      <span class="flow-step">STEP 7</span>
+      <div class="flow-title">일기 저장</div>
+      <div class="flow-desc">선택한 장소의 <strong>이름 문자열만</strong> <code>diary.location</code> 으로 자체 서버에 저장. 좌표/주소/place_id 는 저장하지 않음.</div>
+      <img src="../../design/wireframes/images/S6-3-Edit_Diary.png" alt="save-diary" />
+    </div>
+    <div class="flow-item">
+      <span class="flow-step">STEP 8</span>
+      <div class="flow-title">일기 상세 — 장소가 함께 표시</div>
+      <div class="flow-desc">저장된 일기에는 사진·기분·날씨·<strong>장소 칩</strong>·본문이 함께 표시됩니다. 그룹 멤버 간에만 보임.</div>
+      <img src="../../design/wireframes/images/S6-1-Diary_Detail.png" alt="diary-detail" />
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 5. 핵심 호출 화면 큰그림 ======================= -->
+<section class="section page-break">
+  <h2>5. 카카오 로컬 API 호출 화면 (확대)</h2>
+  <p>
+    아래는 STEP 6 “장소 검색” 화면을 크게 확대한 것입니다.
+    이 화면에서 검색바에 키워드를 입력하고 검색 버튼을 누르는 순간 <strong>카카오 로컬 키워드 검색 API</strong> 가 1회 호출되며,
+    응답 결과가 하단 리스트에 표시됩니다. 사용자는 원하는 장소를 탭해 선택합니다.
+  </p>
+
+  <div class="stack-shots">
+    <div>
+      <img src="./reference_diary_form.png" alt="kakao-local-large" />
+      <div class="caption">그림일기 작성 → 장소 추가하기 → 카카오 로컬 검색 결과 리스트</div>
+    </div>
+  </div>
+
+  <div class="infobox">
+    <strong>호출 트리거</strong>: 사용자가 검색바에 텍스트를 입력하고 “검색” 버튼 또는 키보드 엔터를 누른 시점에만 호출.
+    타이핑 중 자동 호출(디바운스) 없음 → 불필요한 트래픽 발생 차단.
+  </div>
+
+  <h3>응답 처리 정책</h3>
+  <ul>
+    <li>검색 결과(JSON)는 <strong>클라이언트 메모리에만</strong> 표시되며, 우리 서버로 전달하지 않습니다.</li>
+    <li>사용자가 결과 중 하나를 <strong>선택</strong>한 시점에만, 그 장소의 <code>place_name</code> 문자열을 일기 저장 시 함께 서버로 보냅니다.</li>
+    <li>좌표(x/y)·도로명/지번 주소·카테고리·place_id 등 부가 정보는 저장·재활용하지 않습니다.</li>
+    <li>일기 자체가 그룹 비공개이므로 장소 이름 또한 그룹 외부에 노출되지 않습니다.</li>
+  </ul>
+</section>
+
+<!-- ======================= 6. 트래픽 예상 ======================= -->
+<section class="section">
+  <h2>6. 예상 호출 트래픽</h2>
+  <table>
+    <tr><th style="width:30%">구간</th><th>예상 MAU</th><th>일일 호출량</th></tr>
+    <tr><td>현재 (베타)</td><td>약 500명</td><td>2,000 ~ 5,000 건</td></tr>
+    <tr><td>정식 출시 +3개월</td><td>약 2,000명</td><td>8,000 ~ 20,000 건</td></tr>
+    <tr><td>정식 출시 +6개월</td><td>약 5,000명</td><td>20,000 ~ 50,000 건</td></tr>
+  </table>
+  <p style="font-size: 10.5pt; color: #4b5563;">
+    산정 근거: 1인당 주 2~5회 일기 작성 × 일기 1건당 평균 1~3회 키워드 검색.
+    피크 시간대(저녁 9~11시)에 일일 호출의 약 35% 가 집중되는 패턴.
+  </p>
+</section>
+
+<!-- ======================= 7. 향후 확장 ======================= -->
+<section class="section">
+  <h2>7. 향후 확장 계획</h2>
+  <ul>
+    <li><strong>같은 장소로 작성된 일기 모아보기</strong> — 일기 캘린더에서 동일 장소 그룹핑 (자체 구현, 추가 API 호출 없음).</li>
+    <li><strong>카카오맵 상세 미리보기</strong> — 선택한 장소를 작은 지도로 시각화 (별도 카카오맵 JavaScript SDK 도입 시 추가 신청 예정).</li>
+    <li><strong>오프라인 캐싱</strong> — 최근 검색 키워드에 한해 30분 클라이언트 캐싱, 동일 키워드 중복 호출 절감.</li>
+  </ul>
+  <p style="font-size: 10.5pt; color: #4b5563;">
+    위 확장은 본 신청 범위에 포함되지 않으며, 도입 시 별도 변경 신청을 진행하겠습니다.
+  </p>
+</section>
+
+<!-- ======================= 8. 연락 ======================= -->
+<section class="section">
+  <h2>8. 문의 · 자료 추가 제공</h2>
+  <p>
+    심사 진행 중 추가 자료(테스트 계정·초대 코드·iOS TestFlight 빌드·Android APK)가 필요하시면
+    아래 메일로 회신 주십시오. 영업일 기준 1일 이내 회신해 드리겠습니다.
+  </p>
+  <table>
+    <tr><th style="width:25%">항목</th><th>내용</th></tr>
+    <tr><td>운영사</td><td>DateDiary</td></tr>
+    <tr><td>서비스명</td><td>디그팟 (DigPot)</td></tr>
+    <tr><td>담당자 메일</td><td>chltmdgh517@naver.com</td></tr>
+    <tr><td>저장소</td><td>github.com/DateDiary (Digda-app · Digda-server)</td></tr>
+  </table>
+
+  <div class="footer-line">
+    이 문서는 카카오 디벨로퍼스 비즈니스 정보 심사 답변 보충용으로 작성되었습니다. · 2026-05-26
+  </div>
+</section>
+
+</body>
+</html>
