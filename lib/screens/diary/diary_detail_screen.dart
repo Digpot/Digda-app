@@ -42,6 +42,11 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   final FocusNode _commentFocus = FocusNode();
   bool _commentSending = false;
 
+  // 더보기 팝오버 OverlayEntry. NavigatorOverlay 에 붙기 때문에 화면이 pop 되어도
+  // 자동으로 제거되지 않아 다음 화면 위에 남아 보이는 버그가 있었음.
+  // dispose 와 메뉴 액션 시점에 명시적으로 정리한다.
+  OverlayEntry? _moreMenuEntry;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -54,10 +59,17 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   @override
   void dispose() {
+    _moreMenuEntry?.remove();
+    _moreMenuEntry = null;
     _photoController.dispose();
     _commentController.dispose();
     _commentFocus.dispose();
     super.dispose();
+  }
+
+  void _closeMoreMenu() {
+    _moreMenuEntry?.remove();
+    _moreMenuEntry = null;
   }
 
   Future<void> _load() async {
@@ -153,23 +165,25 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   void _openMoreMenu() {
     final detail = _detail;
     if (detail == null) return;
+    // 이미 떠 있는 메뉴는 먼저 정리 (중복 insert 방지)
+    _closeMoreMenu();
     final overlay = Overlay.of(context);
-    late OverlayEntry entry;
-    entry = OverlayEntry(builder: (ctx) {
+    final entry = OverlayEntry(builder: (ctx) {
       return _MoreMenuOverlay(
-        onClose: () => entry.remove(),
+        onClose: _closeMoreMenu,
         onEdit: () {
-          entry.remove();
+          _closeMoreMenu();
           _onEditTap();
         },
         onDelete: _isMine
             ? () {
-                entry.remove();
+                _closeMoreMenu();
                 _openDeleteSheet();
               }
             : null,
       );
     });
+    _moreMenuEntry = entry;
     overlay.insert(entry);
   }
 
