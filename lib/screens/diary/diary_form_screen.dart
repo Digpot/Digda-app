@@ -48,7 +48,7 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
   static const Color _fieldBg = Color(0xFFF2F4F6);
   static const Color _chipBg = Color(0xFFF6F7F9);
 
-  static const int _maxImages = 10;
+  static const int _maxImages = 5;
   static const int _maxTitle = 30;
   static const int _maxContent = 1000;
 
@@ -192,6 +192,32 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
       ),
     );
     if (picked == null || !mounted) return;
+
+    // create 모드에서 이미 일기가 있는 날짜인지 확인
+    if (widget.mode == DiaryFormMode.create) {
+      final groupId = Di.activeGroup.groupRoomId;
+      if (groupId != null) {
+        try {
+          final diaryDates = await Di.diaryRepository.calendar(groupId, picked);
+          final pickedUtc =
+              DateTime.utc(picked.year, picked.month, picked.day);
+          final hasDuplicate = diaryDates.any(
+            (d) => DateTime.utc(d.year, d.month, d.day) == pickedUtc,
+          );
+          if (hasDuplicate) {
+            if (!mounted) return;
+            showErrorDialog(
+              context,
+              '해당 날짜에 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+            );
+            return;
+          }
+        } catch (_) {
+          // 확인 실패 시 저장 시점에서 재검사
+        }
+      }
+    }
+
     setState(() {
       _date = picked;
       _dirty = true;
@@ -205,6 +231,25 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
 
     setState(() => _saving = true);
     try {
+      // create 모드: 저장 직전 중복 날짜 최종 확인 (날짜 변경 후 저장하는 경우 대비)
+      if (widget.mode == DiaryFormMode.create) {
+        final diaryDates =
+            await Di.diaryRepository.calendar(groupId, _date);
+        final dateUtc = DateTime.utc(_date.year, _date.month, _date.day);
+        final hasDuplicate = diaryDates.any(
+          (d) => DateTime.utc(d.year, d.month, d.day) == dateUtc,
+        );
+        if (hasDuplicate) {
+          if (!mounted) return;
+          setState(() => _saving = false);
+          showErrorDialog(
+            context,
+            '해당 날짜에 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+          );
+          return;
+        }
+      }
+
       // 1. 새로 첨부된 파일들 업로드 → upload id 수집
       final newIds = <String>[];
       for (final file in _newFiles) {

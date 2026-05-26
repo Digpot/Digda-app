@@ -97,7 +97,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                     child: Row(
                       children: [
                         const Text(
-                          '그림일기',
+                          '일기',
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w700,
