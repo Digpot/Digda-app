@@ -13,7 +13,7 @@ class AppBottomNavBar extends StatelessWidget {
 
   void _navigate(BuildContext context, int index) {
     if (currentIndex == index) return;
-    const routes = ['/group-home', '/schedule', '/diary', '/quiz'];
+    const routes = ['/group-home', '/schedule', '/diary', '/character'];
     if (index < routes.length) {
       Navigator.of(context).pushReplacementNamed(routes[index]);
     }
@@ -40,7 +40,7 @@ class AppBottomNavBar extends StatelessWidget {
                 _buildTab(context, 0, Icons.home_rounded, Icons.home_outlined),
                 _buildTab(context, 1, Icons.calendar_today_rounded, Icons.calendar_today_outlined),
                 _buildTab(context, 2, Icons.menu_book_rounded, Icons.menu_book_outlined),
-                _buildTab(context, 3, Icons.sports_esports_rounded, Icons.sports_esports_outlined),
+                _buildTab(context, 3, Icons.favorite_rounded, Icons.favorite_outline),
               ],
             ),
           ),
