@@ -16,6 +16,7 @@ class _Schedule {
   final DateTime end;
   final String? time;
   final List<UserSummary> participants;
+  final DateTime createdAt;
 
   const _Schedule({
     this.id,
@@ -25,6 +26,7 @@ class _Schedule {
     DateTime? end,
     this.time,
     this.participants = const [],
+    required this.createdAt,
   }) : end = end ?? start;
 
   /// 'HH:mm[:ss]' → '오전 9시', '오후 2시 30분' 같은 한글 표기.
@@ -61,6 +63,7 @@ class _Schedule {
       end: DateTime.utc(s.endDate.year, s.endDate.month, s.endDate.day),
       time: time,
       participants: s.participants,
+      createdAt: s.createdAt,
     );
   }
 
@@ -142,7 +145,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _schedules = list.map(_Schedule.fromApi).toList();
+        // 최신 생성 일정이 위에 표시되도록 createdAt 내림차순 정렬
+        _schedules = list.map(_Schedule.fromApi).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _loadingSchedules = false;
       });
     } catch (e) {
@@ -337,8 +342,17 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 maxLines: 1,
               ),
             ),
-          // 일반 일정 pill (공휴일이 있으면 1개만, 없으면 2개)
-          ...schedules.take(holidayName != null ? 1 : 2).map((s) => _buildEventPill(day, s, cellWidth)),
+          // 일반 일정 pill — 공휴일 없으면 최대 3개, 있으면 최대 2개
+          // 초과 시 마지막 슬롯을 '...' pill 로 대체
+          ...() {
+            final maxShow = holidayName != null ? 2 : 3;
+            final hasMore = schedules.length > maxShow;
+            final visibleCount = hasMore ? maxShow - 1 : maxShow;
+            return [
+              ...schedules.take(visibleCount).map((s) => _buildEventPill(day, s, cellWidth)),
+              if (hasMore) _buildMorePill(),
+            ];
+          }(),
         ],
       ),
     );
@@ -457,6 +471,29 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         right: roundRight ? 2 : 0,
       ),
       decoration: barDecoration,
+    );
+  }
+
+  /// 초과 일정을 '...' 으로 표시하는 pill
+  Widget _buildMorePill() {
+    return Container(
+      height: 14,
+      margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
+      decoration: BoxDecoration(
+        color: AppColors.gray200,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      alignment: Alignment.center,
+      child: const Text(
+        '···',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 8,
+          color: AppColors.gray500,
+          letterSpacing: 0,
+        ),
+      ),
     );
   }
 
