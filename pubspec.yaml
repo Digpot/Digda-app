@@ -45,8 +45,8 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/digda_icon.png"
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/digda_icon.png"
+  adaptive_icon_background: "#FF6B6B"
+  adaptive_icon_foreground: "assets/images/digda_icon_foreground.png"
   remove_alpha_ios: true
 
 flutter:
