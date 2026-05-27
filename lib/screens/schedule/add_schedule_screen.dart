@@ -563,58 +563,38 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   }
 
   Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
+    final result = await showModalBottomSheet<DateTimeRange>(
       context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-      locale: const Locale('ko', 'KR'),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.gray900,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DateRangePickerSheet(
+        initialRange: DateTimeRange(start: _startDate, end: _endDate),
+      ),
     );
-    if (picked != null) {
+    if (result != null) {
       setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
+        _startDate = result.start;
+        _endDate = result.end;
       });
     }
   }
 
   Future<void> _pickTime({required bool isStart}) async {
-    final picked = await showTimePicker(
+    final result = await showModalBottomSheet<TimeOfDay>(
       context: context,
-      initialTime: isStart ? _startTime : _endTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.gray900,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TimePickerSheet(
+        initialTime: isStart ? _startTime : _endTime,
+        title: isStart ? '시작 시간' : '종료 시간',
+      ),
     );
-    if (picked != null) {
+    if (result != null) {
       setState(() {
         if (isStart) {
-          _startTime = picked;
+          _startTime = result;
         } else {
-          _endTime = picked;
+          _endTime = result;
         }
       });
     }
@@ -817,6 +797,695 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
           fontWeight: FontWeight.w700,
           fontSize: 16,
           color: color,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── 날짜 범위 선택 바텀시트 ─────────────────────────────────────────────────
+
+class _DateRangePickerSheet extends StatefulWidget {
+  final DateTimeRange initialRange;
+  const _DateRangePickerSheet({required this.initialRange});
+
+  @override
+  State<_DateRangePickerSheet> createState() => _DateRangePickerSheetState();
+}
+
+class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
+  late DateTime _display;
+  DateTime? _start;
+  DateTime? _end;
+  bool _pickingEnd = false;
+
+  static DateTime _strip(DateTime d) => DateTime(d.year, d.month, d.day);
+  static bool _eq(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  @override
+  void initState() {
+    super.initState();
+    _start = _strip(widget.initialRange.start);
+    _end = _strip(widget.initialRange.end);
+    _display = DateTime(_start!.year, _start!.month);
+  }
+
+  void _onTap(DateTime day) {
+    setState(() {
+      if (!_pickingEnd) {
+        _start = day;
+        _end = null;
+        _pickingEnd = true;
+      } else {
+        if (day.isBefore(_start!)) {
+          _end = _start;
+          _start = day;
+        } else {
+          _end = day;
+        }
+        _pickingEnd = false;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final daysInMonth = DateTime(_display.year, _display.month + 1, 0).day;
+    // Sunday = 0 offset
+    final startOffset = DateTime(_display.year, _display.month, 1).weekday % 7;
+    final today = _strip(DateTime.now());
+    final hasRange = _start != null && _end != null && !_eq(_start!, _end!);
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 핸들 바 ──
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── 월 네비게이션 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                _MonthNavBtn(
+                  icon: Icons.chevron_left,
+                  onTap: () => setState(() =>
+                      _display = DateTime(_display.year, _display.month - 1)),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '${_display.year}년 ${_display.month}월',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: AppColors.gray900,
+                      ),
+                    ),
+                  ),
+                ),
+                _MonthNavBtn(
+                  icon: Icons.chevron_right,
+                  onTap: () => setState(() =>
+                      _display = DateTime(_display.year, _display.month + 1)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── 요일 헤더 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: List.generate(7, (i) {
+                const labels = ['일', '월', '화', '수', '목', '금', '토'];
+                final colors = [
+                  AppColors.primary,
+                  AppColors.gray400,
+                  AppColors.gray400,
+                  AppColors.gray400,
+                  AppColors.gray400,
+                  AppColors.gray400,
+                  AppColors.blue,
+                ];
+                return Expanded(
+                  child: Center(
+                    child: Text(
+                      labels[i],
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        color: colors[i],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // ── 날짜 그리드 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisExtent: 44,
+              ),
+              itemCount: startOffset + daysInMonth,
+              itemBuilder: (context, index) {
+                if (index < startOffset) return const SizedBox();
+                final day = DateTime(
+                    _display.year, _display.month, index - startOffset + 1);
+                return _buildDayCell(day, today, hasRange);
+              },
+            ),
+          ),
+
+          // ── 시작/종료 칩 ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+            child: Row(
+              children: [
+                Expanded(child: _DateChip(label: '시작일', date: _start)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Icon(Icons.arrow_forward,
+                      size: 16, color: AppColors.gray300),
+                ),
+                Expanded(child: _DateChip(label: '종료일', date: _end)),
+              ],
+            ),
+          ),
+
+          // ── 확인 버튼 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: (_start != null && _end != null)
+                    ? () => Navigator.of(context)
+                        .pop(DateTimeRange(start: _start!, end: _end!))
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.gray100,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: Text(
+                  '확인',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: (_start != null && _end != null)
+                        ? AppColors.white
+                        : AppColors.gray400,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDayCell(DateTime day, DateTime today, bool hasRange) {
+    final isStart = _start != null && _eq(day, _start!);
+    final isEnd = _end != null && _eq(day, _end!);
+    final isBetween = _start != null &&
+        _end != null &&
+        day.isAfter(_start!) &&
+        day.isBefore(_end!);
+    final isToday = _eq(day, today);
+    final isSun = day.weekday == DateTime.sunday;
+    final isSat = day.weekday == DateTime.saturday;
+
+    Color textColor;
+    if (isStart || isEnd) {
+      textColor = AppColors.white;
+    } else if (isSun) {
+      textColor = AppColors.primary;
+    } else if (isSat) {
+      textColor = AppColors.blue;
+    } else {
+      textColor = AppColors.gray900;
+    }
+
+    return GestureDetector(
+      onTap: () => _onTap(day),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          return SizedBox(
+            height: 44,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 범위 중간 스트립 (전체 셀)
+                if (isBetween)
+                  Positioned(
+                    top: 4, bottom: 4, left: 0, right: 0,
+                    child: Container(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                    ),
+                  ),
+                // 시작 셀 오른쪽 반 스트립 (범위 있을 때)
+                if (isStart && hasRange)
+                  Positioned(
+                    top: 4, bottom: 4,
+                    left: w / 2, right: 0,
+                    child: Container(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                    ),
+                  ),
+                // 종료 셀 왼쪽 반 스트립 (범위 있을 때)
+                if (isEnd && hasRange)
+                  Positioned(
+                    top: 4, bottom: 4,
+                    left: 0, right: w / 2,
+                    child: Container(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                    ),
+                  ),
+                // 오늘 날짜 테두리
+                if (isToday && !isStart && !isEnd)
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
+                // 선택된 날짜 원형 배경
+                if (isStart || isEnd)
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                // 날짜 텍스트
+                Text(
+                  '${day.day}',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: (isStart || isEnd || isToday)
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                    fontSize: 13,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MonthNavBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _MonthNavBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 20, color: AppColors.gray700),
+      ),
+    );
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  final String label;
+  final DateTime? date;
+  const _DateChip({required this.label, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDate = date != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: hasDate
+            ? AppColors.primary.withValues(alpha: 0.07)
+            : AppColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 10,
+              color: AppColors.gray400,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            hasDate ? '${date!.month}월 ${date!.day}일' : '미선택',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: hasDate ? AppColors.primary : AppColors.gray300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── 시간 선택 바텀시트 ──────────────────────────────────────────────────────
+
+class _TimePickerSheet extends StatefulWidget {
+  final TimeOfDay initialTime;
+  final String title;
+
+  const _TimePickerSheet({
+    required this.initialTime,
+    required this.title,
+  });
+
+  @override
+  State<_TimePickerSheet> createState() => _TimePickerSheetState();
+}
+
+class _TimePickerSheetState extends State<_TimePickerSheet> {
+  late bool _isAm;
+  late int _hour12; // 1 ~ 12
+  late int _minute; // 0 ~ 59
+
+  late FixedExtentScrollController _hourCtrl;
+  late FixedExtentScrollController _minuteCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.initialTime;
+    _isAm = t.hour < 12;
+    _hour12 = t.hour == 0
+        ? 12
+        : t.hour > 12
+            ? t.hour - 12
+            : t.hour;
+    _minute = t.minute;
+    _hourCtrl = FixedExtentScrollController(initialItem: _hour12 - 1);
+    _minuteCtrl = FixedExtentScrollController(initialItem: _minute);
+  }
+
+  @override
+  void dispose() {
+    _hourCtrl.dispose();
+    _minuteCtrl.dispose();
+    super.dispose();
+  }
+
+  TimeOfDay get _result {
+    int h = _hour12 == 12 ? 0 : _hour12;
+    if (!_isAm) h += 12;
+    return TimeOfDay(hour: h, minute: _minute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 핸들 바 ──
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── 타이틀 ──
+          Text(
+            widget.title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── 오전/오후 토글 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.gray50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.all(3),
+              child: Row(
+                children: [
+                  _AmPmToggle(
+                    label: '오전',
+                    selected: _isAm,
+                    onTap: () => setState(() => _isAm = true),
+                  ),
+                  _AmPmToggle(
+                    label: '오후',
+                    selected: !_isAm,
+                    onTap: () => setState(() => _isAm = false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── 시·분 휠 ──
+          SizedBox(
+            height: 180,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 선택 영역 하이라이트 바
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 36),
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                // 휠 Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 시(時) 휠
+                    SizedBox(
+                      width: 88,
+                      child: ListWheelScrollView.useDelegate(
+                        controller: _hourCtrl,
+                        itemExtent: 52,
+                        perspective: 0.003,
+                        diameterRatio: 2.0,
+                        physics: const FixedExtentScrollPhysics(),
+                        onSelectedItemChanged: (i) =>
+                            setState(() => _hour12 = i + 1),
+                        childDelegate: ListWheelChildBuilderDelegate(
+                          childCount: 12,
+                          builder: (context, index) {
+                            final h = index + 1;
+                            final selected = h == _hour12;
+                            return Center(
+                              child: Text(
+                                '$h',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                  fontSize: selected ? 26 : 18,
+                                  color: selected
+                                      ? AppColors.primary
+                                      : AppColors.gray300,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    // 구분자
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        ':',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 28,
+                          color: AppColors.gray700,
+                        ),
+                      ),
+                    ),
+                    // 분(分) 휠
+                    SizedBox(
+                      width: 88,
+                      child: ListWheelScrollView.useDelegate(
+                        controller: _minuteCtrl,
+                        itemExtent: 52,
+                        perspective: 0.003,
+                        diameterRatio: 2.0,
+                        physics: const FixedExtentScrollPhysics(),
+                        onSelectedItemChanged: (i) =>
+                            setState(() => _minute = i),
+                        childDelegate: ListWheelChildBuilderDelegate(
+                          childCount: 60,
+                          builder: (context, index) {
+                            final selected = index == _minute;
+                            return Center(
+                              child: Text(
+                                index.toString().padLeft(2, '0'),
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                  fontSize: selected ? 26 : 18,
+                                  color: selected
+                                      ? AppColors.primary
+                                      : AppColors.gray300,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── 미리보기 텍스트 ──
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 20),
+            child: Text(
+              '${_isAm ? '오전' : '오후'} $_hour12:${_minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+
+          // ── 확인 버튼 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(_result),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  '확인',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AmPmToggle extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _AmPmToggle(
+      {required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              color: selected ? AppColors.white : AppColors.gray400,
+            ),
+          ),
         ),
       ),
     );
