@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 
@@ -18,6 +19,7 @@ class CharacterStageTreeScreen extends StatefulWidget {
 
 class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
   CharacterStageTree? _tree;
+  CharacterState? _myState;
   bool _loading = true;
 
   @override
@@ -29,10 +31,15 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final tree = await Di.characterRepository.getStageTree();
+      // 트리 + 내 상태 동시 로드 — 카드 미리보기에서 현재 색상으로 모찌를 렌더하기 위해.
+      final results = await Future.wait([
+        Di.characterRepository.getStageTree(),
+        Di.characterRepository.getMyState(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _tree = tree;
+        _tree = results[0] as CharacterStageTree;
+        _myState = results[1] as CharacterState;
         _loading = false;
       });
     } catch (e) {
@@ -68,11 +75,11 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _tree == null
               ? const SizedBox.shrink()
-              : _buildTree(_tree!),
+              : _buildTree(_tree!, _myState!),
     );
   }
 
-  Widget _buildTree(CharacterStageTree tree) {
+  Widget _buildTree(CharacterStageTree tree, CharacterState me) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       itemCount: tree.stages.length,
@@ -84,6 +91,8 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
           info: s,
           currentLevel: tree.currentLevel,
           isCurrent: isCurrent,
+          myColor: me.color,
+          myColorHex: me.colorHex,
         );
       },
     );
@@ -95,11 +104,15 @@ class _StageCard extends StatelessWidget {
     required this.info,
     required this.currentLevel,
     required this.isCurrent,
+    required this.myColor,
+    required this.myColorHex,
   });
 
   final CharacterStageInfo info;
   final int currentLevel;
   final bool isCurrent;
+  final CharacterColor myColor;
+  final String myColorHex;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +121,7 @@ class _StageCard extends StatelessWidget {
         ? AppColors.primary
         : (unlocked ? AppColors.gray200 : AppColors.gray100);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: unlocked ? AppColors.white : AppColors.gray50,
         borderRadius: BorderRadius.circular(16),
@@ -116,20 +129,24 @@ class _StageCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: unlocked
-                  ? AppColors.primary.withValues(alpha: 0.12)
-                  : AppColors.gray100,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              unlocked ? Icons.check_circle : Icons.lock_outline,
-              color: unlocked ? AppColors.primary : AppColors.gray400,
-              size: 22,
+          // 잠긴 단계는 흑백으로 반투명 처리 — 동일 모찌이지만 도달 여부 시각화.
+          Opacity(
+            opacity: unlocked ? 1.0 : 0.35,
+            child: ColorFiltered(
+              colorFilter: unlocked
+                  ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                  : const ColorFilter.matrix(<double>[
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0, 0, 0, 1, 0,
+                    ]),
+              child: MochiCharacterView(
+                color: myColor,
+                colorHex: myColorHex,
+                stage: info.stage,
+                size: 56,
+              ),
             ),
           ),
           const SizedBox(width: 14),

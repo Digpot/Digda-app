@@ -53,4 +53,67 @@ class CharacterRepository {
     );
     return CharacterState.fromJson(res.data!);
   }
+
+  // ─────────── 퀴즈 ───────────
+
+  /// 풀 수 있는 퀴즈 1건 랜덤. 없으면 4xx (QUIZ_NO_AVAILABLE).
+  Future<CharacterQuiz> pickRandomQuiz(int groupRoomId) async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/character-quizzes/random',
+      query: {'groupRoomId': groupRoomId},
+    );
+    return CharacterQuiz.fromJson(res.data!);
+  }
+
+  /// 그룹 퀴즈 목록.
+  Future<CharacterQuizListResult> listQuizzes({
+    required int groupRoomId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/character-quizzes',
+      query: {
+        'groupRoomId': groupRoomId,
+        'page': page,
+        'size': size,
+      },
+    );
+    return CharacterQuizListResult.fromJson(res.data!);
+  }
+
+  /// 퀴즈 생성.
+  Future<CharacterQuiz> createQuiz({
+    required int groupRoomId,
+    required QuizCategory category,
+    required String question,
+    required List<String> options,
+    required int correctIndex,
+    required int expMultiplier,
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/character-quizzes',
+      body: {
+        'groupRoomId': groupRoomId,
+        'category': category.serverKey,
+        'question': question,
+        'options': options,
+        'correctIndex': correctIndex,
+        'expMultiplier': expMultiplier,
+      },
+    );
+    return CharacterQuiz.fromJson(res.data!);
+  }
+
+  /// 퀴즈 응시. 보상 + 갱신된 캐릭터 상태가 함께 옴.
+  Future<QuizAttemptResult> attemptQuiz({
+    required int quizId,
+    required int selectedIndex,
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/character-quizzes/$quizId/attempt',
+      body: {'selectedIndex': selectedIndex},
+    );
+    return QuizAttemptResult.fromJson(res.data!);
+  }
 }

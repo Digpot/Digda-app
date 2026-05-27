@@ -9,6 +9,9 @@ import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
 import 'character_stage_tree_screen.dart';
 import 'character_color_shop_screen.dart';
+import 'character_dex_screen.dart';
+import 'quiz/character_quiz_play_screen.dart';
+import 'quiz/character_quiz_create_screen.dart';
 
 /// 모찌 키우기 탭의 메인 화면.
 /// - 캐릭터 시각화 + 레벨/EXP 진행도 + 코인
@@ -79,6 +82,30 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     if (changed == true) _load();
   }
 
+  Future<void> _openDex() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const CharacterDexScreen()),
+    );
+    _load();
+  }
+
+  Future<void> _openQuizPlay() async {
+    // 응시 결과 화면이 PopReplace 로 끝나므로, push 가 끝나 돌아오면 항상 최신 상태가
+    // 필요. (탭 전환과 일관)
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const CharacterQuizPlayScreen()),
+    );
+    _load();
+  }
+
+  Future<void> _openQuizCreate() async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const CharacterQuizCreateScreen()),
+    );
+    // 만들기 자체로는 내 캐릭터 상태가 변하지 않지만, 그룹원 응시 → 후속 자동 갱신은 없음.
+    // 새로고침은 사용자 swipe-down 으로 처리.
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,16 +172,11 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         children: [
           const SizedBox(height: 12),
           Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                MochiCharacterView(
-                  color: s.color,
-                  colorHex: s.colorHex,
-                  size: 220,
-                ),
-                MochiStageBadge(stage: s.stage, size: 220),
-              ],
+            child: MochiCharacterView(
+              color: s.color,
+              colorHex: s.colorHex,
+              stage: s.stage,
+              size: 220,
             ),
           ),
           const SizedBox(height: 20),
@@ -163,21 +185,118 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           _ExpProgress(state: s),
           const SizedBox(height: 28),
           _CoinChip(coin: s.coin),
-          const SizedBox(height: 28),
-          _ActionTile(
-            icon: Icons.trending_up,
-            title: '진화 트리 보기',
-            description: '${s.stageDisplayName} (Lv. ${s.level}) · 다음 단계까지',
-            onTap: _openStageTree,
+          const SizedBox(height: 24),
+          // 핵심 CTA — 퀴즈 풀어서 EXP/코인 얻기
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: _openQuizPlay,
+              icon: const Icon(Icons.psychology_outlined, size: 22),
+              label: const Text(
+                '퀴즈 풀기',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
-          _ActionTile(
-            icon: Icons.palette_outlined,
-            title: '색상 상점',
-            description: '코인으로 새로운 모찌 색을 해금하세요',
-            onTap: _openShop,
+          // 부가 기능 — 2x2 그리드
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 2.6,
+            children: [
+              _MiniTile(
+                icon: Icons.edit_note,
+                label: '퀴즈 만들기',
+                onTap: _openQuizCreate,
+              ),
+              _MiniTile(
+                icon: Icons.trending_up,
+                label: '진화 트리',
+                onTap: _openStageTree,
+              ),
+              _MiniTile(
+                icon: Icons.collections_bookmark_outlined,
+                label: '도감',
+                onTap: _openDex,
+              ),
+              _MiniTile(
+                icon: Icons.palette_outlined,
+                label: '색상 상점',
+                onTap: _openShop,
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniTile extends StatelessWidget {
+  const _MiniTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.gray50,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.gray900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -313,77 +432,6 @@ class _CoinChip extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.gray50,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.gray900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 12,
-                        color: AppColors.gray500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right,
-                  color: AppColors.gray400, size: 22),
-            ],
-          ),
         ),
       ),
     );

@@ -207,3 +207,149 @@ class CharacterColorShop {
     );
   }
 }
+
+// ───────────────────────────────────────────
+//  Quiz
+// ───────────────────────────────────────────
+
+enum QuizCategory {
+  personal,
+  memory,
+  hobby,
+  favorite,
+  general;
+
+  static QuizCategory fromKey(String key) {
+    return QuizCategory.values.firstWhere(
+      (c) => c.name == key.toLowerCase(),
+      orElse: () => QuizCategory.general,
+    );
+  }
+
+  String get serverKey => name.toUpperCase();
+
+  String get displayName {
+    switch (this) {
+      case QuizCategory.personal:
+        return '개인';
+      case QuizCategory.memory:
+        return '추억';
+      case QuizCategory.hobby:
+        return '취미';
+      case QuizCategory.favorite:
+        return '좋아하는 것';
+      case QuizCategory.general:
+        return '일반';
+    }
+  }
+}
+
+class CharacterQuiz {
+  CharacterQuiz({
+    required this.id,
+    required this.groupRoomId,
+    required this.category,
+    required this.categoryDisplayName,
+    required this.question,
+    required this.options,
+    required this.expMultiplier,
+    required this.authorName,
+  });
+
+  final int id;
+  final int groupRoomId;
+  final QuizCategory category;
+  final String categoryDisplayName;
+  final String question;
+  final List<String> options;
+  final int expMultiplier;
+  final String authorName;
+
+  factory CharacterQuiz.fromJson(Map<String, dynamic> json) {
+    return CharacterQuiz(
+      id: (json['id'] as num).toInt(),
+      groupRoomId: (json['groupRoomId'] as num).toInt(),
+      category: QuizCategory.fromKey(json['category'] as String),
+      categoryDisplayName: json['categoryDisplayName'] as String? ?? '',
+      question: json['question'] as String,
+      options: ((json['options'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      expMultiplier: (json['expMultiplier'] as num? ?? 1).toInt(),
+      authorName: json['authorName'] as String? ?? '',
+    );
+  }
+}
+
+class CharacterQuizListResult {
+  CharacterQuizListResult({
+    required this.items,
+    required this.page,
+    required this.totalPages,
+    required this.totalElements,
+  });
+
+  final List<CharacterQuiz> items;
+  final int page;
+  final int totalPages;
+  final int totalElements;
+
+  factory CharacterQuizListResult.fromJson(Map<String, dynamic> json) {
+    return CharacterQuizListResult(
+      items: ((json['items'] as List?) ?? [])
+          .map((e) => CharacterQuiz.fromJson(
+                (e as Map).cast<String, dynamic>(),
+              ))
+          .toList(),
+      page: (json['page'] as num? ?? 0).toInt(),
+      totalPages: (json['totalPages'] as num? ?? 0).toInt(),
+      totalElements: (json['totalElements'] as num? ?? 0).toInt(),
+    );
+  }
+}
+
+class QuizAttemptResult {
+  QuizAttemptResult({
+    required this.quizId,
+    required this.correct,
+    required this.correctIndex,
+    required this.selectedIndex,
+    required this.earnedExp,
+    required this.earnedCoin,
+    required this.character,
+    required this.levelGained,
+    required this.stageBefore,
+    required this.stageAfter,
+    required this.stageChanged,
+  });
+
+  final int quizId;
+  final bool correct;
+  final int correctIndex;
+  final int selectedIndex;
+  final int earnedExp;
+  final int earnedCoin;
+  final CharacterState character;
+  final int levelGained;
+  final CharacterStage stageBefore;
+  final CharacterStage stageAfter;
+  final bool stageChanged;
+
+  factory QuizAttemptResult.fromJson(Map<String, dynamic> json) {
+    return QuizAttemptResult(
+      quizId: (json['quizId'] as num).toInt(),
+      correct: json['correct'] as bool? ?? false,
+      correctIndex: (json['correctIndex'] as num).toInt(),
+      selectedIndex: (json['selectedIndex'] as num).toInt(),
+      earnedExp: (json['earnedExp'] as num? ?? 0).toInt(),
+      earnedCoin: (json['earnedCoin'] as num? ?? 0).toInt(),
+      character: CharacterState.fromJson(
+        (json['character'] as Map).cast<String, dynamic>(),
+      ),
+      levelGained: (json['levelGained'] as num? ?? 0).toInt(),
+      stageBefore: CharacterStage.fromKey(json['stageBefore'] as String),
+      stageAfter: CharacterStage.fromKey(json['stageAfter'] as String),
+      stageChanged: json['stageChanged'] as bool? ?? false,
+    );
+  }
+}
