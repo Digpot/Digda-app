@@ -18,10 +18,10 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   final TextEditingController _titleController = TextEditingController();
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
-  TimeOfDay _startTime = const TimeOfDay(hour: 14, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
+  TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay _endTime = const TimeOfDay(hour: 18, minute: 0);
   Color _selectedColor = AppColors.primary;
-  final bool _allDay = false;
+  bool _allDay = true;
   bool _saving = false;
   bool _loading = true;
   bool _argsConsumed = false;
@@ -84,6 +84,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         _startDate = s.startDate;
         _endDate = s.endDate;
         _selectedColor = _parseHex(s.color);
+        _allDay = s.startTime == null && s.endTime == null;
         if (s.startTime != null) {
           _startTime = _parseTime(s.startTime!) ?? _startTime;
         }
@@ -286,36 +287,58 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _buildSectionLabel('시간'),
-                      const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _pickTime(isStart: true),
-                              child:
-                                  _buildTimeField(_formatTime(_startTime)),
+                          _buildSectionLabel('시간'),
+                          const Spacer(),
+                          const Text(
+                            '하루 종일',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              color: AppColors.gray700,
                             ),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Text(
-                              '~',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 16,
-                                color: AppColors.gray400,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _pickTime(isStart: false),
-                              child: _buildTimeField(_formatTime(_endTime)),
-                            ),
+                          const SizedBox(width: 6),
+                          Switch.adaptive(
+                            value: _allDay,
+                            activeThumbColor: AppColors.primary,
+                            onChanged: (v) => setState(() => _allDay = v),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      if (!_allDay)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _pickTime(isStart: true),
+                                child:
+                                    _buildTimeField(_formatTime(_startTime)),
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                '~',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 16,
+                                  color: AppColors.gray400,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _pickTime(isStart: false),
+                                child:
+                                    _buildTimeField(_formatTime(_endTime)),
+                              ),
+                            ),
+                          ],
+                        ),
                       const SizedBox(height: 24),
                       _buildSectionLabel('참가자'),
                       const SizedBox(height: 8),

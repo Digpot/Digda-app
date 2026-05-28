@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>디그팟 — 카카오맵 API 호출 권한 심사 응답서</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    color: #1f2933;
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+    font-size: 11pt;
+    line-height: 1.62;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1, h2, h3 { color: #d23a3a; margin: 0 0 8px 0; line-height: 1.3; }
+  h1 { font-size: 26pt; letter-spacing: -0.6px; }
+  h2 {
+    font-size: 16pt;
+    margin-top: 22px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ffd0d0;
+  }
+  h3 { font-size: 12.5pt; color: #1f2933; margin-top: 18px; }
+  p { margin: 6px 0 8px 0; }
+  ul, ol { margin: 6px 0 10px 22px; padding: 0; }
+  li { margin: 3px 0; }
+  strong { color: #b8302a; }
+  code {
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 10pt;
+    background: #f4f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .cover {
+    height: 245mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    page-break-after: always;
+  }
+  .cover .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border: 1.5px solid #d23a3a;
+    color: #d23a3a;
+    border-radius: 999px;
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+  }
+  .cover h1 { font-size: 32pt; margin-bottom: 14px; }
+  .cover .subtitle { font-size: 13pt; color: #555; margin-bottom: 40px; }
+  .cover .meta { font-size: 11pt; color: #777; line-height: 1.9; }
+  .cover .accent { color: #d23a3a; font-weight: 700; }
+
+  .page-break { page-break-before: always; }
+  .section { page-break-inside: avoid; }
+
+  .infobox {
+    background: #fff5f5;
+    border-left: 4px solid #d23a3a;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+  .infobox strong { color: #b8302a; }
+  .note {
+    background: #f4f6fb;
+    border-left: 4px solid #5b87e5;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+  .quote {
+    background: #fafafa;
+    border-left: 3px solid #bbb;
+    padding: 8px 14px;
+    margin: 10px 0;
+    color: #555;
+    font-size: 10.5pt;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 12px 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #e1e5ea;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #fff5f5;
+    color: #b8302a;
+    font-weight: 700;
+    width: 28%;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  .app-card {
+    border: 1.5px solid #d23a3a;
+    border-radius: 8px;
+    padding: 14px 18px 8px 18px;
+    margin: 14px 0 18px 0;
+    background: #fffafa;
+    page-break-inside: avoid;
+  }
+  .app-card h3 {
+    color: #d23a3a;
+    margin: 0 0 10px 0;
+    font-size: 13pt;
+    border-bottom: 1px solid #ffd0d0;
+    padding-bottom: 6px;
+  }
+  .app-card .field {
+    margin: 6px 0;
+    font-size: 10.5pt;
+  }
+  .app-card .field b {
+    color: #b8302a;
+    display: inline-block;
+    min-width: 130px;
+  }
+
+  .footer {
+    margin-top: 28px;
+    padding-top: 12px;
+    border-top: 1px solid #e1e5ea;
+    color: #777;
+    font-size: 10pt;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 표지 ============ -->
+<section class="cover">
+  <div class="badge">KAKAO MAP API · REVIEW RESPONSE</div>
+  <h1>디그팟 (DigPot)</h1>
+  <div class="subtitle">카카오맵 API 호출 권한 심사 응답서</div>
+  <div class="meta">
+    운영사: <span class="accent">DateDiary</span><br/>
+    서비스: 디그팟 — 그룹 단위 다이어리·일정 공유 모바일 앱<br/>
+    제출일: 2026-05-28<br/>
+    담당자: chltmdgh517@naver.com
+  </div>
+</section>
+
+<!-- ============ 본문 ============ -->
+
+<h2>1. 반려 사유 및 응답 요지</h2>
+<div class="quote">
+  심사 요청 시 아래의 가이드를 참고 부탁드립니다 — devtalk.kakao.com/t/api/146633
+</div>
+<p>
+  안내해 주신 <strong>카카오맵 API 호출 권한 심사 안내</strong>의 양식을 확인하였으며,
+  본 응답서는 해당 가이드의 <strong>“2. 카카오맵 API 권한 심사 요청 양식”</strong>에 맞추어
+  운영 중인 앱의 정보를 정리한 자료입니다.
+</p>
+<div class="infobox">
+  <strong>운영 정책 준수 선언</strong> — 본 계정은
+  <strong>1앱-1서비스 정책</strong>을 준수하며, 카카오 디벨로퍼스 운영정책 제5조 23항을 위반하는
+  동일 서비스의 다수 계정 운영은 하지 않습니다. 테스트 목적의 별도 키 사용은
+  Test App 으로 운영하며 본 심사 대상에 포함하지 않습니다.
+</div>
+
+<h2>2. 운영 중인 앱 현황</h2>
+<table>
+  <tr>
+    <th>구분</th>
+    <th>내용</th>
+  </tr>
+  <tr>
+    <td>총 운영 앱 수</td>
+    <td><strong>1개</strong> — 디그팟(DigPot)</td>
+  </tr>
+  <tr>
+    <td>심사 대상 앱</td>
+    <td>디그팟 — 본 응답서의 [앱 1] 참고</td>
+  </tr>
+  <tr>
+    <td>동일 서비스 중복 등록 여부</td>
+    <td><strong>없음</strong> — 디그팟 외 동일 도메인/PackageName/BundleID 등록된 앱 없음</td>
+  </tr>
+  <tr>
+    <td>Test App 사용 여부</td>
+    <td>해당 없음 — 운영(메인) 앱 단일로만 호출</td>
+  </tr>
+</table>
+
+<h2>3. 앱별 상세 정보</h2>
+
+<div class="app-card">
+  <h3>[앱 1 — 카카오맵 API 심사 대상]  디그팟 (DigPot)</h3>
+
+  <div class="field"><b>· 서비스명</b> 디그팟 (DigPot)</div>
+  <div class="field"><b>· 운영사</b> DateDiary</div>
+  <div class="field"><b>· 출시 단계</b> 베타 운영 중 / 정식 출시 준비</div>
+  <div class="field"><b>· 타겟 사용자</b> 가족·연인·친구 등 친밀한 비공개 소그룹</div>
+
+  <h3 style="margin-top:14px;">서비스 상세 설명</h3>
+  <p>
+    디그팟은 초대 기반의 <strong>비공개 그룹 다이어리·일정 공유 모바일 앱</strong>입니다.
+    초대 코드로 가입한 그룹 멤버들이 일정(캘린더), 그림일기, 투두리스트, 캐릭터 키우기 등을
+    함께 사용하며, 모든 콘텐츠는 그룹 외부로 노출되지 않습니다.
+  </p>
+  <p>
+    그림일기 작성 화면의 <strong>“장소 추가하기”</strong> 항목에서, 사용자가 그날 다녀온
+    카페·식당·관광지의 이름을 검색해 일기 본문과 함께 저장할 수 있도록
+    <strong>카카오 로컬 키워드 검색 API</strong>를 활용합니다.
+  </p>
+
+  <h3 style="margin-top:14px;">서비스 주소</h3>
+  <table>
+    <tr><th style="width:35%;">Android Package Name</th>
+        <td><code>com.digda.app</code></td></tr>
+    <tr><th>iOS Bundle ID</th>
+        <td><code>com.digda.app</code> (정식 출시용 / 베타 빌드는 별도 dev 식별자 미사용)</td></tr>
+    <tr><th>웹 도메인</th>
+        <td>해당 없음 — 모바일 앱 단독 서비스
+            (운영사 도메인은 정식 출시 시점 등록 예정)</td></tr>
+    <tr><th>플랫폼 구분</th>
+        <td>Android (Google Play) · iOS (App Store) 양대 스토어 배포 예정</td></tr>
+  </table>
+
+  <h3 style="margin-top:14px;">카카오맵 API 활용 시나리오</h3>
+  <p><strong>활용 API</strong> — 카카오 로컬 키워드 검색
+     <code>GET /v2/local/search/keyword.json</code></p>
+
+  <ol>
+    <li><strong>호출 지점</strong> —
+      그림일기 <strong>작성·수정 화면</strong>의 “장소 추가하기” 항목을 사용자가 탭하면
+      검색 시트(bottom sheet)가 열림.
+    </li>
+    <li><strong>호출 트리거</strong> —
+      사용자가 검색바에 키워드(예: “성수동 카페”)를 입력하고 검색 버튼을 누르는
+      <strong>명시적 액션 시에만</strong> 호출. 입력 중 자동 호출(autocomplete) 없음.
+    </li>
+    <li><strong>응답 활용</strong> —
+      검색 결과 목록 표시 → 사용자가 선택한 장소의 <code>place_name</code>(문자열)만
+      <code>diary.location</code> 컬럼에 저장. 좌표·내부 ID·연락처 등은 저장하지 않음.
+    </li>
+    <li><strong>호출 방식</strong> — HTTP REST,
+      헤더 <code>Authorization: KakaoAK &lt;REST_API_KEY&gt;</code>. 카카오맵 JavaScript SDK
+      및 지도 임베드는 사용하지 않음.
+    </li>
+  </ol>
+
+  <h3 style="margin-top:14px;">호출 예상 트래픽</h3>
+  <table>
+    <tr><th>단계</th><th>예상 MAU</th><th>일일 검색 호출(추정)</th></tr>
+    <tr><td>베타</td><td>약 500명</td><td>2,000 ~ 5,000건</td></tr>
+    <tr><td>정식 +3개월</td><td>약 2,000명</td><td>8,000 ~ 20,000건</td></tr>
+    <tr><td>정식 +6개월</td><td>약 5,000명</td><td>20,000 ~ 50,000건</td></tr>
+  </table>
+
+  <h3 style="margin-top:14px;">참고 자료</h3>
+  <ul>
+    <li>서비스 전반 + 호출 화면 상세는 동일 폴더의
+      <code>digpot_service_introduction.pdf</code> 참조.</li>
+    <li>장소 검색 호출 화면 캡처는
+      <code>screenshot_guide.md</code> 절차로 마스킹 후 별첨.</li>
+  </ul>
+</div>
+
+<h2>4. 정책 준수 확인 사항</h2>
+<ul>
+  <li>본 계정에는 디그팟 외의 <strong>동일 서비스 중복 앱 등록 없음</strong>
+      (도메인 · PackageName · BundleID 기준).</li>
+  <li>테스트·개발 용도 키는 <strong>Test App</strong> 가이드를 따라 별도 관리하며,
+      본 운영 앱과 같은 PackageName 으로 중복 등록하지 않음.</li>
+  <li>카카오 디벨로퍼스 운영정책 제5조 23항 — 동일 서비스의 다수 계정 운영 금지 — 준수.</li>
+  <li>카카오맵 API 정책 개편 공지 ①·② 의 변경 사항(쿼터·과금 정책 등)을 인지하고
+      호출량을 위 트래픽 표 기준으로 모니터링.</li>
+</ul>
+
+<h2>5. 요청 사항</h2>
+<p>
+  위 정보로 <strong>디그팟(DigPot) 앱의 카카오맵 / 카카오 로컬 API 호출 권한</strong>
+  심사를 재진행해 주시기 바랍니다. 추가 자료나 보완이 필요할 경우 아래 연락처로
+  안내 부탁드립니다.
+</p>
+
+<div class="footer">
+  <strong>DateDiary · 디그팟 운영팀</strong><br/>
+  담당: chltmdgh517@naver.com &nbsp;|&nbsp; 작성: 2026-05-28
+</div>
+
+</body>
+</html>

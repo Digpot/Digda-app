@@ -174,11 +174,12 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
   }
 
   Future<void> _pickDate() async {
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(now.year, now.month, now.day),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
@@ -313,6 +314,9 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             imageIds: combined,
           ),
         );
+        Di.characterRepository
+            .addExp(amount: 15, source: 'diary_create')
+            .ignore();
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed(
           '/diary-detail',

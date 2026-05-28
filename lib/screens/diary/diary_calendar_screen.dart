@@ -634,14 +634,21 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                   // Calendar
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: TableCalendar(
+                    child: Builder(builder: (context) {
+                      final now = DateTime.now();
+                      final today =
+                          DateTime.utc(now.year, now.month, now.day);
+                      return TableCalendar(
                       firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.now(),
+                      lastDay: today,
                       focusedDay: pickerFocusedDay,
                       selectedDayPredicate: (day) =>
                           isSameDay(pickerSelectedDay, day),
-                      enabledDayPredicate: (day) =>
-                          !day.isAfter(DateTime.now()),
+                      enabledDayPredicate: (day) {
+                        final d =
+                            DateTime.utc(day.year, day.month, day.day);
+                        return !d.isAfter(today);
+                      },
                       calendarFormat: CalendarFormat.month,
                       headerVisible: false,
                       calendarStyle: const CalendarStyle(
@@ -741,7 +748,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                         setModalState(() => pickerFocusedDay = focusedDay);
                         loadPickerDiaries(setModalState);
                       },
-                    ),
+                    );
+                    }),
                   ),
                   const SizedBox(height: 16),
                   // Confirm button

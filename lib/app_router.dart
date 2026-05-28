@@ -16,7 +16,12 @@ import 'screens/diary/diary_calendar_screen.dart';
 import 'screens/diary/diary_detail_screen.dart';
 import 'screens/diary/write_diary_screen.dart';
 import 'screens/diary/edit_diary_screen.dart';
-import 'screens/game/quiz_coming_soon_screen.dart';
+import 'screens/character/character_main_screen.dart';
+import 'screens/character/character_dex_screen.dart';
+import 'screens/character/character_stage_tree_screen.dart';
+import 'screens/character/character_color_shop_screen.dart';
+import 'screens/character/quiz/character_quiz_play_screen.dart';
+import 'screens/character/quiz/character_quiz_create_screen.dart';
 import 'screens/mypage/my_page_screen.dart';
 import 'screens/mypage/edit_profile_screen.dart';
 import 'screens/mypage/notification_settings_screen.dart';
@@ -102,8 +107,27 @@ class AppRouter {
       case '/edit-diary':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const EditDiaryScreen());
-      case '/quiz':
-        return _tabRoute(const QuizComingSoonScreen(), settings);
+      case '/character':
+        return _tabRoute(const CharacterMainScreen(), settings);
+      case '/character-dex':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const CharacterDexScreen());
+      case '/character-stages':
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const CharacterStageTreeScreen());
+      case '/character-shop':
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const CharacterColorShopScreen());
+      case '/character-quiz-play':
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const CharacterQuizPlayScreen());
+      case '/character-quiz-create':
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const CharacterQuizCreateScreen());
       case '/my-page':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const MyPageScreen());

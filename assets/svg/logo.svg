@@ -1,24 +1,26 @@
-<svg width="60" height="62" viewBox="0 0 60 62" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Soft heart glow -->
-  <path d="M30 58C30 58 2 38 2 20C2 10 10 2 20 2C25.5 2 29 5.5 30 9C31 5.5 34.5 2 40 2C50 2 58 10 58 20C58 38 30 58 30 58Z" fill="#FF6B6B" opacity="0.1"/>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 디그팟 마스터 로고 — Coral · Primary (모찌 듀오) -->
+  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
 
-  <!-- Calendar body -->
-  <rect x="17" y="20" width="26" height="21" rx="4" fill="white" stroke="#FF6B6B" stroke-width="2"/>
-  <!-- Calendar top bar -->
-  <rect x="17" y="20" width="26" height="8" rx="4" fill="#FF6B6B"/>
-  <rect x="17" y="24" width="26" height="4" fill="#FF6B6B"/>
-  <!-- Calendar pegs -->
-  <rect x="23" y="17" width="2.4" height="6" rx="1.2" fill="#FF6B6B"/>
-  <rect x="34.6" y="17" width="2.4" height="6" rx="1.2" fill="#FF6B6B"/>
+  <!-- 뒤쪽 모찌 (살짝 뒤로 빼꼼) -->
+  <g>
+    <ellipse cx="124" cy="112" rx="42" ry="36" fill="#FFE4E4"/>
+    <ellipse cx="112" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
+    <ellipse cx="136" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
+    <path d="M118 121 Q124 127 130 121" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+  </g>
 
-  <!-- Calendar dots -->
-  <circle cx="24" cy="33" r="1.8" fill="#FF6B6B" opacity="0.4"/>
-  <circle cx="30" cy="33" r="1.8" fill="#FF6B6B"/>
-  <circle cx="36" cy="33" r="1.8" fill="#FF6B6B" opacity="0.4"/>
-  <circle cx="24" cy="38" r="1.8" fill="#FF6B6B" opacity="0.25"/>
-  <circle cx="30" cy="38" r="1.8" fill="#FF6B6B" opacity="0.4"/>
-  <circle cx="36" cy="38" r="1.8" fill="#FF6B6B" opacity="0.25"/>
-
-  <!-- Heart outline -->
-  <path d="M30 58C30 58 2 38 2 20C2 10 10 2 20 2C25.5 2 29 5.5 30 9C31 5.5 34.5 2 40 2C50 2 58 10 58 20C58 38 30 58 30 58Z" stroke="#FF6B6B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 앞쪽 모찌 (메인, 흰색) -->
+  <g>
+    <ellipse cx="82" cy="118" rx="48" ry="41" fill="#FFFFFF"/>
+    <!-- 하트 액센트 -->
+    <path d="M82 70 C78 64 68 64 68 73 C68 79 75 84 82 90 C89 84 96 79 96 73 C96 64 86 64 82 70 Z" fill="#FF9FB0"/>
+    <ellipse cx="68" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
+    <ellipse cx="96" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
+    <path d="M74 128 Q82 135 90 128" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+  </g>
 </svg>
