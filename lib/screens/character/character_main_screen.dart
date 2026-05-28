@@ -59,14 +59,28 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     _load();
   }
 
+  /// 활성 그룹의 ID. 미선택이면 null — 화면이 빈 안내로 전환.
+  int? get _activeGroupId {
+    final raw = Di.activeGroup.groupRoomId;
+    return raw == null ? null : int.tryParse(raw);
+  }
+
   // silent: 이미 데이터가 있는 경우 스피너 없이 백그라운드 갱신
   Future<void> _load({bool silent = false}) async {
+    final groupId = _activeGroupId;
+    if (groupId == null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = '그룹에 들어간 뒤 모찌를 만날 수 있어요.';
+      });
+      return;
+    }
     setState(() {
       if (!silent || _state == null) _loading = true;
       _errorMessage = null;
     });
     try {
-      final state = await Di.characterRepository.getMyState();
+      final state = await Di.characterRepository.getMyState(groupRoomId: groupId);
       if (!mounted) return;
       final isFirst = !_hasLoadedOnce;
       setState(() {
@@ -140,9 +154,11 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
 
   void _handlePet() {
     if (_petInProgress) return;
+    final groupId = _activeGroupId;
+    if (groupId == null) return;
     _petInProgress = true;
     Di.characterRepository
-        .addExp(amount: 5, source: 'pet')
+        .addExp(groupRoomId: groupId, amount: 5, source: 'pet')
         .then((result) {
           _petInProgress = false;
           if (!mounted) return;
@@ -204,6 +220,16 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             ),
             const SizedBox(width: 12),
             const NotificationBellIcon(),
+            const SizedBox(width: 16),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).pushNamed('/my-page'),
+              child: const Icon(
+                Icons.settings_outlined,
+                size: 22,
+                color: AppColors.gray700,
+              ),
+            ),
           ],
         ),
       ),

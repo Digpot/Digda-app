@@ -60,7 +60,8 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       // 캐릭터 상태는 best-effort — 실패해도 퀴즈는 풀 수 있게 fallback.
       CharacterState? character;
       try {
-        character = await Di.characterRepository.getMyState();
+        character = await Di.characterRepository
+            .getMyState(groupRoomId: groupRoomId);
       } catch (_) {
         character = null;
       }

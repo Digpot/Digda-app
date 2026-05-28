@@ -35,7 +35,21 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// 활성 그룹의 ID. 미선택이면 null.
+  int? get _activeGroupId {
+    final raw = Di.activeGroup.groupRoomId;
+    return raw == null ? null : int.tryParse(raw);
+  }
+
   Future<void> _load() async {
+    final groupId = _activeGroupId;
+    if (groupId == null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = '그룹에 들어간 뒤 색상 상점을 이용할 수 있어요.';
+      });
+      return;
+    }
     setState(() {
       if (_shop == null) _loading = true;
       _errorMessage = null;
@@ -44,11 +58,13 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
       // 캐릭터 상태는 best-effort — 실패해도 색 구매·적용은 가능.
       CharacterState? character;
       try {
-        character = await Di.characterRepository.getMyState();
+        character =
+            await Di.characterRepository.getMyState(groupRoomId: groupId);
       } catch (_) {
         character = null;
       }
-      final shop = await Di.characterRepository.getColorShop();
+      final shop =
+          await Di.characterRepository.getColorShop(groupRoomId: groupId);
       if (!mounted) return;
       setState(() {
         _character = character;
@@ -91,9 +107,14 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
 
   Future<void> _doBuy(CharacterColorInfo item) async {
     if (_pendingAction != null) return;
+    final groupId = _activeGroupId;
+    if (groupId == null) return;
     setState(() => _pendingAction = 'buy:${item.color.name}');
     try {
-      final updated = await Di.characterRepository.buyColor(item.color);
+      final updated = await Di.characterRepository.buyColor(
+        groupRoomId: groupId,
+        color: item.color,
+      );
       if (!mounted) return;
       setState(() {
         _shop = updated;
@@ -110,9 +131,14 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
 
   Future<void> _apply(CharacterColorInfo item) async {
     if (_pendingAction != null) return;
+    final groupId = _activeGroupId;
+    if (groupId == null) return;
     setState(() => _pendingAction = 'apply:${item.color.name}');
     try {
-      await Di.characterRepository.applyColor(item.color);
+      await Di.characterRepository.applyColor(
+        groupRoomId: groupId,
+        color: item.color,
+      );
     } catch (e) {
       if (mounted) showErrorDialog(context, errorMessageOf(e));
       if (mounted) setState(() => _pendingAction = null);
@@ -122,7 +148,8 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     // applyColor 성공 — 뒤로가기 시 메인이 새로고침하도록 즉시 표시
     setState(() => _changed = true);
     try {
-      final shop = await Di.characterRepository.getColorShop();
+      final shop =
+          await Di.characterRepository.getColorShop(groupRoomId: groupId);
       if (!mounted) return;
       setState(() => _shop = shop);
     } catch (_) {
