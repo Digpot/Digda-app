@@ -380,8 +380,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final eventSlots = holidayName != null ? 2 : 3;
     final weekMax = _weekMaxLane[weekSun] ?? -1;
 
-    // 이 날 기준 오버플로우 여부
-    final hasOverflow = laneToSchedule.keys.any((l) => l >= eventSlots);
+    // 이 날 기준 오버플로우 여부 및 숨겨진 일정 수
+    final hiddenCount = laneToSchedule.keys.where((l) => l >= eventSlots).length;
+    final hasOverflow = hiddenCount > 0;
     final displayMax = hasOverflow ? eventSlots - 1 : eventSlots;
     final visibleLaneCount = weekMax < 0 ? 0 : (weekMax + 1 < displayMax ? weekMax + 1 : displayMax);
 
@@ -454,30 +455,29 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             laneToSchedule.containsKey(lane)
                 ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
                 : const SizedBox(height: 15),
-          // 오버플로우 pill
-          if (hasOverflow) _buildMorePill(),
+          // 오버플로우 pill: 숨겨진 개수를 +N 형태로 표시
+          if (hasOverflow) _buildMorePill(hiddenCount),
         ],
       ),
     );
   }
 
-  Widget _buildMorePill() {
+  Widget _buildMorePill(int count) {
     return Container(
       height: 14,
       margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
       decoration: BoxDecoration(
-        color: AppColors.gray200,
+        color: AppColors.gray100,
         borderRadius: BorderRadius.circular(4),
       ),
       alignment: Alignment.center,
-      child: const Text(
-        '···',
-        style: TextStyle(
+      child: Text(
+        '+$count',
+        style: const TextStyle(
           fontFamily: 'Inter',
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           fontSize: 8,
-          color: AppColors.gray500,
-          letterSpacing: 0,
+          color: AppColors.gray700,
         ),
       ),
     );
@@ -596,29 +596,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         right: roundRight ? 2 : 0,
       ),
       decoration: barDecoration,
-    );
-  }
-
-  /// 초과 일정을 '...' 으로 표시하는 pill
-  Widget _buildMorePill() {
-    return Container(
-      height: 14,
-      margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
-      decoration: BoxDecoration(
-        color: AppColors.gray200,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        '···',
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w700,
-          fontSize: 8,
-          color: AppColors.gray500,
-          letterSpacing: 0,
-        ),
-      ),
     );
   }
 
