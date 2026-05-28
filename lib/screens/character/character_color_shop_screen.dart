@@ -32,7 +32,7 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      if (_shop == null) _loading = true;
       _errorMessage = null;
     });
     try {

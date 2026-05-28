@@ -27,7 +27,7 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      if (_tree == null) _loading = true;
       _errorMessage = null;
     });
     try {

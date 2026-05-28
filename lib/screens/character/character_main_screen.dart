@@ -211,7 +211,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     }
     final s = _state!;
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(silent: true),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
