@@ -10,6 +10,7 @@ import '../../widgets/notification_bell_icon.dart';
 import 'character_stage_tree_screen.dart';
 import 'character_color_shop_screen.dart';
 import 'character_dex_screen.dart';
+import 'character_intro_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
 import 'quiz/character_quiz_create_screen.dart';
 
@@ -32,7 +33,22 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowIntro());
+  }
+
+  Future<void> _maybeShowIntro() async {
+    final seen = await CharacterIntroScreen.isAlreadySeen();
+    if (!mounted) return;
+    if (!seen) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => const CharacterIntroScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+    }
+    if (!mounted) return;
+    _load();
   }
 
   Future<void> _load() async {
