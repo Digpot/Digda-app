@@ -184,7 +184,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         child: Row(
           children: [
             const Text(
-              '캐릭터',
+              '모찌 키우기',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,

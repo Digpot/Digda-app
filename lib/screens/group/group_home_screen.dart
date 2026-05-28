@@ -106,7 +106,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               // 그룹 홈은 하단 탭 진입점이므로 뒤로가기 화살표 없이
-              // 다른 탭(캘린더·일기·퀴즈) 과 동일한 좌측 정렬 타이틀로 통일.
+              // 다른 탭(캘린더·일기·모찌) 과 동일한 좌측 정렬 타이틀로 통일.
               child: Row(
                 children: [
                   Expanded(
@@ -175,32 +175,16 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 FeatureCard(
-                                  icon: Icons.sentiment_satisfied_outlined,
-                                  iconBgColor: AppColors.gray100,
-                                  iconColor: AppColors.gray400,
-                                  cardBgColor: AppColors.gray50,
-                                  title: '퀴즈 게임',
-                                  subtitle: '준비 중이에요',
-                                  isDisabled: true,
-                                  badge: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.gray200,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Coming Soon',
-                                      style: TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 11,
-                                        color: AppColors.gray500,
-                                      ),
-                                    ),
-                                  ),
+                                  icon: Icons.favorite_rounded,
+                                  iconBgColor: AppColors.primary
+                                      .withValues(alpha: 0.15),
+                                  iconColor: AppColors.primary,
+                                  cardBgColor: AppColors.primary
+                                      .withValues(alpha: 0.06),
+                                  title: '모찌 키우기',
+                                  subtitle: '함께 모찌를 키워봐요',
+                                  onTap: () => Navigator.of(context)
+                                      .pushNamed('/character'),
                                 ),
                                 const SizedBox(height: 12),
                                 FeatureCard(
