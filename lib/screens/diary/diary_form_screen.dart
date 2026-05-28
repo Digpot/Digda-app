@@ -314,9 +314,16 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             imageIds: combined,
           ),
         );
-        Di.characterRepository
-            .addExp(groupRoomId: groupId, amount: 15, source: 'diary_create')
-            .ignore();
+        final groupRoomIdInt = int.tryParse(groupId);
+        if (groupRoomIdInt != null) {
+          Di.characterRepository
+              .addExp(
+                groupRoomId: groupRoomIdInt,
+                amount: 15,
+                source: 'diary_create',
+              )
+              .ignore();
+        }
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed(
           '/diary-detail',

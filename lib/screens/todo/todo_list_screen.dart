@@ -117,9 +117,16 @@ class _TodoListScreenState extends State<TodoListScreen> {
       final updated = await Di.todoRepository
           .toggle(groupId, todo.id, completed: newCompleted);
       if (newCompleted) {
-        Di.characterRepository
-            .addExp(groupRoomId: groupId, amount: 5, source: 'todo_complete')
-            .ignore();
+        final groupRoomIdInt = int.tryParse(groupId);
+        if (groupRoomIdInt != null) {
+          Di.characterRepository
+              .addExp(
+                groupRoomId: groupRoomIdInt,
+                amount: 5,
+                source: 'todo_complete',
+              )
+              .ignore();
+        }
       }
       if (!mounted) return;
       final next =

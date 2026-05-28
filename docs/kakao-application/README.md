@@ -8,7 +8,7 @@
 | --- | --- |
 | 신청 사유 및 활용 시나리오 | [application_form.md](./application_form.md) — 본문을 그대로 복붙 |
 | 서비스 적용 화면 (1장 / JPG·JPEG·PNG·PDF / 20MB 이내, 개인정보 마스킹) | [screenshot_guide.md](./screenshot_guide.md) — 디바이스에서 직접 캡처해야 함 |
-| 참고용 와이어프레임 | [reference_diary_form.png](./reference_diary_form.png) — 작성 화면 와이어프레임 (개념 전달용) |
+| 참고용 와이어프레임 | [rence_diary_form.png](./reference_diary_form.png) — 작성 화면 와이어프레임 (개념 전달용) |
 
 ## 진행 순서
 
