@@ -128,6 +128,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       setState(() {
         _schedules = [];
         _loadingSchedules = false;
+        _computeLaneAssignments();
       });
       return;
     }
@@ -149,6 +150,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         _schedules = list.map(_Schedule.fromApi).toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _loadingSchedules = false;
+        _computeLaneAssignments();
       });
     } catch (e) {
       if (!mounted) return;
@@ -191,6 +193,93 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
   // 일정 데이터 — API 로드 결과로 채워짐
   List<_Schedule> _schedules = [];
+
+  // 주(row)별 레인 배정: 주 일요일 → (일정 객체 → 레인 인덱스)
+  final Map<DateTime, Map<_Schedule, int>> _weekLaneMap = {};
+  final Map<DateTime, int> _weekMaxLane = {};
+
+  /// 해당 날의 주(row) 시작 일요일 반환
+  DateTime _weekSunday(DateTime day) {
+    final d = DateTime.utc(day.year, day.month, day.day);
+    return d.subtract(Duration(days: d.weekday % 7));
+  }
+
+  /// 일정 목록 기준으로 주별 레인을 탐욕 알고리즘으로 배정.
+  /// 다중 날짜 일정(긴 것)이 우선적으로 낮은 레인을 차지해 가로로 이어지게 한다.
+  void _computeLaneAssignments() {
+    _weekLaneMap.clear();
+    _weekMaxLane.clear();
+
+    // 모든 일정이 걸치는 주 일요일 수집
+    final Set<DateTime> weekSundays = {};
+    for (final s in _schedules) {
+      var d = _weekSunday(s.start);
+      final eDate = DateTime.utc(s.end.year, s.end.month, s.end.day);
+      while (!d.isAfter(eDate)) {
+        weekSundays.add(d);
+        d = d.add(const Duration(days: 7));
+      }
+    }
+
+    for (final weekSun in weekSundays) {
+      final weekSat = weekSun.add(const Duration(days: 6));
+
+      // 이 주에 걸치는 일정을 기간 내림차순 → 시작일 오름차순으로 정렬
+      final weekSchedules = _schedules.where((s) {
+        final sd = DateTime.utc(s.start.year, s.start.month, s.start.day);
+        final ed = DateTime.utc(s.end.year, s.end.month, s.end.day);
+        return !ed.isBefore(weekSun) && !sd.isAfter(weekSat);
+      }).toList()
+        ..sort((a, b) {
+          final aDays = a.end.difference(a.start).inDays;
+          final bDays = b.end.difference(b.start).inDays;
+          if (aDays != bDays) return bDays.compareTo(aDays);
+          return a.start.compareTo(b.start);
+        });
+
+      // 탐욕적 레인 배정
+      final List<List<_Schedule>> lanes = [];
+      final Map<_Schedule, int> assignments = {};
+
+      for (final schedule in weekSchedules) {
+        final sd = DateTime.utc(schedule.start.year, schedule.start.month, schedule.start.day);
+        final ed = DateTime.utc(schedule.end.year, schedule.end.month, schedule.end.day);
+        final visStart = sd.isAfter(weekSun) ? sd : weekSun;
+        final visEnd = ed.isBefore(weekSat) ? ed : weekSat;
+
+        int assignedLane = -1;
+        for (int i = 0; i < lanes.length; i++) {
+          bool conflict = false;
+          for (final existing in lanes[i]) {
+            final exS = DateTime.utc(existing.start.year, existing.start.month, existing.start.day);
+            final exE = DateTime.utc(existing.end.year, existing.end.month, existing.end.day);
+            final exVS = exS.isAfter(weekSun) ? exS : weekSun;
+            final exVE = exE.isBefore(weekSat) ? exE : weekSat;
+            if (!visEnd.isBefore(exVS) && !visStart.isAfter(exVE)) {
+              conflict = true;
+              break;
+            }
+          }
+          if (!conflict) {
+            assignedLane = i;
+            break;
+          }
+        }
+
+        if (assignedLane == -1) {
+          assignedLane = lanes.length;
+          lanes.add([]);
+        }
+        lanes[assignedLane].add(schedule);
+        assignments[schedule] = assignedLane;
+      }
+
+      _weekLaneMap[weekSun] = assignments;
+      _weekMaxLane[weekSun] = assignments.values.isEmpty
+          ? -1
+          : assignments.values.fold(-1, (a, b) => a > b ? a : b);
+    }
+  }
 
   /// 해당 날짜에 걸치는 모든 일정
   List<_Schedule> _getSchedulesForDay(DateTime day) {
@@ -271,12 +360,30 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     required Color textColor,
     bool isOutside = false,
   }) {
-    final schedules = isOutside ? <_Schedule>[] : _getSchedulesForDay(day);
     final holidayName = isOutside ? null : _getHolidayName(day);
-
-    // 공휴일이면 날짜 텍스트를 공휴일 색으로 (circleBg가 없을 때만)
     final dayTextColor =
         (holidayName != null && circleBg == null) ? AppColors.eventHoliday : textColor;
+
+    // 레인 기반 렌더링
+    final weekSun = _weekSunday(day);
+    final laneAssignments = isOutside ? <_Schedule, int>{} : (_weekLaneMap[weekSun] ?? <_Schedule, int>{});
+    final daySchedules = isOutside ? <_Schedule>[] : _getSchedulesForDay(day);
+
+    // 이 날의 레인 → 일정 맵
+    final Map<int, _Schedule> laneToSchedule = {};
+    for (final s in daySchedules) {
+      final lane = laneAssignments[s];
+      if (lane != null) laneToSchedule[lane] = s;
+    }
+
+    // 공휴일이 있으면 사용자 일정 슬롯 2개, 없으면 3개
+    final eventSlots = holidayName != null ? 2 : 3;
+    final weekMax = _weekMaxLane[weekSun] ?? -1;
+
+    // 이 날 기준 오버플로우 여부
+    final hasOverflow = laneToSchedule.keys.any((l) => l >= eventSlots);
+    final displayMax = hasOverflow ? eventSlots - 1 : eventSlots;
+    final visibleLaneCount = weekMax < 0 ? 0 : (weekMax + 1 < displayMax ? weekMax + 1 : displayMax);
 
     return SizedBox(
       height: rowHeight,
@@ -319,7 +426,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               ),
             ),
           const SizedBox(height: 2),
-          // 공휴일 pill (첫 번째 슬롯)
+          // 공휴일 pill
           if (holidayName != null)
             Container(
               height: 14,
@@ -342,18 +449,36 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 maxLines: 1,
               ),
             ),
-          // 일반 일정 pill — 공휴일 없으면 최대 3개, 있으면 최대 2개
-          // 초과 시 마지막 슬롯을 '...' pill 로 대체
-          ...() {
-            final maxShow = holidayName != null ? 2 : 3;
-            final hasMore = schedules.length > maxShow;
-            final visibleCount = hasMore ? maxShow - 1 : maxShow;
-            return [
-              ...schedules.take(visibleCount).map((s) => _buildEventPill(day, s, cellWidth)),
-              if (hasMore) _buildMorePill(),
-            ];
-          }(),
+          // 레인별 이벤트 pill (빈 레인은 placeholder로 세로 정렬 유지)
+          for (int lane = 0; lane < visibleLaneCount; lane++)
+            laneToSchedule.containsKey(lane)
+                ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
+                : const SizedBox(height: 15),
+          // 오버플로우 pill
+          if (hasOverflow) _buildMorePill(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMorePill() {
+    return Container(
+      height: 14,
+      margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
+      decoration: BoxDecoration(
+        color: AppColors.gray200,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      alignment: Alignment.center,
+      child: const Text(
+        '···',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 8,
+          color: AppColors.gray500,
+          letterSpacing: 0,
+        ),
       ),
     );
   }
