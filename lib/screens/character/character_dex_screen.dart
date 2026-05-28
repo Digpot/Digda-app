@@ -122,7 +122,7 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              value: unlockedCount / tree.stages.length,
+              value: tree.stages.isEmpty ? 0.0 : unlockedCount / tree.stages.length,
               minHeight: 6,
               backgroundColor: AppColors.gray100,
               valueColor:

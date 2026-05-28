@@ -69,13 +69,8 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
         expMultiplier: _multiplier,
       );
       if (!mounted) return;
-      // 완료 다이얼로그 → 메인으로 복귀.
-      showInfoDialog(
-        context,
-        '퀴즈 등록 완료',
-        '그룹원이 풀 수 있도록 등록됐어요.',
-        onConfirm: () => Navigator.of(context).pop(true),
-      );
+      showAppSnackBar(context, '퀴즈가 등록됐어요!');
+      Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
