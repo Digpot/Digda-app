@@ -31,6 +31,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   bool _loading = true;
   String? _errorMessage;
   bool _hasLoadedOnce = false;
+  bool _petInProgress = false;
   final _mochiCtrl = MochiAnimationController();
 
   @override
@@ -138,9 +139,12 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   }
 
   void _handlePet() {
+    if (_petInProgress) return;
+    _petInProgress = true;
     Di.characterRepository
         .addExp(amount: 5, source: 'pet')
         .then((result) {
+          _petInProgress = false;
           if (!mounted) return;
           setState(() => _state = result.character);
           if (result.stageChanged) {
@@ -151,7 +155,9 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             showAppSnackBar(context, '레벨업! Lv. ${result.character.level} 달성!');
           }
         })
-        .catchError((_) {});
+        .catchError((_) {
+          _petInProgress = false;
+        });
   }
 
   @override

@@ -91,20 +91,24 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     setState(() => _pendingAction = 'apply:${item.color.name}');
     try {
       await Di.characterRepository.applyColor(item.color);
-      if (!mounted) return;
-      // applyColor 성공 시점에 바로 _changed=true — 이후 getColorShop 실패해도
-      // 뒤로가기 시 메인 화면이 새로고침해서 최신 색상을 반영
-      setState(() => _changed = true);
+    } catch (e) {
+      if (mounted) showErrorDialog(context, errorMessageOf(e));
+      if (mounted) setState(() => _pendingAction = null);
+      return;
+    }
+    if (!mounted) return;
+    // applyColor 성공 — 뒤로가기 시 메인이 새로고침하도록 즉시 표시
+    setState(() => _changed = true);
+    try {
       final shop = await Di.characterRepository.getColorShop();
       if (!mounted) return;
       setState(() => _shop = shop);
-      showAppSnackBar(context, '${item.displayName} 색으로 변경됐어요!');
-    } catch (e) {
-      if (!mounted) return;
-      showErrorDialog(context, errorMessageOf(e));
-    } finally {
-      if (mounted) setState(() => _pendingAction = null);
+    } catch (_) {
+      // 상점 새로고침 실패는 무시 — 색은 이미 바뀜, 당겨서 새로고침으로 복구 가능
     }
+    if (!mounted) return;
+    showAppSnackBar(context, '${item.displayName} 색으로 변경됐어요!');
+    setState(() => _pendingAction = null);
   }
 
   @override
