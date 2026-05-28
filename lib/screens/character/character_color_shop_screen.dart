@@ -68,6 +68,7 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
   }
 
   Future<void> _doBuy(CharacterColorInfo item) async {
+    if (_pendingAction != null) return;
     setState(() => _pendingAction = 'buy:${item.color.name}');
     try {
       final updated = await Di.characterRepository.buyColor(item.color);

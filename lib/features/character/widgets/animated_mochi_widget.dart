@@ -192,7 +192,11 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     if (resetAfter != null) {
       _emotionResetTimer = Timer(resetAfter, () {
         if (!mounted) return;
-        setState(() => _emotion = MochiEmotion.idle);
+        setState(() {
+          _emotion = widget.happiness < 0.25
+              ? MochiEmotion.sleepy
+              : MochiEmotion.idle;
+        });
       });
     }
   }

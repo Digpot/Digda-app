@@ -85,10 +85,15 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _errorMessage = errorMessageOf(e);
-      });
+      if (_items.isNotEmpty) {
+        setState(() => _loading = false);
+        showAppSnackBar(context, '새로고침에 실패했어요.', isError: true);
+      } else {
+        setState(() {
+          _loading = false;
+          _errorMessage = errorMessageOf(e);
+        });
+      }
     }
   }
 
