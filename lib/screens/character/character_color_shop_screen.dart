@@ -44,10 +44,15 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _errorMessage = errorMessageOf(e);
-      });
+      if (_shop != null) {
+        setState(() => _loading = false);
+        showAppSnackBar(context, '새로고침에 실패했어요.', isError: true);
+      } else {
+        setState(() {
+          _loading = false;
+          _errorMessage = errorMessageOf(e);
+        });
+      }
     }
   }
 

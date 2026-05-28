@@ -5,6 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 
 class CharacterDexScreen extends StatefulWidget {
   const CharacterDexScreen({super.key});
@@ -43,10 +44,15 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _errorMessage = errorMessageOf(e);
-      });
+      if (_tree != null) {
+        setState(() => _loading = false);
+        showAppSnackBar(context, '새로고침에 실패했어요.', isError: true);
+      } else {
+        setState(() {
+          _loading = false;
+          _errorMessage = errorMessageOf(e);
+        });
+      }
     }
   }
 
