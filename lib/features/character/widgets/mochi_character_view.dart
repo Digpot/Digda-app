@@ -3,6 +3,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/character_models.dart';
 
+/// 어떤 레이어를 그릴지. [AnimatedMochiWidget] 처럼 본체만 흔들고 배경은
+/// 고정해야 할 때 두 인스턴스로 분리해서 Stack 으로 겹친다.
+/// - [full]: squircle 배경 + 본체 (기본, 정적 렌더)
+/// - [background]: squircle 색 배경만
+/// - [body]: 본체·표정·액세서리만 (배경 투명)
+enum MochiCharacterPart { full, background, body }
+
 /// 모찌 캐릭터를 [size]×[size] 정사각형으로 렌더링.
 ///
 /// 단계별 아트워크
@@ -23,6 +30,7 @@ class MochiCharacterView extends StatelessWidget {
     this.size = 200,
     this.expression = MochiEmotion.idle,
     this.eyeOpenness = 1.0,
+    this.part = MochiCharacterPart.full,
   });
 
   final CharacterColor color;
@@ -33,6 +41,9 @@ class MochiCharacterView extends StatelessWidget {
 
   /// 0.0 (완전히 감은 눈) ~ 1.0 (완전히 뜬 눈)
   final double eyeOpenness;
+
+  /// 렌더할 레이어. 기본 [MochiCharacterPart.full].
+  final MochiCharacterPart part;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +92,7 @@ class MochiCharacterView extends StatelessWidget {
   // ─────────────────────────────────────────
 
   String _buildStageSvg(CharacterStage stage, String hex) {
+    final bg = '<rect width="200" height="200" rx="48" fill="$hex"/>';
     final body = switch (stage) {
       CharacterStage.egg => _egg(),
       CharacterStage.sprout => _sprout(),
@@ -88,10 +100,14 @@ class MochiCharacterView extends StatelessWidget {
       CharacterStage.blossom => _blossom(),
       CharacterStage.glow => _glow(),
     };
+    final layers = switch (part) {
+      MochiCharacterPart.full => '$bg\n  $body',
+      MochiCharacterPart.background => bg,
+      MochiCharacterPart.body => body,
+    };
     return '''
 <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="48" fill="$hex"/>
-  $body
+  $layers
 </svg>
 ''';
   }
