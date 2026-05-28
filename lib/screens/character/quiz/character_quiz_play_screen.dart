@@ -5,6 +5,7 @@ import '../../../core/di.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_message.dart';
 import '../../../features/character/models/character_models.dart';
+import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import 'character_quiz_result_screen.dart';
@@ -20,11 +21,13 @@ class CharacterQuizPlayScreen extends StatefulWidget {
 
 class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
   CharacterQuiz? _quiz;
+  CharacterState? _character;
   int? _selected;
   bool _loading = true;
   bool _submitting = false;
   String? _emptyMessage;
   String? _errorMessage;
+  final _mochiCtrl = MochiAnimationController();
 
   @override
   void initState() {
@@ -54,9 +57,17 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       return;
     }
     try {
+      // 캐릭터 상태는 best-effort — 실패해도 퀴즈는 풀 수 있게 fallback.
+      CharacterState? character;
+      try {
+        character = await Di.characterRepository.getMyState();
+      } catch (_) {
+        character = null;
+      }
       final quiz = await Di.characterRepository.pickRandomQuiz(groupRoomId);
       if (!mounted) return;
       setState(() {
+        _character = character;
         _quiz = quiz;
         _loading = false;
       });
@@ -137,76 +148,98 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
 
   Widget _buildBody() {
     final q = _quiz!;
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-            children: [
-              _CategoryChip(text: q.categoryDisplayName, multiplier: q.expMultiplier),
-              const SizedBox(height: 16),
-              Text(
-                q.question,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 19,
-                  height: 1.4,
-                  color: AppColors.gray900,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${q.authorName} 님이 출제',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
-                  fontSize: 12,
-                  color: AppColors.gray500,
-                ),
-              ),
-              const SizedBox(height: 24),
-              for (int i = 0; i < q.options.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _OptionTile(
-                    index: i + 1,
-                    label: q.options[i],
-                    selected: _selected == i + 1,
-                    onTap: _submitting ? null : () => setState(() => _selected = i + 1),
+    final c = _character;
+    return SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              children: [
+                if (c != null)
+                  Center(
+                    child: AnimatedMochiWidget(
+                      color: c.color,
+                      colorHex: c.colorHex,
+                      stage: c.stage,
+                      size: 120,
+                      happiness: c.progress,
+                      controller: _mochiCtrl,
+                    ),
+                  ),
+                if (c != null) const SizedBox(height: 12),
+                _CategoryChip(
+                    text: q.categoryDisplayName, multiplier: q.expMultiplier),
+                const SizedBox(height: 16),
+                Text(
+                  q.question,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 19,
+                    height: 1.4,
+                    color: AppColors.gray900,
                   ),
                 ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-          child: SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: (_selected == null || _submitting) ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                disabledBackgroundColor: AppColors.gray200,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 8),
+                Text(
+                  '${q.authorName} 님이 출제',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
                 ),
-              ),
-              child: Text(
-                _submitting ? '제출 중...' : '제출하기',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
+                const SizedBox(height: 24),
+                for (int i = 0; i < q.options.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _OptionTile(
+                      index: i + 1,
+                      label: q.options[i],
+                      selected: _selected == i + 1,
+                      onTap: _submitting
+                          ? null
+                          : () {
+                              setState(() => _selected = i + 1);
+                              _mochiCtrl.triggerExcited();
+                            },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: (_selected == null || _submitting) ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.gray200,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  _submitting ? '제출 중...' : '제출하기',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

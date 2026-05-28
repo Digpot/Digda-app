@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
+import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 
@@ -19,6 +20,10 @@ class CharacterColorShopScreen extends StatefulWidget {
 
 class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
   CharacterColorShop? _shop;
+  CharacterState? _character;
+  // 미리보기용 색 — 색 타일 탭 시 즉시 바뀜. 적용 X
+  CharacterColor? _previewColor;
+  String? _previewHex;
   bool _loading = true;
   bool _changed = false;
   String? _errorMessage;
@@ -36,10 +41,27 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
       _errorMessage = null;
     });
     try {
+      // 캐릭터 상태는 best-effort — 실패해도 색 구매·적용은 가능.
+      CharacterState? character;
+      try {
+        character = await Di.characterRepository.getMyState();
+      } catch (_) {
+        character = null;
+      }
       final shop = await Di.characterRepository.getColorShop();
       if (!mounted) return;
       setState(() {
+        _character = character;
         _shop = shop;
+        // 첫 로드일 때만 미리보기 색을 현재 적용된 색으로 초기화
+        if (_previewColor == null) {
+          final current = shop.items.firstWhere(
+            (i) => i.isCurrent,
+            orElse: () => shop.items.first,
+          );
+          _previewColor = current.color;
+          _previewHex = current.hex;
+        }
         _loading = false;
       });
     } catch (e) {
@@ -108,7 +130,19 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     }
     if (!mounted) return;
     showAppSnackBar(context, '${item.displayName} 색으로 변경됐어요!');
-    setState(() => _pendingAction = null);
+    setState(() {
+      _previewColor = item.color;
+      _previewHex = item.hex;
+      _pendingAction = null;
+    });
+  }
+
+  void _onSelectPreview(CharacterColorInfo item) {
+    if (_previewColor == item.color) return;
+    setState(() {
+      _previewColor = item.color;
+      _previewHex = item.hex;
+    });
   }
 
   @override
@@ -159,6 +193,15 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         children: [
+          if (_character != null && _previewColor != null && _previewHex != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _CharacterPreviewCard(
+                color: _previewColor!,
+                colorHex: _previewHex!,
+                stage: _character!.stage,
+              ),
+            ),
           _CoinHeader(coin: shop.coin),
           const SizedBox(height: 16),
           ...shop.items.map((it) => Padding(
@@ -167,11 +210,109 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
                   item: it,
                   coin: shop.coin,
                   pendingKey: _pendingAction,
+                  isPreviewing: _previewColor == it.color,
+                  onSelect: () => _onSelectPreview(it),
                   onBuy: () => _buy(it),
                   onApply: () => _apply(it),
                 ),
               )),
         ],
+      ),
+    );
+  }
+}
+
+class _CharacterPreviewCard extends StatelessWidget {
+  const _CharacterPreviewCard({
+    required this.color,
+    required this.colorHex,
+    required this.stage,
+  });
+
+  final CharacterColor color;
+  final String colorHex;
+  final CharacterStage stage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFF4F1), // 옅은 살구
+            Color(0xFFFDFAF6), // 거의 흰색
+            Color(0xFFFEF1F7), // 옅은 핑크
+          ],
+        ),
+        border: Border.all(color: AppColors.gray100, width: 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            // 배경 — 큰 흰 동그라미 두 개로 깊이감
+            Positioned(
+              left: -28,
+              top: -28,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -40,
+              bottom: -40,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+            // 스파클 sprinkle
+            const Positioned(
+              top: 22,
+              right: 26,
+              child: Icon(Icons.star_rounded,
+                  size: 16, color: Color(0xFFFCD34D)),
+            ),
+            const Positioned(
+              bottom: 28,
+              left: 30,
+              child: Icon(Icons.auto_awesome,
+                  size: 14, color: Color(0xFFF4B6CD)),
+            ),
+            const Positioned(
+              top: 60,
+              left: 24,
+              child: Icon(Icons.circle, size: 5, color: Color(0xFFE9A3B8)),
+            ),
+            const Positioned(
+              bottom: 70,
+              right: 30,
+              child: Icon(Icons.circle, size: 5, color: Color(0xFFFCD34D)),
+            ),
+            // 캐릭터 (선택된 색 즉시 반영)
+            Center(
+              child: AnimatedMochiWidget(
+                color: color,
+                colorHex: colorHex,
+                stage: stage,
+                size: 160,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -278,6 +419,8 @@ class _ColorTile extends StatelessWidget {
     required this.item,
     required this.coin,
     required this.pendingKey,
+    required this.isPreviewing,
+    required this.onSelect,
     required this.onBuy,
     required this.onApply,
   });
@@ -285,6 +428,8 @@ class _ColorTile extends StatelessWidget {
   final CharacterColorInfo item;
   final int coin;
   final String? pendingKey;
+  final bool isPreviewing;
+  final VoidCallback onSelect;
   final VoidCallback onBuy;
   final VoidCallback onApply;
 
@@ -301,96 +446,109 @@ class _ColorTile extends StatelessWidget {
     final pendingApply = pendingKey == 'apply:${item.color.name}';
     final disabledByOtherAction = pendingKey != null && !pendingBuy && !pendingApply;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
+    // 적용 중이면 primary, 미리보기 중이면 옅은 primary, 둘 다 아니면 무 보더
+    final Border? tileBorder = item.isCurrent
+        ? Border.all(color: AppColors.primary, width: 2)
+        : isPreviewing
+            ? Border.all(
+                color: AppColors.primary.withValues(alpha: 0.45), width: 1.5)
+            : null;
+
+    return Material(
+      color: AppColors.gray50,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        border: item.isCurrent
-            ? Border.all(color: AppColors.primary, width: 2)
-            : null,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: hexColor,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+        onTap: onSelect,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: tileBorder,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      item.displayName,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.gray900,
-                      ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: hexColor,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
-                    if (item.isCurrent) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text(
-                          '적용 중',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                            color: AppColors.white,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  item.owned
-                      ? (item.isDefault ? '기본 색상' : '보유 중')
-                      : '구매 시 ${item.cost} 코인',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12,
-                    color: AppColors.gray500,
-                  ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          item.displayName,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                        if (item.isCurrent) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text(
+                              '적용 중',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.owned
+                          ? (item.isDefault ? '기본 색상' : '보유 중')
+                          : '구매 시 ${item.cost} 코인',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _ActionButton(
+                item: item,
+                coin: coin,
+                pendingBuy: pendingBuy,
+                pendingApply: pendingApply,
+                disabled: disabledByOtherAction,
+                onBuy: onBuy,
+                onApply: onApply,
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          _ActionButton(
-            item: item,
-            coin: coin,
-            pendingBuy: pendingBuy,
-            pendingApply: pendingApply,
-            disabled: disabledByOtherAction,
-            onBuy: onBuy,
-            onApply: onApply,
-          ),
-        ],
+        ),
       ),
     );
   }
