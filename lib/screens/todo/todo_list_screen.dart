@@ -116,6 +116,11 @@ class _TodoListScreenState extends State<TodoListScreen> {
       // 서버 응답으로 동기화하되, 전체 목록 재호출(=loading flicker)은 하지 않음.
       final updated = await Di.todoRepository
           .toggle(groupId, todo.id, completed: newCompleted);
+      if (newCompleted) {
+        Di.characterRepository
+            .addExp(amount: 5, source: 'todo_complete')
+            .ignore();
+      }
       if (!mounted) return;
       final next =
           _todos.map((t) => t.id == updated.id ? updated : t).toList();

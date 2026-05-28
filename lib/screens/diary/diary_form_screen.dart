@@ -313,6 +313,9 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             imageIds: combined,
           ),
         );
+        Di.characterRepository
+            .addExp(amount: 15, source: 'diary_create')
+            .ignore();
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed(
           '/diary-detail',

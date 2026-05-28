@@ -12,7 +12,7 @@ import 'character_color_shop_screen.dart';
 import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
-import 'quiz/character_quiz_create_screen.dart';
+import 'quiz/character_quiz_list_screen.dart';
 
 /// 모찌 키우기 탭의 메인 화면.
 /// - 캐릭터 시각화 + 레벨/EXP 진행도 + 코인
@@ -114,12 +114,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     _load();
   }
 
-  Future<void> _openQuizCreate() async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const CharacterQuizCreateScreen()),
+  Future<void> _openQuizList() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const CharacterQuizListScreen()),
     );
-    // 만들기 자체로는 내 캐릭터 상태가 변하지 않지만, 그룹원 응시 → 후속 자동 갱신은 없음.
-    // 새로고침은 사용자 swipe-down 으로 처리.
   }
 
   @override
@@ -239,8 +237,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             children: [
               _MiniTile(
                 icon: Icons.edit_note,
-                label: '퀴즈 만들기',
-                onTap: _openQuizCreate,
+                label: '퀴즈 목록',
+                onTap: _openQuizList,
               ),
               _MiniTile(
                 icon: Icons.trending_up,

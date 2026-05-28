@@ -143,31 +143,33 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
           const SizedBox(height: 24),
           const _SectionLabel('선택지 4개 — 정답 라디오 선택'),
           const SizedBox(height: 8),
-          RadioGroup<int>(
-            groupValue: _correctIndex,
-            onChanged: (v) => setState(() => _correctIndex = v ?? 1),
-            child: Column(
-              children: [
-                for (int i = 0; i < 4; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        Radio<int>(value: i + 1),
-                        Expanded(
-                          child: _BoxedField(
-                            controller: _options[i],
-                            hint: '선택지 ${i + 1}',
-                            maxLength: 100,
-                            maxLines: 1,
-                            onChanged: (_) => setState(() {}),
-                          ),
+          Column(
+            children: [
+              for (int i = 0; i < 4; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Radio<int>(
+                        value: i + 1,
+                        groupValue: _correctIndex,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) =>
+                            setState(() => _correctIndex = v ?? 1),
+                      ),
+                      Expanded(
+                        child: _BoxedField(
+                          controller: _options[i],
+                          hint: '선택지 ${i + 1}',
+                          maxLength: 100,
+                          maxLines: 1,
+                          onChanged: (_) => setState(() {}),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           const _SectionLabel('EXP 배수 (난이도)'),
