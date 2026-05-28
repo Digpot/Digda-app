@@ -71,22 +71,59 @@ class _SplashScreenState extends State<SplashScreen> {
               children: [
                 SvgPicture.asset(
                   'assets/svg/logo.svg',
-                  width: 80,
-                  height: 83,
+                  width: 96,
+                  height: 99,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 22),
                 const Text(
                   '디그팟',
-                  style: AppTextStyles.heading1,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '디지털 그룹 다이어리',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.gray500,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 32,
+                    height: 1.1,
+                    letterSpacing: -0.5,
+                    color: AppColors.gray900,
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 10),
+                const Text(
+                  '디지털 그룹 포켓',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    height: 1.2,
+                    color: AppColors.gray700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'DIGITAL  GROUP  POCKET',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 10,
+                    letterSpacing: 3.2,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 26),
+                Container(
+                  width: 28,
+                  height: 1.2,
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  '디그팟, 우리만의 일정을 담다',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gray700,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 44),
                 const _LoadingDots(),
               ],
             ),
