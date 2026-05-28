@@ -73,7 +73,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     try {
       // 멤버 목록 (참가자 선택 UI 의 원천)
       final members = await Di.membershipRepository.list(groupId);
-      List<String> initialIds = members.map((m) => m.userId).toList();
+      final myId = Di.userSession.profile?.id;
+      List<String> initialIds = myId != null ? [myId] : [];
 
       if (_isEdit) {
         // 편집 모드 — 기존 일정으로 폼 채움
@@ -361,6 +362,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                                   .map((m) => _buildSmallAvatar(
                                         _memberColor(m),
                                         m.name,
+                                        profileImage: m.profileImage,
                                       )),
                               if (_selectedIds.isNotEmpty)
                                 const SizedBox(width: 4),
@@ -561,7 +563,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     );
   }
 
-  Widget _buildSmallAvatar(Color color, String name) {
+  Widget _buildSmallAvatar(Color color, String name, {String? profileImage}) {
     final initial = name.isNotEmpty ? name[0] : '?';
     return Container(
       width: 32,
@@ -571,17 +573,36 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         color: color.withValues(alpha: 0.2),
         shape: BoxShape.circle,
       ),
-      child: Center(
-        child: Text(
-          initial,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: color,
-          ),
-        ),
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: (profileImage != null && profileImage.isNotEmpty)
+          ? Image.network(
+              profileImage,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Center(
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: color,
+                  ),
+                ),
+              ),
+            )
+          : Center(
+              child: Text(
+                initial,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: color,
+                ),
+              ),
+            ),
     );
   }
 

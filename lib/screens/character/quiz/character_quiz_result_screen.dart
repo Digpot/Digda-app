@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../features/character/models/character_models.dart';
 import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../theme/colors.dart';
+import '../character_levelup_screen.dart';
 
 /// 퀴즈 결과 화면 — 정답 여부 + 보상 + 레벨업/진화 연출.
 class CharacterQuizResultScreen extends StatefulWidget {
@@ -178,7 +179,20 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () async {
+                    // 레벨업 또는 진화 시 전용 축하 화면 먼저 표시
+                    if (widget.result.levelGained > 0 || widget.result.stageChanged) {
+                      await CharacterLevelUpScreen.show(
+                        context,
+                        character: widget.result.character,
+                        levelGained: widget.result.levelGained,
+                        stageChanged: widget.result.stageChanged,
+                        stageBefore: widget.result.stageBefore,
+                      );
+                    }
+                    if (!mounted) return;
+                    Navigator.of(context).pop();
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

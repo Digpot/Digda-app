@@ -64,8 +64,8 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
                 const Spacer(flex: 2),
                 SvgPicture.asset(
                   'assets/svg/logo.svg',
-                  width: 48,
-                  height: 50,
+                  width: 80,
+                  height: 82,
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -75,7 +75,7 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '소셜 계정으로 3초만에 시작하세요',
+                  '디그팟, 우리만의 일정을 담는 공간',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.gray500,
                   ),

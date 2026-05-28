@@ -8,6 +8,7 @@ import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
+import 'character_levelup_screen.dart';
 import 'character_stage_tree_screen.dart';
 import 'character_color_shop_screen.dart';
 import 'character_dex_screen.dart';
@@ -159,16 +160,19 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     _petInProgress = true;
     Di.characterRepository
         .addExp(groupRoomId: groupId, amount: 5, source: 'pet')
-        .then((result) {
+        .then((result) async {
           _petInProgress = false;
           if (!mounted) return;
           setState(() => _state = result.character);
-          if (result.stageChanged) {
+          if (result.stageChanged || result.levelGained > 0) {
             _mochiCtrl.triggerProud();
-            showAppSnackBar(context, '진화! ${result.character.stageDisplayName} 달성 🌟');
-          } else if (result.levelGained > 0) {
-            _mochiCtrl.triggerHappy();
-            showAppSnackBar(context, '레벨업! Lv. ${result.character.level} 달성!');
+            await CharacterLevelUpScreen.show(
+              context,
+              character: result.character,
+              levelGained: result.levelGained,
+              stageChanged: result.stageChanged,
+              stageBefore: result.stageBefore,
+            );
           }
         })
         .catchError((_) {

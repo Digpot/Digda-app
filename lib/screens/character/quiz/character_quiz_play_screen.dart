@@ -8,6 +8,7 @@ import '../../../features/character/models/character_models.dart';
 import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
+import '../character_levelup_screen.dart';
 import 'character_quiz_result_screen.dart';
 
 /// 퀴즈 풀기 화면 — 진입 시 서버에서 랜덤 1건 fetch → 4지선다 → 응시.
@@ -111,8 +112,71 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      showErrorDialog(context, errorMessageOf(e));
+      // 이미 다른 멤버가 정답 처리한 경우 전용 안내 메시지 표시.
+      if (_isAlreadyAnsweredError(e)) {
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              '이미 풀린 문제예요',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                color: AppColors.gray900,
+              ),
+            ),
+            content: const Text(
+              '이미 다른 멤버가 푼 문제입니다.\n새로운 퀴즈를 불러올게요.',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 14,
+                color: AppColors.gray700,
+                height: 1.5,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _fetch();
+                },
+                child: const Text(
+                  '확인',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showErrorDialog(context, errorMessageOf(e));
+      }
     }
+  }
+
+  bool _isAlreadyAnsweredError(Object e) {
+    ApiException? apiErr;
+    if (e is ApiException) {
+      apiErr = e;
+    } else if (e is DioException && e.error is ApiException) {
+      apiErr = e.error as ApiException;
+    }
+    if (apiErr != null) {
+      if (apiErr.isConflict) return true;
+      final code = apiErr.code.toUpperCase();
+      return code.contains('ALREADY') || code.contains('ANSWERED') || code.contains('ATTEMPTED');
+    }
+    if (e is DioException && e.response?.statusCode == 409) return true;
+    return false;
   }
 
   @override

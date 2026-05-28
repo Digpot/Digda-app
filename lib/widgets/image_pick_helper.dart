@@ -46,7 +46,12 @@ Future<List<File>> pickImages(BuildContext context, {int limit = 10}) async {
       if (picked == null) return const [];
       return [File(picked.path)];
     }
-    // gallery — 다중 선택
+    // gallery — limit 이 1이면 단일 picker 를 사용해 Android 호환성을 확보.
+    if (limit == 1) {
+      final picked = await picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) return const [];
+      return [File(picked.path)];
+    }
     final pickedList = await picker.pickMultiImage(limit: limit);
     if (pickedList.isEmpty) return const [];
     return pickedList.map((x) => File(x.path)).toList();

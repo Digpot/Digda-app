@@ -116,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  '디그팟, 우리만의 일정을 담다',
+                  '디그팟, 우리만의 일정을 담는 공간',
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.gray700,

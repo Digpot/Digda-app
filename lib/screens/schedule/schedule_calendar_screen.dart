@@ -872,7 +872,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           height: 68,
           child: FloatingActionButton(
             onPressed: () =>
-                Navigator.of(context).pushNamed('/add-schedule'),
+                Navigator.of(context).pushNamed('/add-schedule').then((_) => _loadSchedules()),
             backgroundColor: AppColors.primary,
             shape: const CircleBorder(),
             elevation: 4,

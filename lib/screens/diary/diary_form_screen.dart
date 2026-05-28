@@ -77,7 +77,9 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
   void initState() {
     super.initState();
     if (widget.mode == DiaryFormMode.create) {
-      _date = widget.initialDate ?? DateTime.now();
+      final initial = widget.initialDate ?? DateTime.now();
+      // 시간 컴포넌트 제거 — DatePicker 의 lastDate(오늘 자정)보다 크면 assertion 발생.
+      _date = DateTime(initial.year, initial.month, initial.day);
       _hydrated = true;
     }
     _titleController.addListener(_markDirty);
