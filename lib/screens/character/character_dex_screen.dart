@@ -26,15 +26,28 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  int? get _activeGroupId {
+    final raw = Di.activeGroup.groupRoomId;
+    return raw == null ? null : int.tryParse(raw);
+  }
+
   Future<void> _load() async {
+    final groupId = _activeGroupId;
+    if (groupId == null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = '그룹에 들어간 뒤 도감을 볼 수 있어요.';
+      });
+      return;
+    }
     setState(() {
       if (_tree == null) _loading = true;
       _errorMessage = null;
     });
     try {
       final results = await Future.wait([
-        Di.characterRepository.getStageTree(),
-        Di.characterRepository.getMyState(),
+        Di.characterRepository.getStageTree(groupRoomId: groupId),
+        Di.characterRepository.getMyState(groupRoomId: groupId),
       ]);
       if (!mounted) return;
       setState(() {

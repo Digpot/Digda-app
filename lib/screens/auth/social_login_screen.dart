@@ -69,7 +69,7 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  '디지털 그룹 다이어리',
+                  '디그팟',
                   style: AppTextStyles.heading2,
                   textAlign: TextAlign.center,
                 ),

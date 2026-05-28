@@ -322,6 +322,15 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
             return Stack(
               clipBehavior: Clip.none,
               children: [
+                // squircle 배경 — 고정, 흔들리지 않음.
+                MochiCharacterView(
+                  color: widget.color,
+                  colorHex: widget.colorHex,
+                  stage: widget.stage,
+                  size: widget.size,
+                  part: MochiCharacterPart.background,
+                ),
+                // 본체·표정·액세서리 — 캐릭터만 sway/float/jump.
                 Transform.translate(
                   offset: Offset(0, floatY + jumpY),
                   child: Transform.rotate(
@@ -334,6 +343,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
                       size: widget.size,
                       expression: _emotion,
                       eyeOpenness: _eyeOpenness,
+                      part: MochiCharacterPart.body,
                     ),
                   ),
                 ),
