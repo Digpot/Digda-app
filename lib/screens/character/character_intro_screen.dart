@@ -42,7 +42,9 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen> {
   }
 
   Future<void> _finish() async {
-    await _storage.write(key: _kIntroSeenKey, value: 'true');
+    try {
+      await _storage.write(key: _kIntroSeenKey, value: 'true');
+    } catch (_) {}
     if (!mounted) return;
     Navigator.of(context).pop();
   }

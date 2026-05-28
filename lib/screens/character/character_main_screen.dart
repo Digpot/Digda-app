@@ -40,15 +40,19 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   }
 
   Future<void> _maybeShowIntro() async {
-    final seen = await CharacterIntroScreen.isAlreadySeen();
-    if (!mounted) return;
-    if (!seen) {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => const CharacterIntroScreen(),
-          fullscreenDialog: true,
-        ),
-      );
+    try {
+      final seen = await CharacterIntroScreen.isAlreadySeen();
+      if (!mounted) return;
+      if (!seen) {
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) => const CharacterIntroScreen(),
+            fullscreenDialog: true,
+          ),
+        );
+      }
+    } catch (_) {
+      // secure storage 오류 시 인트로를 건너뛰고 메인 로드 진행
     }
     if (!mounted) return;
     _load();
@@ -120,18 +124,11 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   }
 
   Future<void> _openQuizPlay() async {
-    final prevLevel = _state?.level;
-    final prevStage = _state?.stage;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const CharacterQuizPlayScreen()),
     );
-    await _load(silent: true);
-    if (!mounted || _state == null) return;
-    if (_state!.stage != prevStage) {
-      _mochiCtrl.triggerProud();
-    } else if (prevLevel != null && _state!.level > prevLevel) {
-      _mochiCtrl.triggerHappy();
-    }
+    // pushReplacement 가 push future 를 즉시 완료시켜, 결과 화면이 열린 채로 여기 도달할 수 있음 — 애니메이션은 결과 화면이 담당.
+    _load(silent: true);
   }
 
   Future<void> _openQuizList() async {
