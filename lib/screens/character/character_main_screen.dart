@@ -97,23 +97,21 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const CharacterStageTreeScreen()),
     );
-    // 트리 화면 진입 중 레벨업이 일어나지 않더라도, 돌아왔을 때 최신 상태로 새로고침
-    // (탭 전환 패턴과 일관)
-    _load();
+    _load(silent: true);
   }
 
   Future<void> _openShop() async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const CharacterColorShopScreen()),
     );
-    if (changed == true) _load();
+    if (changed == true) _load(silent: true);
   }
 
   Future<void> _openDex() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const CharacterDexScreen()),
     );
-    _load();
+    _load(silent: true);
   }
 
   Future<void> _openQuizPlay() async {

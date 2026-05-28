@@ -65,7 +65,7 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
       return;
     }
     setState(() {
-      _loading = true;
+      if (_items.isEmpty) _loading = true;
       _errorMessage = null;
     });
     try {

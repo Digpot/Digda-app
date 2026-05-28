@@ -21,6 +21,7 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
   CharacterColorShop? _shop;
   bool _loading = true;
   bool _changed = false;
+  String? _errorMessage;
   String? _pendingAction; // 진행 중 행동 키 (이중 탭 방지)
 
   @override
@@ -30,7 +31,10 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
       final shop = await Di.characterRepository.getColorShop();
       if (!mounted) return;
@@ -40,8 +44,10 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
-      showErrorDialog(context, errorMessageOf(e));
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
     }
   }
 
@@ -127,9 +133,11 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _shop == null
-                ? const SizedBox.shrink()
-                : _buildBody(_shop!),
+            : _errorMessage != null
+                ? _ErrorRetry(message: _errorMessage!, onRetry: _load)
+                : _shop == null
+                    ? const SizedBox.shrink()
+                    : _buildBody(_shop!),
       ),
     );
   }
@@ -154,6 +162,51 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
                 ),
               )),
         ],
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 40, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text(
+                '다시 시도',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

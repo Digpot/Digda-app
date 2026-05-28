@@ -24,6 +24,7 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
   bool _loading = true;
   bool _submitting = false;
   String? _emptyMessage;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -32,6 +33,10 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
   }
 
   Future<void> _fetch() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     final groupRoomIdStr = Di.activeGroup.groupRoomId;
     if (groupRoomIdStr == null) {
       setState(() {
@@ -68,7 +73,7 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       }
       setState(() {
         _loading = false;
-        _emptyMessage = errorMessageOf(e);
+        _errorMessage = errorMessageOf(e);
       });
     }
   }
@@ -122,9 +127,11 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _emptyMessage != null
-              ? _Empty(message: _emptyMessage!)
-              : _buildBody(),
+          : _errorMessage != null
+              ? _ErrorRetry(message: _errorMessage!, onRetry: _fetch)
+              : _emptyMessage != null
+                  ? _Empty(message: _emptyMessage!)
+                  : _buildBody(),
     );
   }
 
@@ -350,6 +357,51 @@ class _Empty extends StatelessWidget {
                 fontSize: 14,
                 height: 1.6,
                 color: AppColors.gray700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 40, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text(
+                '다시 시도',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ],
