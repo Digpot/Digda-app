@@ -50,3 +50,6 @@ app.*.map.json
 # Firebase
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+
+# PDF — 문서 산출물(소스 HTML 만 git 추적)
+*.pdf
