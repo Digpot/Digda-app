@@ -118,7 +118,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
           .toggle(groupId, todo.id, completed: newCompleted);
       if (newCompleted) {
         Di.characterRepository
-            .addExp(amount: 5, source: 'todo_complete')
+            .addExp(groupRoomId: groupId, amount: 5, source: 'todo_complete')
             .ignore();
       }
       if (!mounted) return;

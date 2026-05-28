@@ -315,7 +315,7 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
           ),
         );
         Di.characterRepository
-            .addExp(amount: 15, source: 'diary_create')
+            .addExp(groupRoomId: groupId, amount: 15, source: 'diary_create')
             .ignore();
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed(
