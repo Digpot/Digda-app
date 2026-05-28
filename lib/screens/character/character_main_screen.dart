@@ -54,9 +54,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  // silent: 이미 데이터가 있는 경우 스피너 없이 백그라운드 갱신
+  Future<void> _load({bool silent = false}) async {
     setState(() {
-      _loading = true;
+      if (!silent || _state == null) _loading = true;
       _errorMessage = null;
     });
     try {
@@ -121,7 +122,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const CharacterQuizPlayScreen()),
     );
-    await _load();
+    await _load(silent: true);
     if (!mounted || _state == null) return;
     if (_state!.stage != prevStage) {
       _mochiCtrl.triggerProud();
@@ -144,10 +145,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           setState(() => _state = result.character);
           if (result.stageChanged) {
             _mochiCtrl.triggerProud();
-            showAppSnackBar(context, '진화! ${result.character.stageDisplayName}로 성장했어요 🌟');
+            showAppSnackBar(context, '진화! ${result.character.stageDisplayName} 달성 🌟');
           } else if (result.levelGained > 0) {
             _mochiCtrl.triggerHappy();
-            showAppSnackBar(context, '레벨업! Lv. ${result.character.level}이 됐어요!');
+            showAppSnackBar(context, '레벨업! Lv. ${result.character.level} 달성!');
           }
         })
         .catchError((_) {});

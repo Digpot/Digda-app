@@ -57,7 +57,7 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen> {
             onPageChanged: (i) => setState(() => _current = i),
             children: [
               _PageOne(),
-              const _PageTwo(),
+              _PageTwo(),
             ],
           ),
           Positioned(
@@ -145,7 +145,7 @@ class _PageOne extends StatelessWidget {
 // 페이지 2: 키우는 방법 안내
 // ─────────────────────────────────────────────────────────────────────────────
 class _PageTwo extends StatelessWidget {
-  const _PageTwo();
+  _PageTwo();
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +155,7 @@ class _PageTwo extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(flex: 2),
-            const AnimatedMochiWidget(
+            AnimatedMochiWidget(
               color: CharacterColor.coral,
               colorHex: '#FF6B6B',
               stage: CharacterStage.bloom,

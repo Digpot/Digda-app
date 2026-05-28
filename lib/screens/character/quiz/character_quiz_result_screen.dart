@@ -24,7 +24,8 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
     with SingleTickerProviderStateMixin {
   final _mochiCtrl = MochiAnimationController();
   late final AnimationController _enterCtrl;
-  late final Animation<double> _scaleFade;
+  late final Animation<double> _scaleAnim;
+  late final Animation<double> _opacityAnim;
 
   @override
   void initState() {
@@ -33,7 +34,10 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
       vsync: this,
       duration: const Duration(milliseconds: 550),
     )..forward();
-    _scaleFade = CurvedAnimation(parent: _enterCtrl, curve: Curves.easeOutBack);
+    _scaleAnim =
+        CurvedAnimation(parent: _enterCtrl, curve: Curves.easeOutBack);
+    _opacityAnim =
+        CurvedAnimation(parent: _enterCtrl, curve: Curves.easeIn);
 
     Future.delayed(const Duration(milliseconds: 450), () {
       if (!mounted) return;
@@ -79,9 +83,9 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                     const SizedBox(height: 20),
                     Center(
                       child: ScaleTransition(
-                        scale: _scaleFade,
+                        scale: _scaleAnim,
                         child: FadeTransition(
-                          opacity: _enterCtrl,
+                          opacity: _opacityAnim,
                           child: AnimatedMochiWidget(
                             color: widget.result.character.color,
                             colorHex: widget.result.character.colorHex,
