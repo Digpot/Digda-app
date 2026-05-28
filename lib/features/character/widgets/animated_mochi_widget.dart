@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/character_models.dart';
 import 'mochi_character_view.dart';
@@ -232,6 +233,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   // ── 제스처 ──
 
   void _onTapDown(TapDownDetails d) {
+    HapticFeedback.lightImpact();
     _lastInteraction = DateTime.now();
     _setEmotion(MochiEmotion.happy,
         resetAfter: const Duration(seconds: 2));
@@ -241,6 +243,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   }
 
   void _onLongPress() {
+    HapticFeedback.mediumImpact();
     _lastInteraction = DateTime.now();
     _setEmotion(MochiEmotion.excited,
         resetAfter: const Duration(seconds: 3));

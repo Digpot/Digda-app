@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../features/character/models/character_models.dart';
-import '../../features/character/widgets/mochi_character_view.dart';
+import '../../features/character/widgets/animated_mochi_widget.dart';
 
 const _kIntroSeenKey = 'digda.characterIntroSeen';
 const _storage = FlutterSecureStorage();
 
 /// 캐릭터 탭 첫 진입 시 한 번만 보이는 온보딩 화면.
-/// [FlutterSecureStorage]에 플래그를 저장해 재진입 시 건너뜀.
 class CharacterIntroScreen extends StatefulWidget {
   const CharacterIntroScreen({super.key});
 
@@ -56,9 +55,9 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen> {
           PageView(
             controller: _page,
             onPageChanged: (i) => setState(() => _current = i),
-            children: const [
+            children: [
               _PageOne(),
-              _PageTwo(),
+              const _PageTwo(),
             ],
           ),
           Positioned(
@@ -77,10 +76,10 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 페이지 1: 모찌 소개
+// 페이지 1: 모찌 소개 (애니메이션 캐릭터)
 // ─────────────────────────────────────────────────────────────────────────────
 class _PageOne extends StatelessWidget {
-  const _PageOne();
+  _PageOne();
 
   @override
   Widget build(BuildContext context) {
@@ -96,11 +95,12 @@ class _PageOne extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(flex: 2),
-            const MochiCharacterView(
+            AnimatedMochiWidget(
               color: CharacterColor.coral,
               colorHex: '#FF6B6B',
               stage: CharacterStage.egg,
               size: 200,
+              happiness: 0.8,
             ),
             const Spacer(flex: 1),
             const Padding(
@@ -155,11 +155,12 @@ class _PageTwo extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(flex: 2),
-            const MochiCharacterView(
+            const AnimatedMochiWidget(
               color: CharacterColor.coral,
               colorHex: '#FF6B6B',
               stage: CharacterStage.bloom,
               size: 160,
+              happiness: 1.0,
             ),
             const Spacer(flex: 1),
             const Padding(
@@ -180,7 +181,7 @@ class _PageTwo extends StatelessWidget {
                   _GuideRow(
                     emoji: '⚡',
                     title: '활동으로 EXP 획득',
-                    body: '퀴즈를 풀면 경험치가 쌓여요.',
+                    body: '퀴즈를 풀거나 모찌를 쓰다듬으면 경험치가 쌓여요.',
                   ),
                   SizedBox(height: 14),
                   _GuideRow(

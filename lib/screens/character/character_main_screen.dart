@@ -5,6 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
 import 'character_stage_tree_screen.dart';
@@ -29,6 +30,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   CharacterState? _state;
   bool _loading = true;
   String? _errorMessage;
+  bool _hasLoadedOnce = false;
   final _mochiCtrl = MochiAnimationController();
 
   @override
@@ -60,10 +62,17 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     try {
       final state = await Di.characterRepository.getMyState();
       if (!mounted) return;
+      final isFirst = !_hasLoadedOnce;
       setState(() {
         _state = state;
         _loading = false;
+        _hasLoadedOnce = true;
       });
+      if (isFirst) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _mochiCtrl.triggerHappy();
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -107,12 +116,18 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   }
 
   Future<void> _openQuizPlay() async {
-    // 응시 결과 화면이 PopReplace 로 끝나므로, push 가 끝나 돌아오면 항상 최신 상태가
-    // 필요. (탭 전환과 일관)
+    final prevLevel = _state?.level;
+    final prevStage = _state?.stage;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const CharacterQuizPlayScreen()),
     );
-    _load();
+    await _load();
+    if (!mounted || _state == null) return;
+    if (_state!.stage != prevStage) {
+      _mochiCtrl.triggerProud();
+    } else if (prevLevel != null && _state!.level > prevLevel) {
+      _mochiCtrl.triggerHappy();
+    }
   }
 
   Future<void> _openQuizList() async {
@@ -124,7 +139,17 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   void _handlePet() {
     Di.characterRepository
         .addExp(amount: 5, source: 'pet')
-        .then((_) => _load())
+        .then((result) {
+          if (!mounted) return;
+          setState(() => _state = result.character);
+          if (result.stageChanged) {
+            _mochiCtrl.triggerProud();
+            showAppSnackBar(context, '진화! ${result.character.stageDisplayName}로 성장했어요 🌟');
+          } else if (result.levelGained > 0) {
+            _mochiCtrl.triggerHappy();
+            showAppSnackBar(context, '레벨업! Lv. ${result.character.level}이 됐어요!');
+          }
+        })
         .catchError((_) {});
   }
 
@@ -202,6 +227,17 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               happiness: s.progress,
               controller: _mochiCtrl,
               onPet: _handlePet,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '탭하거나 꾹 눌러서 쓰다듬어 봐요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 12,
+              color: AppColors.gray400,
             ),
           ),
           const SizedBox(height: 20),

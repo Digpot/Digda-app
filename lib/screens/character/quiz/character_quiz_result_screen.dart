@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../features/character/models/character_models.dart';
-import '../../../features/character/widgets/mochi_character_view.dart';
+import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../theme/colors.dart';
 
 /// 퀴즈 결과 화면 — 정답 여부 + 보상 + 레벨업/진화 연출.
-class CharacterQuizResultScreen extends StatelessWidget {
+class CharacterQuizResultScreen extends StatefulWidget {
   const CharacterQuizResultScreen({
     super.key,
     required this.quiz,
@@ -16,9 +16,55 @@ class CharacterQuizResultScreen extends StatelessWidget {
   final QuizAttemptResult result;
 
   @override
+  State<CharacterQuizResultScreen> createState() =>
+      _CharacterQuizResultScreenState();
+}
+
+class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
+    with SingleTickerProviderStateMixin {
+  final _mochiCtrl = MochiAnimationController();
+  late final AnimationController _enterCtrl;
+  late final Animation<double> _scaleFade;
+
+  @override
+  void initState() {
+    super.initState();
+    _enterCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 550),
+    )..forward();
+    _scaleFade = CurvedAnimation(parent: _enterCtrl, curve: Curves.easeOutBack);
+
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      if (widget.result.stageChanged) {
+        _mochiCtrl.triggerProud();
+      } else if (widget.result.correct) {
+        _mochiCtrl.triggerHappy();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _enterCtrl.dispose();
+    super.dispose();
+  }
+
+  String _stageName(CharacterStage stage) => switch (stage) {
+        CharacterStage.egg => '알',
+        CharacterStage.sprout => '새싹',
+        CharacterStage.bloom => '꽃봄',
+        CharacterStage.blossom => '만개',
+        CharacterStage.glow => '빛남',
+      };
+
+  @override
   Widget build(BuildContext context) {
-    final correct = result.correct;
-    final correctOptionLabel = quiz.options[result.correctIndex - 1];
+    final correct = widget.result.correct;
+    final correctOptionLabel =
+        widget.quiz.options[widget.result.correctIndex - 1];
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -32,15 +78,22 @@ class CharacterQuizResultScreen extends StatelessWidget {
                     _Verdict(correct: correct),
                     const SizedBox(height: 20),
                     Center(
-                      child: MochiCharacterView(
-                        color: result.character.color,
-                        colorHex: result.character.colorHex,
-                        stage: result.character.stage,
-                        size: 160,
+                      child: ScaleTransition(
+                        scale: _scaleFade,
+                        child: FadeTransition(
+                          opacity: _enterCtrl,
+                          child: AnimatedMochiWidget(
+                            color: widget.result.character.color,
+                            colorHex: widget.result.character.colorHex,
+                            stage: widget.result.character.stage,
+                            size: 160,
+                            controller: _mochiCtrl,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (result.stageChanged)
+                    if (widget.result.stageChanged)
                       Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -48,11 +101,11 @@ class CharacterQuizResultScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF7E2),
                             borderRadius: BorderRadius.circular(999),
-                            border:
-                                Border.all(color: const Color(0xFFFCD34D)),
+                            border: Border.all(
+                                color: const Color(0xFFFCD34D)),
                           ),
                           child: Text(
-                            '진화 ${result.stageBefore.name.toUpperCase()} → ${result.stageAfter.name.toUpperCase()}',
+                            '진화! ${_stageName(widget.result.stageBefore)} → ${widget.result.character.stageDisplayName} 🌟',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w700,
@@ -62,7 +115,7 @@ class CharacterQuizResultScreen extends StatelessWidget {
                           ),
                         ),
                       )
-                    else if (result.levelGained > 0)
+                    else if (widget.result.levelGained > 0)
                       Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -72,7 +125,7 @@ class CharacterQuizResultScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '레벨업! +${result.levelGained} → Lv. ${result.character.level}',
+                            '레벨업! Lv. ${widget.result.character.level}',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w700,
@@ -83,9 +136,9 @@ class CharacterQuizResultScreen extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 24),
-                    _Question(quiz: quiz, result: result),
+                    _Question(quiz: widget.quiz, result: widget.result),
                     const SizedBox(height: 20),
-                    _RewardBoard(result: result),
+                    _RewardBoard(result: widget.result),
                     if (!correct) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -158,7 +211,8 @@ class _Verdict extends StatelessWidget {
     final label = correct ? '정답!' : '아쉬워요';
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(999),
@@ -286,7 +340,9 @@ class _RewardChip extends StatelessWidget {
               fontFamily: 'Inter',
               fontWeight: FontWeight.w700,
               fontSize: 13,
-              color: color,
+              color: color == const Color(0xFFFCD34D)
+                  ? AppColors.gray900
+                  : color,
             ),
           ),
           const Spacer(),

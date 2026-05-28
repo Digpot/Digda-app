@@ -5,10 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
-import '../../widgets/app_dialog.dart';
 
-/// 모찌 도감 — 5단계 모찌를 그리드(2열)로 모아 보여준다.
-/// 도달 단계는 컬러로, 잠긴 단계는 흑백 + 자물쇠 라벨.
 class CharacterDexScreen extends StatefulWidget {
   const CharacterDexScreen({super.key});
 
@@ -20,6 +17,7 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
   CharacterStageTree? _tree;
   CharacterState? _myState;
   bool _loading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -28,7 +26,10 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
       final results = await Future.wait([
         Di.characterRepository.getStageTree(),
@@ -42,8 +43,10 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
-      showErrorDialog(context, errorMessageOf(e));
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
     }
   }
 
@@ -71,14 +74,14 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _tree == null
-              ? const SizedBox.shrink()
+          : _errorMessage != null
+              ? _ErrorRetry(message: _errorMessage!, onRetry: _load)
               : _buildBody(_tree!, _myState!),
     );
   }
 
   Widget _buildBody(CharacterStageTree tree, CharacterState me) {
-    final unlocked = tree.stages.where((s) => s.unlocked).length;
+    final unlockedCount = tree.stages.where((s) => s.unlocked).length;
     return Column(
       children: [
         Padding(
@@ -96,7 +99,7 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
               ),
               const Spacer(),
               Text(
-                '$unlocked / ${tree.stages.length}',
+                '$unlockedCount / ${tree.stages.length}',
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w700,
@@ -107,25 +110,42 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
             ],
           ),
         ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 0.82,
+        // 전체 해금 진행도 바
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: unlockedCount / tree.stages.length,
+              minHeight: 6,
+              backgroundColor: AppColors.gray100,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
-            itemCount: tree.stages.length,
-            itemBuilder: (_, i) {
-              final s = tree.stages[i];
-              return _DexCard(
-                info: s,
-                myColor: me.color,
-                myColorHex: me.colorHex,
-                isCurrent: s.stage == tree.currentStage,
-              );
-            },
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _load,
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 0.82,
+              ),
+              itemCount: tree.stages.length,
+              itemBuilder: (_, i) {
+                final s = tree.stages[i];
+                return _DexCard(
+                  info: s,
+                  myColor: me.color,
+                  myColorHex: me.colorHex,
+                  isCurrent: s.stage == tree.currentStage,
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -236,7 +256,7 @@ class _DexCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            unlocked ? '도달' : 'Lv. ${info.requiredLevel}',
+            unlocked ? '달성' : 'Lv. ${info.requiredLevel}',
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w500,
@@ -245,6 +265,51 @@ class _DexCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 40, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text(
+                '다시 시도',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -5,10 +5,7 @@ import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
-import '../../widgets/app_dialog.dart';
 
-/// 모찌 진화 트리.
-/// 각 단계 카드: 단계명·필요 레벨·잠금/도달 표시.
 class CharacterStageTreeScreen extends StatefulWidget {
   const CharacterStageTreeScreen({super.key});
 
@@ -21,6 +18,7 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
   CharacterStageTree? _tree;
   CharacterState? _myState;
   bool _loading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -29,9 +27,11 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
-      // 트리 + 내 상태 동시 로드 — 카드 미리보기에서 현재 색상으로 모찌를 렌더하기 위해.
       final results = await Future.wait([
         Di.characterRepository.getStageTree(),
         Di.characterRepository.getMyState(),
@@ -44,8 +44,10 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
-      showErrorDialog(context, errorMessageOf(e));
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
     }
   }
 
@@ -73,18 +75,58 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _tree == null
-              ? const SizedBox.shrink()
+          : _errorMessage != null
+              ? _ErrorRetry(message: _errorMessage!, onRetry: _load)
               : _buildTree(_tree!, _myState!),
     );
   }
 
   Widget _buildTree(CharacterStageTree tree, CharacterState me) {
+    final nextStage = tree.stages.where((s) => !s.unlocked).firstOrNull;
+
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      itemCount: tree.stages.length,
-      separatorBuilder: (_, __) => _Connector(),
+      itemCount: tree.stages.length + (nextStage != null ? 1 : 0),
+      separatorBuilder: (_, i) {
+        if (nextStage != null && i == tree.stages.length - 1) {
+          return const SizedBox.shrink();
+        }
+        return _Connector();
+      },
       itemBuilder: (_, i) {
+        if (i == tree.stages.length) {
+          final needed = nextStage!.requiredLevel - tree.currentLevel;
+          return Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.trending_up,
+                      color: AppColors.primary, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '다음 진화까지 $needed 레벨 남았어요',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         final s = tree.stages[i];
         final isCurrent = s.stage == tree.currentStage;
         return _StageCard(
@@ -129,7 +171,6 @@ class _StageCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // 잠긴 단계는 흑백으로 반투명 처리 — 동일 모찌이지만 도달 여부 시각화.
           Opacity(
             opacity: unlocked ? 1.0 : 0.35,
             child: ColorFiltered(
@@ -162,9 +203,8 @@ class _StageCard extends StatelessWidget {
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                        color: unlocked
-                            ? AppColors.gray900
-                            : AppColors.gray500,
+                        color:
+                            unlocked ? AppColors.gray900 : AppColors.gray500,
                       ),
                     ),
                     if (isCurrent) ...[
@@ -186,19 +226,23 @@ class _StageCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ] else if (unlocked) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.check_circle,
+                          color: AppColors.green, size: 16),
                     ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   unlocked
-                      ? '도달 · 필요 레벨 ${info.requiredLevel}'
-                      : '잠김 · Lv. ${info.requiredLevel} 도달 시 해금 (현재 Lv. $currentLevel)',
-                  style: TextStyle(
+                      ? 'Lv. ${info.requiredLevel} 달성'
+                      : 'Lv. ${info.requiredLevel} 도달 시 해금 (현재 Lv. $currentLevel)',
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w400,
                     fontSize: 12,
-                    color: unlocked ? AppColors.gray700 : AppColors.gray500,
+                    color: AppColors.gray500,
                   ),
                 ),
               ],
@@ -218,12 +262,53 @@ class _Connector extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 8),
-          Container(
-            width: 2,
-            height: 18,
-            color: AppColors.gray200,
-          ),
+          Container(width: 2, height: 18, color: AppColors.gray200),
         ],
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 40, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text(
+                '다시 시도',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

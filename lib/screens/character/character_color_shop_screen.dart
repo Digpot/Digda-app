@@ -45,8 +45,18 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     }
   }
 
-  Future<void> _buy(CharacterColorInfo item) async {
+  void _buy(CharacterColorInfo item) {
     if (_pendingAction != null) return;
+    showConfirmDialog(
+      context,
+      title: '${item.displayName} 구매',
+      message: '${item.cost} 코인을 사용해 해금할까요?',
+      confirmLabel: '구매',
+      onConfirm: () => _doBuy(item),
+    );
+  }
+
+  Future<void> _doBuy(CharacterColorInfo item) async {
     setState(() => _pendingAction = 'buy:${item.color.name}');
     try {
       final updated = await Di.characterRepository.buyColor(item.color);
@@ -55,7 +65,7 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
         _shop = updated;
         _changed = true;
       });
-      showInfoDialog(context, '구매 완료', '${item.displayName} 색을 해금했어요.');
+      showAppSnackBar(context, '${item.displayName} 색을 해금했어요!');
     } catch (e) {
       if (!mounted) return;
       showErrorDialog(context, errorMessageOf(e));
@@ -70,13 +80,13 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     try {
       await Di.characterRepository.applyColor(item.color);
       if (!mounted) return;
-      // 적용 후에는 isCurrent 가 바뀌므로 상점 재조회로 표시를 동기화.
       final shop = await Di.characterRepository.getColorShop();
       if (!mounted) return;
       setState(() {
         _shop = shop;
         _changed = true;
       });
+      showAppSnackBar(context, '${item.displayName} 색으로 변경됐어요!');
     } catch (e) {
       if (!mounted) return;
       showErrorDialog(context, errorMessageOf(e));
