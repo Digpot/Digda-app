@@ -91,12 +91,12 @@ class _CharacterColorShopScreenState extends State<CharacterColorShopScreen> {
     try {
       await Di.characterRepository.applyColor(item.color);
       if (!mounted) return;
+      // applyColor 성공 시점에 바로 _changed=true — 이후 getColorShop 실패해도
+      // 뒤로가기 시 메인 화면이 새로고침해서 최신 색상을 반영
+      setState(() => _changed = true);
       final shop = await Di.characterRepository.getColorShop();
       if (!mounted) return;
-      setState(() {
-        _shop = shop;
-        _changed = true;
-      });
+      setState(() => _shop = shop);
       showAppSnackBar(context, '${item.displayName} 색으로 변경됐어요!');
     } catch (e) {
       if (!mounted) return;
