@@ -3,6 +3,8 @@
 /// 서버가 곡선/도달 여부의 진실 출처라, 클라는 임계치를 직접 계산하지 않는다
 /// (expForNextLevel, unlocked, owned 등은 응답값을 그대로 사용).
 
+enum MochiEmotion { idle, happy, excited, sleepy, proud }
+
 enum CharacterStage {
   egg,
   sprout,

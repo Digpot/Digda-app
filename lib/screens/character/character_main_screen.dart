@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
-import '../../features/character/widgets/mochi_character_view.dart';
+import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
@@ -29,6 +29,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   CharacterState? _state;
   bool _loading = true;
   String? _errorMessage;
+  final _mochiCtrl = MochiAnimationController();
 
   @override
   void initState() {
@@ -120,6 +121,13 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     );
   }
 
+  void _handlePet() {
+    Di.characterRepository
+        .addExp(amount: 5, source: 'pet')
+        .then((_) => _load())
+        .catchError((_) {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,11 +194,14 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         children: [
           const SizedBox(height: 12),
           Center(
-            child: MochiCharacterView(
+            child: AnimatedMochiWidget(
               color: s.color,
               colorHex: s.colorHex,
               stage: s.stage,
               size: 220,
+              happiness: s.progress,
+              controller: _mochiCtrl,
+              onPet: _handlePet,
             ),
           ),
           const SizedBox(height: 20),
