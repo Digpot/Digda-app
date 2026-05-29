@@ -9,7 +9,6 @@ import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../features/character/widgets/mochi_character_view.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
-import '../character_levelup_screen.dart';
 import 'character_quiz_result_screen.dart';
 
 /// 퀴즈 풀기 화면 — 진입 시 서버에서 랜덤 1건 fetch → 4지선다 → 응시.
@@ -237,6 +236,41 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
                 _CategoryChip(
                     text: q.categoryDisplayName, multiplier: q.expMultiplier),
                 const SizedBox(height: 16),
+                if (q.imageUrl != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: Image.network(
+                        q.imageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (_, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            color: AppColors.gray50,
+                            alignment: Alignment.center,
+                            child: const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            ),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.gray50,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            color: AppColors.gray400,
+                            size: 40,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 Text(
                   q.question,
                   style: const TextStyle(

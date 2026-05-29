@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/di.dart';
 import '../../../core/network/error_message.dart';
 import '../../../features/character/models/character_models.dart';
+import '../../../features/upload/models/upload_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
+import '../../../widgets/image_pick_helper.dart';
 
 /// 퀴즈 만들기 — 카테고리/문제/4지선다/정답/배수 입력 후 제출.
 ///
@@ -26,6 +30,11 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
   int _correctIndex = 1;
   int _multiplier = 1;
   bool _submitting = false;
+  File? _pickedImage;
+  // 미리 업로드해 둔 이미지의 원격 URL. 등록 시 그대로 createQuiz 에 전달.
+  // 이미지가 바뀌거나 제거되면 _uploadedImageUrl 도 함께 초기화한다.
+  String? _uploadedImageUrl;
+  bool _uploadingImage = false;
 
   @override
   void dispose() {
@@ -43,7 +52,47 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
     for (final c in _options) {
       if (c.text.trim().isEmpty || c.text.length > 100) return false;
     }
+    // 이미지를 골라두고 업로드가 끝나지 않았으면 잠시 비활성.
+    if (_pickedImage != null && _uploadedImageUrl == null) return false;
     return true;
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    if (_uploadingImage || _submitting) return;
+    final file = await pickImage(context);
+    if (file == null || !mounted) return;
+    setState(() {
+      _pickedImage = file;
+      _uploadedImageUrl = null;
+      _uploadingImage = true;
+    });
+    try {
+      final uploaded = await Di.uploadRepository.uploadImage(
+        filePath: file.path,
+        purpose: UploadPurpose.quiz,
+      );
+      if (!mounted) return;
+      setState(() {
+        _uploadedImageUrl = uploaded.url;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pickedImage = null;
+        _uploadedImageUrl = null;
+        _uploadingImage = false;
+      });
+      showErrorDialog(context, '이미지 업로드에 실패했어요.\n${errorMessageOf(e)}');
+    }
+  }
+
+  void _removeImage() {
+    if (_uploadingImage || _submitting) return;
+    setState(() {
+      _pickedImage = null;
+      _uploadedImageUrl = null;
+    });
   }
 
   Future<void> _submit() async {
@@ -67,6 +116,7 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
         options: _options.map((c) => c.text.trim()).toList(),
         correctIndex: _correctIndex,
         expMultiplier: _multiplier,
+        imageUrl: _uploadedImageUrl,
       );
       if (!mounted) return;
       showAppSnackBar(context, '퀴즈가 등록됐어요!');
@@ -135,6 +185,26 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
             maxLines: 3,
             onChanged: (_) => setState(() {}),
           ),
+          const SizedBox(height: 18),
+          const _SectionLabel('사진 (선택)'),
+          const SizedBox(height: 4),
+          const Text(
+            '사진을 첨부하면 이미지 퀴즈가 돼요. 비워두면 텍스트 퀴즈로 등록돼요.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 12,
+              color: AppColors.gray500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _QuizImagePicker(
+            image: _pickedImage,
+            uploading: _uploadingImage,
+            uploaded: _uploadedImageUrl != null,
+            onPick: _pickAndUploadImage,
+            onRemove: _removeImage,
+          ),
           const SizedBox(height: 24),
           const _SectionLabel('선택지 4개 — 정답 라디오 선택'),
           const SizedBox(height: 8),
@@ -185,6 +255,140 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _QuizImagePicker extends StatelessWidget {
+  const _QuizImagePicker({
+    required this.image,
+    required this.uploading,
+    required this.uploaded,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final File? image;
+  final bool uploading;
+  final bool uploaded;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    if (image == null) {
+      return GestureDetector(
+        onTap: onPick,
+        child: Container(
+          height: 140,
+          decoration: BoxDecoration(
+            color: AppColors.gray50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.gray200,
+              width: 1.4,
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_photo_alternate_outlined,
+                    color: AppColors.gray400, size: 32),
+                SizedBox(height: 6),
+                Text(
+                  '사진 추가하기',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.file(
+            image!,
+            width: double.infinity,
+            height: 200,
+            fit: BoxFit.cover,
+          ),
+        ),
+        if (uploading)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (!uploading)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child:
+                    const Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+        if (!uploading && uploaded)
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, color: Colors.white, size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    '업로드 완료',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

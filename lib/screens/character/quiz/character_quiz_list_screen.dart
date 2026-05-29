@@ -213,6 +213,10 @@ class _QuizCard extends StatelessWidget {
               _CategoryChip(quiz.categoryDisplayName),
               const SizedBox(width: 8),
               _ExpChip(quiz.expMultiplier),
+              if (quiz.imageUrl != null) ...[
+                const SizedBox(width: 8),
+                const _ImageBadge(),
+              ],
               const Spacer(),
               Text(
                 quiz.authorName,
@@ -226,6 +230,25 @@ class _QuizCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          if (quiz.imageUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  quiz.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppColors.gray100,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.broken_image_outlined,
+                        color: AppColors.gray400, size: 28),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           Text(
             quiz.question,
             style: const TextStyle(
@@ -260,6 +283,39 @@ class _QuizCard extends StatelessWidget {
                 ),
               );
             }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImageBadge extends StatelessWidget {
+  const _ImageBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFE7FF),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFA78BFA)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.image_outlined,
+              size: 11, color: Color(0xFFA78BFA)),
+          SizedBox(width: 3),
+          Text(
+            '사진',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+              color: Color(0xFFA78BFA),
+            ),
           ),
         ],
       ),

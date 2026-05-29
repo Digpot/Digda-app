@@ -27,7 +27,8 @@ class UploadedImage {
 enum UploadPurpose {
   profile('profile'),
   groupThumbnail('group_thumbnail'),
-  diary('diary');
+  diary('diary'),
+  quiz('quiz');
 
   const UploadPurpose(this.value);
   final String value;

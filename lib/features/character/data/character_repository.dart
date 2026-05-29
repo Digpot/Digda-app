@@ -149,7 +149,7 @@ class CharacterRepository {
     return CharacterQuizListResult.fromJson(res.data!);
   }
 
-  /// 퀴즈 생성.
+  /// 퀴즈 생성. [imageUrl] 은 선택 — 이미지 퀴즈일 때만 채워서 보낸다.
   Future<CharacterQuiz> createQuiz({
     required int groupRoomId,
     required QuizCategory category,
@@ -157,6 +157,7 @@ class CharacterRepository {
     required List<String> options,
     required int correctIndex,
     required int expMultiplier,
+    String? imageUrl,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/character-quizzes',
@@ -167,6 +168,7 @@ class CharacterRepository {
         'options': options,
         'correctIndex': correctIndex,
         'expMultiplier': expMultiplier,
+        if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       },
     );
     return CharacterQuiz.fromJson(res.data!);
