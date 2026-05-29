@@ -48,6 +48,20 @@ class CharacterRepository {
     return CharacterStageTree.fromJson(res.data!);
   }
 
+  /// 마스터 챔피언 챌린지 점수를 제출하고 코인 보상을 받는다.
+  /// 마스터 단계가 아닐 경우 서버가 NOT_MASTER_CHARACTER 로 응답.
+  Future<MasterGameReward> claimMasterGameReward({
+    required int groupRoomId,
+    required int score,
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/character/master-game-reward',
+      query: {'groupRoomId': groupRoomId},
+      body: {'score': score},
+    );
+    return MasterGameReward.fromJson(res.data!);
+  }
+
   // ─────────── 상점 (아이템 기반) ───────────
 
   /// 상점 전체 — 카테고리별 [ShopSection] 리스트 + 잔액.

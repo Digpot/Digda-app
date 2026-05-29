@@ -9,7 +9,9 @@ import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
+import 'character_evolution_screen.dart';
 import 'character_levelup_screen.dart';
+import 'character_master_game_screen.dart';
 import 'character_stage_tree_screen.dart';
 import 'character_shop_screen.dart';
 import 'character_dex_screen.dart';
@@ -165,20 +167,39 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           _petInProgress = false;
           if (!mounted) return;
           setState(() => _state = result.character);
-          if (result.stageChanged || result.levelGained > 0) {
+          if (result.stageChanged) {
             _mochiCtrl.triggerProud();
+            await CharacterEvolutionScreen.show(
+              context,
+              character: result.character,
+              stageBefore: result.stageBefore,
+            );
+          } else if (result.levelGained > 0) {
+            _mochiCtrl.triggerHappy();
             await CharacterLevelUpScreen.show(
               context,
               character: result.character,
               levelGained: result.levelGained,
-              stageChanged: result.stageChanged,
-              stageBefore: result.stageBefore,
             );
           }
         })
         .catchError((_) {
           _petInProgress = false;
         });
+  }
+
+  Future<void> _openMasterGame() async {
+    final state = _state;
+    if (state == null || state.stage != CharacterStage.master) return;
+    final reward = await CharacterMasterGameScreen.open(
+      context,
+      appearance: MochiAppearance.fromState(state),
+      stage: state.stage,
+    );
+    if (!mounted) return;
+    if (reward != null) {
+      setState(() => _state = reward.character);
+    }
   }
 
   @override
@@ -285,6 +306,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           const SizedBox(height: 28),
           _CoinChip(coin: s.coin),
           const SizedBox(height: 24),
+          if (s.stage == CharacterStage.master) ...[
+            _MasterGameCta(onTap: _openMasterGame),
+            const SizedBox(height: 12),
+          ],
           // 핵심 CTA — 퀴즈 풀어서 EXP/코인 얻기
           SizedBox(
             width: double.infinity,
@@ -343,6 +368,76 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MasterGameCta extends StatelessWidget {
+  const _MasterGameCta({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          height: 68,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFFB347), Color(0xFFFF8A65)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFB347).withValues(alpha: 0.45),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '챔피언 챌린지',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '마스터 전용 미니게임 · 코인 보상',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
       ),
     );
   }

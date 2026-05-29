@@ -6,37 +6,39 @@ import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
 
+/// 일반 레벨업 전용 화면 (진화가 일어나지 않은 단순 레벨 + 1 케이스).
+///
+/// 진화는 [CharacterEvolutionScreen] 으로 분리되어 있어, 호출자는 stageChanged
+/// 여부에 따라 두 화면 중 하나를 골라 띄운다.
+///
+/// 디자인 의도:
+///   - 화면 전환은 가볍고 빠르게 (1초 이내).
+///   - Lv. N 배지 강조 + 별빛 4개 + 모찌 살짝 점프.
+///   - 그라디언트는 코랄→퍼플 한 단계로만 (진화 화면처럼 풀스크린 변신은 X).
 class CharacterLevelUpScreen extends StatefulWidget {
   const CharacterLevelUpScreen({
     super.key,
     required this.character,
     required this.levelGained,
-    required this.stageChanged,
-    required this.stageBefore,
   });
 
   final CharacterState character;
   final int levelGained;
-  final bool stageChanged;
-  final CharacterStage stageBefore;
 
   static Future<void> show(
     BuildContext context, {
     required CharacterState character,
     required int levelGained,
-    required bool stageChanged,
-    required CharacterStage stageBefore,
   }) {
-    return Navigator.of(context).push(
+    return Navigator.of(context).push<void>(
       PageRouteBuilder<void>(
+        opaque: true,
         pageBuilder: (_, __, ___) => CharacterLevelUpScreen(
           character: character,
           levelGained: levelGained,
-          stageChanged: stageChanged,
-          stageBefore: stageBefore,
         ),
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
         transitionsBuilder: (_, anim, __, child) => FadeTransition(
           opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
           child: child,
@@ -67,62 +69,54 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
     super.initState();
 
     final rng = Random(12345);
-    _stars = List.generate(22, (i) => _StarInfo(
-      x: rng.nextDouble(),
-      y: rng.nextDouble() * 0.72,
-      size: 7.0 + rng.nextDouble() * 16.0,
-      delay: rng.nextDouble(),
-      type: i % 3,
-    ));
+    _stars = List.generate(14, (i) => _StarInfo(
+          x: rng.nextDouble(),
+          y: rng.nextDouble() * 0.72,
+          size: 7.0 + rng.nextDouble() * 14.0,
+          delay: rng.nextDouble(),
+          type: i % 3,
+        ));
 
     _enterCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
     )..forward();
 
     _starsCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 2200),
     )..repeat();
 
-    _badgeScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _badgeScale = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _enterCtrl,
         curve: const Interval(0.0, 0.55, curve: Curves.elasticOut),
       ),
     );
-
-    _contentFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _contentFade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _enterCtrl,
-        curve: const Interval(0.35, 0.85, curve: Curves.easeOut),
+        curve: const Interval(0.3, 0.85, curve: Curves.easeOut),
       ),
     );
-
     _contentSlide = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: const Offset(0, 0.1),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _enterCtrl,
-        curve: const Interval(0.35, 0.85, curve: Curves.easeOut),
+        curve: const Interval(0.3, 0.85, curve: Curves.easeOut),
       ),
     );
-
-    _buttonFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _buttonFade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _enterCtrl,
-        curve: const Interval(0.65, 1.0, curve: Curves.easeOut),
+        curve: const Interval(0.6, 1.0, curve: Curves.easeOut),
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      if (widget.stageChanged) {
-        _mochiCtrl.triggerProud();
-      } else {
-        _mochiCtrl.triggerHappy();
-      }
+    Future.delayed(const Duration(milliseconds: 380), () {
+      if (mounted) _mochiCtrl.triggerHappy();
     });
   }
 
@@ -136,6 +130,7 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final appearance = MochiAppearance.fromState(widget.character);
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -154,7 +149,7 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
         ),
         child: Stack(
           children: [
-            // Decorative background circles
+            // 배경 장식 원
             Positioned(
               top: -60,
               right: -60,
@@ -179,26 +174,22 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
                 ),
               ),
             ),
-            // Floating stars
             ..._stars.map((star) => _buildStar(star, size)),
-            // Main content
             SafeArea(
               child: Column(
                 children: [
                   const Spacer(flex: 2),
-                  // Title badge
                   ScaleTransition(
                     scale: _badgeScale,
                     child: _buildTitleBadge(),
                   ),
                   const SizedBox(height: 32),
-                  // Mochi character
                   FadeTransition(
                     opacity: _contentFade,
                     child: SlideTransition(
                       position: _contentSlide,
                       child: AnimatedMochiWidget(
-                        appearance: MochiAppearance.fromState(widget.character),
+                        appearance: appearance,
                         stage: widget.character.stage,
                         size: 190,
                         controller: _mochiCtrl,
@@ -206,7 +197,6 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
                     ),
                   ),
                   const SizedBox(height: 28),
-                  // Level info
                   FadeTransition(
                     opacity: _contentFade,
                     child: SlideTransition(
@@ -215,7 +205,6 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
                     ),
                   ),
                   const Spacer(flex: 3),
-                  // Continue button
                   FadeTransition(
                     opacity: _buttonFade,
                     child: Padding(
@@ -257,7 +246,6 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
   }
 
   Widget _buildTitleBadge() {
-    final isEvolution = widget.stageChanged;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
@@ -268,14 +256,14 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
           width: 2,
         ),
       ),
-      child: Row(
+      child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('✨', style: TextStyle(fontSize: 20)),
-          const SizedBox(width: 10),
+          Text('✨', style: TextStyle(fontSize: 20)),
+          SizedBox(width: 10),
           Text(
-            isEvolution ? '진화 달성!' : '레벨 UP!',
-            style: const TextStyle(
+            '레벨 UP!',
+            style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w800,
               fontSize: 23,
@@ -283,8 +271,8 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
               letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(width: 10),
-          const Text('✨', style: TextStyle(fontSize: 20)),
+          SizedBox(width: 10),
+          Text('✨', style: TextStyle(fontSize: 20)),
         ],
       ),
     );
@@ -320,9 +308,7 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
-            widget.stageChanged
-                ? '${widget.character.stageDisplayName} 단계로 진화했어요! 🌟'
-                : '${widget.character.stageDisplayName} · +${widget.levelGained} 레벨 성장!',
+            '${widget.character.stageDisplayName} · +${widget.levelGained} 레벨 성장!',
             style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w600,

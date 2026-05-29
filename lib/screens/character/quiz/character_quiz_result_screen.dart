@@ -4,6 +4,7 @@ import '../../../features/character/models/character_models.dart';
 import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../features/character/widgets/mochi_character_view.dart';
 import '../../../theme/colors.dart';
+import '../character_evolution_screen.dart';
 import '../character_levelup_screen.dart';
 
 /// 퀴즈 결과 화면 — 정답 여부 + 보상 + 레벨업/진화 연출.
@@ -182,14 +183,18 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () async {
-                    // 레벨업 또는 진화 시 전용 축하 화면 먼저 표시
-                    if (widget.result.levelGained > 0 || widget.result.stageChanged) {
+                    // 진화·레벨업이 발생했다면 전용 화면 먼저 띄우고 결과 화면을 닫는다.
+                    if (widget.result.stageChanged) {
+                      await CharacterEvolutionScreen.show(
+                        context,
+                        character: widget.result.character,
+                        stageBefore: widget.result.stageBefore,
+                      );
+                    } else if (widget.result.levelGained > 0) {
                       await CharacterLevelUpScreen.show(
                         context,
                         character: widget.result.character,
                         levelGained: widget.result.levelGained,
-                        stageChanged: widget.result.stageChanged,
-                        stageBefore: widget.result.stageBefore,
                       );
                     }
                     if (!mounted) return;

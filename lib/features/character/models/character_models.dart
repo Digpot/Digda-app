@@ -163,6 +163,31 @@ class CharacterState {
   }
 }
 
+class MasterGameReward {
+  MasterGameReward({
+    required this.score,
+    required this.coinReward,
+    required this.tier,
+    required this.character,
+  });
+
+  final int score;
+  final int coinReward;
+  final String tier;
+  final CharacterState character;
+
+  factory MasterGameReward.fromJson(Map<String, dynamic> json) {
+    return MasterGameReward(
+      score: (json['score'] as num? ?? 0).toInt(),
+      coinReward: (json['coinReward'] as num? ?? 0).toInt(),
+      tier: json['tier'] as String? ?? '',
+      character: CharacterState.fromJson(
+        (json['character'] as Map).cast<String, dynamic>(),
+      ),
+    );
+  }
+}
+
 class AddExpResult {
   AddExpResult({
     required this.character,
