@@ -33,18 +33,16 @@ class MochiDikoStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 디코가 추가되더라도 메인은 모찌 — Mochi 본체 사이즈는 그대로 두고, 디코를 우측
-    // 하단 외곽에 약간 겹쳐 배치한다. 가로 폭은 모찌 size + 디코 size*0.45 만큼 잡는다.
-    final containerWidth = mochiSize + (state.dikoUnlocked ? dikoSize * 0.45 : 0);
+    // 모찌가 시각적으로 화면 정중앙에 오도록 컨테이너 폭은 mochiSize 그대로 유지.
+    // 디코는 모찌 오른쪽 옆에 약간 튀어나오게 (Stack clipBehavior: Clip.none) 배치 —
+    // 부모 Center 가 모찌를 중심에 맞추고, 디코가 그 옆에 자연스럽게 따라붙는 모양.
+    final containerWidth = mochiSize;
     // 상단 영역(말풍선용) 56px:
     //   - 디코 해금 전: 모찌 자체의 자동 말풍선(showBubble=true)이 위쪽 56px 를 사용.
     //   - 디코 해금 후: 모찌 자동 말풍선은 끄고(showBubble=false) 같은 56px 를
     //     Mochi↔Diko 채팅 밴드가 사용. 두 경우 모두 모찌 본체는 56만큼 내려 그려야
     //     상단 말풍선과 겹치지 않는다.
     const topBand = 56.0;
-    // AnimatedMochiWidget 의 자체 높이 = size + 24 + (말풍선 활성 시 56).
-    // showBubble 값에 맞춰 정확한 컨테이너 높이를 계산해 ListView 가 자식을 잘리지
-    // 않게 배치하도록 한다 (이전엔 mochiSize+56 만 잡아 모찌 단독 모드에서 24px 오버플로).
     final mochiSelfHeight =
         mochiSize + 24 + (state.dikoUnlocked ? 0 : topBand);
     final totalHeight = state.dikoUnlocked
@@ -74,18 +72,17 @@ class MochiDikoStage extends StatelessWidget {
             ),
           ),
           if (state.dikoUnlocked)
+            // 모찌 오른쪽 외곽에 디코가 살짝 튀어나오게. 모찌의 발 높이에 맞춰 정렬.
             Positioned(
-              right: -dikoSize * 0.05,
-              bottom: 8,
+              right: -dikoSize * 0.65,
+              bottom: 16,
               child: _DikoIdleFloat(size: dikoSize),
             ),
           if (state.dikoUnlocked && showChat)
             Positioned(
               top: 0,
               left: mochiSize * 0.18,
-              right: 0,
-              // height 를 강제하면 2줄 버블이 잘려 보일 수 있어 컨테이너 의도(56)를
-              // 살리는 align 만 두고 실제 높이는 버블이 자유롭게 잡게 둔다.
+              right: -dikoSize * 0.3,
               child: _MochiDikoChat(stage: state.stage),
             ),
         ],
