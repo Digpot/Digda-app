@@ -12,10 +12,13 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
+enum _Filter { all, mochi }
+
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _loading = true;
   String? _errorMessage;
   List<AppNotification> _items = const [];
+  _Filter _filter = _Filter.all;
 
   @override
   void initState() {
@@ -167,9 +170,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// 현재 필터에 맞춰 표시할 알림.
+  Iterable<AppNotification> _filtered() {
+    if (_filter == _Filter.mochi) {
+      return _items.where(
+        (n) => NotificationType.mochiTypes.contains(n.type),
+      );
+    }
+    return _items;
+  }
+
   /// 알림 목록을 (섹션, 알림들) 의 리스트로 묶는다. 와이어프레임의 오늘/어제/이전.
   List<_Section> _buildSections() {
-    if (_items.isEmpty) return const [];
+    final list = _filtered().toList();
+    if (list.isEmpty) return const [];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
@@ -178,7 +192,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final yesterdayItems = <AppNotification>[];
     final earlierItems = <AppNotification>[];
 
-    for (final n in _items) {
+    for (final n in list) {
       final local = n.createdAt.toLocal();
       final d = DateTime(local.year, local.month, local.day);
       if (d == today) {
@@ -203,6 +217,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   /// bg/fg 모두 톤이 묶이지 않게 의도적으로 분산했고, 의미가 가까운 짝(일정 작성/수정,
   /// 일정 댓글/일기 댓글, 자발탈퇴/강퇴)은 같은 계열 내에서만 명도를 달리한다.
   static const _iconSkins = <String, _IconSkin>{
+    // 모찌(캐릭터/퀴즈) — 코랄/핑크/골드 계열로 모찌 패밀리 통일
+    'mochi_levelup':
+        _IconSkin(Icons.auto_awesome_rounded, Color(0xFFFFF1F2), Color(0xFFE11D48)),
+    'diko_unlocked':
+        _IconSkin(Icons.celebration_rounded, Color(0xFFFFE4E6), Color(0xFFBE185D)),
+    'quiz_created':
+        _IconSkin(Icons.psychology_alt_rounded, Color(0xFFFCE7F3), Color(0xFFC2185B)),
+    'quiz_answered':
+        _IconSkin(Icons.emoji_events_rounded, Color(0xFFFFF7E2), Color(0xFFC07F00)),
     // 일정 — 블루 계열
     'schedule_created':
         _IconSkin(Icons.event_available_rounded, Color(0xFFE8F0FE), Color(0xFF1A73E8)),
@@ -291,6 +314,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ],
               ),
             ),
+            // 필터 칩: 전체 / 모찌 관련. 진입 직후엔 전체. 모찌 칩을 누르면 모찌
+            // 4종(mochi_levelup/diko_unlocked/quiz_created/quiz_answered)만 필터링.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Row(
+                children: [
+                  _FilterChipButton(
+                    label: '전체',
+                    selected: _filter == _Filter.all,
+                    badgeCount: _items.length,
+                    onTap: () => setState(() => _filter = _Filter.all),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '모찌 알림',
+                    selected: _filter == _Filter.mochi,
+                    badgeCount: _items
+                        .where((n) =>
+                            NotificationType.mochiTypes.contains(n.type))
+                        .length,
+                    onTap: () => setState(() => _filter = _Filter.mochi),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -298,16 +346,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ? _buildError()
                       : RefreshIndicator(
                           onRefresh: _load,
-                          child: _items.isEmpty
+                          child: _filtered().isEmpty
                               ? ListView(
                                   physics:
                                       const AlwaysScrollableScrollPhysics(),
-                                  children: const [
-                                    SizedBox(height: 100),
+                                  children: [
+                                    const SizedBox(height: 100),
                                     Center(
                                       child: Text(
-                                        '아직 알림이 없어요',
-                                        style: TextStyle(
+                                        _filter == _Filter.mochi
+                                            ? '아직 모찌 관련 알림이 없어요'
+                                            : '아직 알림이 없어요',
+                                        style: const TextStyle(
                                           fontFamily: 'Inter',
                                           fontWeight: FontWeight.w500,
                                           fontSize: 14,
@@ -531,6 +581,79 @@ class _NotificationCard extends StatelessWidget {
                 child: _UnreadDot(),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChipButton extends StatelessWidget {
+  const _FilterChipButton({
+    required this.label,
+    required this.selected,
+    required this.badgeCount,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final int badgeCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary
+                : AppColors.gray50,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.gray200,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: selected ? Colors.white : AppColors.gray700,
+                ),
+              ),
+              if (badgeCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.25)
+                        : AppColors.gray200,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    badgeCount > 99 ? '99+' : '$badgeCount',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: selected ? Colors.white : AppColors.gray700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
