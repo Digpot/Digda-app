@@ -724,74 +724,36 @@ class _ItemThumb extends StatelessWidget {
   const _ItemThumb({required this.item});
   final ShopItem item;
 
-  Color _parseHex(String? s) {
-    if (s == null) return AppColors.gray100;
-    final clean = s.replaceAll('#', '');
-    final v = int.tryParse(clean, radix: 16);
-    return v == null ? AppColors.gray100 : Color(0xFF000000 | v);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // 스킨은 색 + 미니 모찌 실루엣, 그 외는 카테고리 아이콘 + accent.
-    if (item.itemType == ShopItemType.skin) {
-      final appearance = MochiAppearance(
-        skinHex: item.accentColor ?? '#FF6B6B',
-        skinAssetKey: item.assetKey,
-        overlays: const [],
-      );
-      return SizedBox(
-        width: 56,
-        height: 56,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: MochiCharacterView(
-            appearance: appearance,
-            stage: CharacterStage.bloom,
-            size: 56,
-          ),
-        ),
-      );
-    }
-
-    final iconBg = _parseHex(item.accentColor).withValues(alpha: 0.18);
-    final iconColor = _parseHex(item.accentColor);
-    return Container(
+    // 모든 카테고리에 동일하게 미니 모찌 미리보기를 제공한다.
+    // - 스킨: 본인이 적용된 모찌 (배경/본체 색만 적용)
+    // - 그 외 카테고리: 기본 코랄 모찌 + 해당 아이템 1개만 overlay
+    // 이렇게 통일하면 사용자가 "이 아이템 차면 어떻게 보이지?" 를 한 눈에 가늠 가능.
+    final MochiAppearance appearance = item.itemType == ShopItemType.skin
+        ? MochiAppearance(
+            skinHex: item.accentColor ?? '#FF6B6B',
+            skinAssetKey: item.assetKey,
+            overlays: const [],
+          )
+        : MochiAppearance(
+            skinHex: '#FF6B6B',
+            skinAssetKey: 'skin/coral',
+            overlays: [item.toEquipped()],
+          );
+    return SizedBox(
       width: 56,
       height: 56,
-      decoration: BoxDecoration(
-        color: AppColors.white,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gray100),
-      ),
-      child: Center(
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            _iconFor(item.itemType),
-            size: 20,
-            color: iconColor.computeLuminance() < 0.95
-                ? iconColor
-                : AppColors.primary,
-          ),
+        child: MochiCharacterView(
+          appearance: appearance,
+          stage: CharacterStage.bloom,
+          size: 56,
         ),
       ),
     );
   }
-
-  IconData _iconFor(ShopItemType type) => switch (type) {
-        ShopItemType.skin => Icons.palette_outlined,
-        ShopItemType.hat => Icons.emoji_events_outlined,
-        ShopItemType.glasses => Icons.visibility_outlined,
-        ShopItemType.hairpin => Icons.star_outline,
-        ShopItemType.accessory => Icons.workspaces_outlined,
-        ShopItemType.misc => Icons.local_florist_outlined,
-      };
 }
 
 class _ActionButton extends StatelessWidget {

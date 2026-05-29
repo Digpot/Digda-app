@@ -430,6 +430,7 @@ class CharacterQuiz {
     required this.expMultiplier,
     required this.authorName,
     this.imageUrl,
+    this.createdAt,
   });
 
   final int id;
@@ -444,8 +445,13 @@ class CharacterQuiz {
   /// 이미지 퀴즈일 때만 채워지는 원격 URL. null/공백이면 기존 텍스트 전용 퀴즈.
   final String? imageUrl;
 
+  /// 서버 응답의 createdAt. 목록 화면이 날짜별 그룹화에 사용. 서버 이전 버전과
+  /// 호환 위해 nullable 로 두고, 파싱 실패도 null 로 fallback.
+  final DateTime? createdAt;
+
   factory CharacterQuiz.fromJson(Map<String, dynamic> json) {
     final rawImage = json['imageUrl'] as String?;
+    final rawCreated = json['createdAt'] as String?;
     return CharacterQuiz(
       id: (json['id'] as num).toInt(),
       groupRoomId: (json['groupRoomId'] as num).toInt(),
@@ -458,6 +464,7 @@ class CharacterQuiz {
       expMultiplier: (json['expMultiplier'] as num? ?? 1).toInt(),
       authorName: json['authorName'] as String? ?? '',
       imageUrl: (rawImage == null || rawImage.trim().isEmpty) ? null : rawImage,
+      createdAt: rawCreated == null ? null : DateTime.tryParse(rawCreated),
     );
   }
 }
