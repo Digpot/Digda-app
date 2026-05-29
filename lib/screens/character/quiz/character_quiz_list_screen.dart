@@ -185,22 +185,116 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
     if (_items.isEmpty) {
       return const _EmptyState();
     }
+    // 날짜별 그룹화. 서버가 최신순으로 내려준다는 전제에서 순서를 유지하며
+    // 같은 날짜끼리 연속된 카드 묶음으로 보여준다. createdAt 이 없으면 '날짜 없음'
+    // 섹션으로 묶여 분리되지 않도록 fallback. (구버전 서버 호환)
+    final sections = _groupByDate(_items);
+    final flat = <_ListEntry>[];
+    for (final section in sections) {
+      flat.add(_ListEntry.header(section.label));
+      for (final q in section.items) {
+        flat.add(_ListEntry.quiz(q));
+      }
+    }
     return RefreshIndicator(
       onRefresh: () => _fetchPage(0),
-      child: ListView.separated(
+      child: ListView.builder(
         controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 100),
-        itemCount: _items.length + (_loadingMore ? 1 : 0),
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 100),
+        itemCount: flat.length + (_loadingMore ? 1 : 0),
         itemBuilder: (_, i) {
-          if (i == _items.length) {
+          if (i == flat.length) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          return _QuizCard(quiz: _items[i]);
+          final entry = flat[i];
+          return entry.header != null
+              ? _DateHeader(label: entry.header!)
+              : Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _QuizCard(quiz: entry.quiz!),
+                );
         },
+      ),
+    );
+  }
+
+  /// 최신순으로 정렬된 [items] 를 날짜별 섹션 리스트로 변환.
+  /// createdAt 이 모두 null 인 응답은 1개 그룹으로 묶인다.
+  List<_DateSection> _groupByDate(List<CharacterQuiz> items) {
+    final today = DateTime.now();
+    final result = <_DateSection>[];
+    String? currentKey;
+    for (final q in items) {
+      final created = q.createdAt?.toLocal();
+      final label = _labelFor(created, today);
+      final key = label;
+      if (key != currentKey) {
+        result.add(_DateSection(label: label, items: []));
+        currentKey = key;
+      }
+      result.last.items.add(q);
+    }
+    return result;
+  }
+
+  String _labelFor(DateTime? d, DateTime today) {
+    if (d == null) return '날짜 없음';
+    bool sameDay(DateTime a, DateTime b) =>
+        a.year == b.year && a.month == b.month && a.day == b.day;
+    final yesterday = today.subtract(const Duration(days: 1));
+    if (sameDay(d, today)) return '오늘';
+    if (sameDay(d, yesterday)) return '어제';
+    return '${d.year}년 ${d.month}월 ${d.day}일';
+  }
+}
+
+class _DateSection {
+  _DateSection({required this.label, required this.items});
+  final String label;
+  final List<CharacterQuiz> items;
+}
+
+class _ListEntry {
+  _ListEntry.header(String text)
+      : header = text,
+        quiz = null;
+  _ListEntry.quiz(CharacterQuiz q)
+      : header = null,
+        quiz = q;
+  final String? header;
+  final CharacterQuiz? quiz;
+}
+
+class _DateHeader extends StatelessWidget {
+  const _DateHeader({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: AppColors.gray700,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: AppColors.gray100,
+            ),
+          ),
+        ],
       ),
     );
   }
