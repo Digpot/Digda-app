@@ -154,8 +154,12 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
                 mainAxisSpacing: 14,
                 childAspectRatio: 0.82,
               ),
-              itemCount: tree.stages.length,
+              // 마지막 슬롯 한 칸은 차기 업데이트 placeholder ("???") 로 비워둔다.
+              itemCount: tree.stages.length + 1,
               itemBuilder: (_, i) {
+                if (i == tree.stages.length) {
+                  return const _ComingSoonCard();
+                }
                 final s = tree.stages[i];
                 return _DexCard(
                   info: s,
@@ -277,6 +281,120 @@ class _DexCard extends StatelessWidget {
               fontWeight: FontWeight.w500,
               fontSize: 11,
               color: unlocked ? AppColors.primary : AppColors.gray500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 도감 마지막 칸 — 마스터 다음 단계는 아직 공개 전이라는 신호.
+/// 검은 squircle 실루엣 + "?" 큰 글자 + "업데이트 예정" 라벨.
+class _ComingSoonCard extends StatelessWidget {
+  const _ComingSoonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray100, width: 1),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 검은 squircle (모찌 배경과 동일 비율 — radius 48/200)
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF2B2B2B),
+                          Color(0xFF1A1A1A),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 큰 ? 글자
+                  Text(
+                    '?',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 64,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      height: 1.0,
+                    ),
+                  ),
+                  // 자물쇠 미니 배지
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.lock_outline,
+                        color: Colors.white70,
+                        size: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '??? 모찌',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: AppColors.gray500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              '업데이트 예정',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+                color: AppColors.gray700,
+              ),
             ),
           ),
         ],
