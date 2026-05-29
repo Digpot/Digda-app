@@ -61,12 +61,13 @@ class MochiAppearance {
 
 /// 모찌 캐릭터를 [size]×[size] 정사각형으로 렌더링.
 ///
-/// 단계별 아트워크
-/// - EGG: 자고 있는 단일 알 형태 (zZz)
-/// - SPROUT: 새싹이 머리에 난 단일 모찌
-/// - BLOOM: 모찌 듀오 (브랜드 마스터 디자인)
-/// - BLOSSOM: 듀오 + 머리 위 꽃 액세서리
-/// - GLOW: 듀오 + 왕관 + 스파클
+/// 단계별 아트워크 — 메인 캐릭터는 항상 모찌 1마리로 고정.
+/// - EGG: 자고 있는 알 형태 (zZz)
+/// - SPROUT: 새싹이 머리에 난 모찌
+/// - BLOOM: 작은 벚꽃을 머리에 얹은 모찌
+/// - BLOSSOM: 활짝 핀 벚꽃 + 옆 봉오리 (이 단계부터 조력자 디코가 별개 위젯으로 등장)
+/// - GLOW: 왕관 + 스파클
+/// - MASTER: 큰 후광 + 별빛 7개 + 왕관 디럭스
 ///
 /// 외형은 [appearance] 로 결정 — 스킨이 배경/바디 색을, 액세서리 overlay 들이 위에 얹힌다.
 /// 모찌 본체는 흰/연핑크로 고정 (브랜드 일관성), 단 SKIN 이 `skin/panda` 같은 특수
@@ -202,24 +203,21 @@ class MochiCharacterView extends StatelessWidget {
     };
   }
 
-  /// 단계 + 카테고리 → SVG 좌표 anchor. 모든 단계에서 같은 슬롯이 자연스럽게
-  /// 보이도록 보정한다.
+  /// 단계 + 카테고리 → SVG 좌표 anchor. 모찌는 항상 1마리(중앙) 라 단계마다 좌표가
+  /// 거의 동일하며, EGG 만 본체 크기가 살짝 달라 위치를 조금 내린다.
   _Anchor? _anchor(CharacterStage stage, ShopItemType type) {
-    final isDuo = stage == CharacterStage.bloom ||
-        stage == CharacterStage.blossom ||
-        stage == CharacterStage.glow ||
-        stage == CharacterStage.master;
-    final headCx = isDuo ? 82.0 : 100.0;
-    final headCy = isDuo ? 86.0 : 92.0;
-    final eyesCy = isDuo ? 116.0 : 122.0;
-    final neckCy = isDuo ? 156.0 : 162.0;
-    final sideCx = isDuo ? 168.0 : 168.0;
+    final isEgg = stage == CharacterStage.egg;
+    const headCx = 100.0;
+    final headCy = isEgg ? 100.0 : 92.0;
+    final eyesCy = isEgg ? 116.0 : 122.0;
+    final neckCy = isEgg ? 168.0 : 162.0;
+    const sideCx = 168.0;
     return switch (type) {
       ShopItemType.hat => _Anchor(cx: headCx, cy: headCy),
       ShopItemType.glasses => _Anchor(cx: headCx, cy: eyesCy),
       ShopItemType.hairpin => _Anchor(cx: headCx + 24, cy: headCy + 6),
       ShopItemType.accessory => _Anchor(cx: headCx, cy: neckCy),
-      ShopItemType.misc => _Anchor(cx: sideCx, cy: 100),
+      ShopItemType.misc => const _Anchor(cx: sideCx, cy: 100),
       ShopItemType.skin => null,
     };
   }
@@ -354,100 +352,62 @@ class MochiCharacterView extends StatelessWidget {
   ''';
   }
 
-  /// BLOOM (Lv 6) — 꽃 모찌: 머리에 막 피어난 작은 벚꽃.
+  /// BLOOM (Lv 6) — 꽃 모찌: 머리에 막 피어난 작은 벚꽃. 단독 모찌.
   String _bloom({required String bodyFill, required String accent, required bool isPanda}) {
-    final rightPatch = isPanda
-        ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
-            '<ellipse cx="133" cy="105" rx="9" ry="7" fill="$accent"/>'
+    final patches = isPanda
+        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="$accent"/>'
+            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="$accent"/>'
         : '';
-    final leftPatch = isPanda
-        ? '<ellipse cx="70" cy="110" rx="10" ry="7" fill="$accent"/>'
-            '<ellipse cx="94" cy="110" rx="10" ry="7" fill="$accent"/>'
-        : '';
-    final rightBody = isPanda ? bodyFill : '#FFE4E4';
     return '''
   <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
-    <g transform="translate(124 78)">
+    <ellipse cx="100" cy="124" rx="50" ry="44" fill="$bodyFill"/>
+    $patches
+    <g transform="translate(100 72)">
+      ${_flower(scale: 0.85, accent: '#FF9FB0')}
+    </g>
+    ${_eye(86, 122, 2.8, 3.6)}
+    ${_eye(114, 122, 2.8, 3.6)}
+    ${_mouth(92, 136, 100, 142, 108, 136, 2.4)}
+    <ellipse cx="72" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    <ellipse cx="128" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+  </g>
+  ''';
+  }
+
+  /// BLOSSOM (Lv 10) — 활짝 모찌: 큰 벚꽃 + 옆에 작은 봉오리. 디코는 이 단계부터 별개로 등장.
+  String _blossom({required String bodyFill, required String accent, required bool isPanda}) {
+    final patches = isPanda
+        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="$accent"/>'
+            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="$accent"/>'
+        : '';
+    return '''
+  <g>
+    <ellipse cx="100" cy="124" rx="50" ry="44" fill="$bodyFill"/>
+    $patches
+    <g transform="translate(100 62)">
+      ${_flower(scale: 1.35, accent: '#FF9FB0')}
+    </g>
+    <g transform="translate(140 78)">
       ${_flower(scale: 0.55, accent: '#FFB6C1')}
     </g>
-    $rightPatch
-    ${_eye(112, 110, 2.4, 3.2)}
-    ${_eye(136, 110, 2.4, 3.2)}
-    ${_mouth(118, 121, 124, 127, 130, 121, 2.0)}
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-  </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
-    $leftPatch
-    <g transform="translate(82 76)">
-      ${_flower(scale: 0.7, accent: '#FF9FB0')}
+    <g transform="translate(60 78)">
+      ${_flower(scale: 0.45, accent: '#FFC9D9')}
     </g>
-    ${_eye(68, 116, 2.8, 3.6)}
-    ${_eye(96, 116, 2.8, 3.6)}
-    ${_mouth(74, 128, 82, 135, 90, 128, 2.4)}
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    ${_eye(86, 122, 2.8, 3.6)}
+    ${_eye(114, 122, 2.8, 3.6)}
+    ${_mouth(92, 136, 100, 142, 108, 136, 2.4)}
+    <ellipse cx="72" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    <ellipse cx="128" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
   </g>
   ''';
   }
 
-  /// BLOSSOM (Lv 10) — 활짝 모찌: 양쪽 모찌 모두 활짝 핀 큰 벚꽃 + 옆에 작은 봉오리.
-  String _blossom({required String bodyFill, required String accent, required bool isPanda}) {
-    final rightPatch = isPanda
-        ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
-            '<ellipse cx="133" cy="105" rx="9" ry="7" fill="$accent"/>'
-        : '';
-    final leftPatch = isPanda
-        ? '<ellipse cx="70" cy="110" rx="10" ry="7" fill="$accent"/>'
-            '<ellipse cx="94" cy="110" rx="10" ry="7" fill="$accent"/>'
-        : '';
-    final rightBody = isPanda ? bodyFill : '#FFE4E4';
-    return '''
-  <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
-    <g transform="translate(124 68)">
-      ${_flower(scale: 1.0, accent: '#FFB6C1')}
-    </g>
-    <g transform="translate(148 80)">
-      ${_flower(scale: 0.4, accent: '#FFC9D9')}
-    </g>
-    $rightPatch
-    ${_eye(112, 110, 2.4, 3.2)}
-    ${_eye(136, 110, 2.4, 3.2)}
-    ${_mouth(118, 121, 124, 127, 130, 121, 2.0)}
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-  </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
-    <g transform="translate(82 66)">
-      ${_flower(scale: 1.3, accent: '#FF9FB0')}
-    </g>
-    <g transform="translate(54 80)">
-      ${_flower(scale: 0.5, accent: '#FFB6C1')}
-    </g>
-    $leftPatch
-    ${_eye(68, 116, 2.8, 3.6)}
-    ${_eye(96, 116, 2.8, 3.6)}
-    ${_mouth(74, 128, 82, 135, 90, 128, 2.4)}
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
-  </g>
-  ''';
-  }
-
+  /// GLOW (Lv 15) — 왕관과 함께 빛나는 단독 모찌. 주변 스파클 4 점.
   String _glow({required String bodyFill, required String accent, required bool isPanda}) {
-    final rightPatch = isPanda
-        ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
-            '<ellipse cx="133" cy="105" rx="9" ry="7" fill="$accent"/>'
+    final patches = isPanda
+        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="$accent"/>'
+            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="$accent"/>'
         : '';
-    final leftPatch = isPanda
-        ? '<ellipse cx="70" cy="110" rx="10" ry="7" fill="$accent"/>'
-            '<ellipse cx="94" cy="110" rx="10" ry="7" fill="$accent"/>'
-        : '';
-    final rightBody = isPanda ? bodyFill : '#FFE4E4';
     return '''
   <g opacity="0.9">
     <circle cx="32" cy="44" r="3.4" fill="#FFF59D"/>
@@ -456,40 +416,26 @@ class MochiCharacterView extends StatelessWidget {
     <circle cx="170" cy="148" r="3" fill="#FFF59D"/>
   </g>
   <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
-    $rightPatch
-    ${_eye(112, 110, 2.4, 3.2)}
-    ${_eye(136, 110, 2.4, 3.2)}
-    ${_mouth(118, 121, 124, 127, 130, 121, 2.0)}
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-  </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
-    <g transform="translate(82 68)">
+    <ellipse cx="100" cy="124" rx="50" ry="44" fill="$bodyFill"/>
+    $patches
+    <g transform="translate(100 70)">
       ${_crown()}
     </g>
-    $leftPatch
-    ${_eye(68, 116, 2.8, 3.6)}
-    ${_eye(96, 116, 2.8, 3.6)}
-    ${_mouth(74, 128, 82, 135, 90, 128, 2.4)}
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    ${_eye(86, 122, 2.8, 3.6)}
+    ${_eye(114, 122, 2.8, 3.6)}
+    ${_mouth(92, 136, 100, 142, 108, 136, 2.4)}
+    <ellipse cx="72" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    <ellipse cx="128" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
   </g>
   ''';
   }
 
-  /// MASTER (Lv 20) — 마스터 모찌: GLOW 의 모든 화려함 + 큰 후광 + 별빛 7개.
+  /// MASTER (Lv 20) — 마스터 모찌: 큰 후광 + 별빛 + 디럭스 왕관. 단독 모찌.
   String _master({required String bodyFill, required String accent, required bool isPanda}) {
-    final rightPatch = isPanda
-        ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
-            '<ellipse cx="133" cy="105" rx="9" ry="7" fill="$accent"/>'
+    final patches = isPanda
+        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="$accent"/>'
+            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="$accent"/>'
         : '';
-    final leftPatch = isPanda
-        ? '<ellipse cx="70" cy="110" rx="10" ry="7" fill="$accent"/>'
-            '<ellipse cx="94" cy="110" rx="10" ry="7" fill="$accent"/>'
-        : '';
-    final rightBody = isPanda ? bodyFill : '#FFE4E4';
     return '''
   <defs>
     <radialGradient id="masterHalo" cx="0.5" cy="0.5" r="0.5">
@@ -509,28 +455,19 @@ class MochiCharacterView extends StatelessWidget {
     <circle cx="186" cy="100" r="2.4" fill="#FFE066"/>
   </g>
   <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
-    <g transform="translate(124 68)">
-      ${_starCrown()}
-    </g>
-    $rightPatch
-    ${_eye(112, 110, 2.4, 3.2)}
-    ${_eye(136, 110, 2.4, 3.2)}
-    ${_mouth(118, 121, 124, 127, 130, 121, 2.0)}
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
-  </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
-    <g transform="translate(82 66)">
+    <ellipse cx="100" cy="124" rx="50" ry="44" fill="$bodyFill"/>
+    $patches
+    <g transform="translate(100 68)">
       ${_crownDeluxe()}
     </g>
-    $leftPatch
-    ${_eye(68, 116, 2.8, 3.6)}
-    ${_eye(96, 116, 2.8, 3.6)}
-    ${_mouth(74, 128, 82, 135, 90, 128, 2.4)}
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    <g transform="translate(100 52)">
+      ${_starCrown()}
+    </g>
+    ${_eye(86, 122, 2.8, 3.6)}
+    ${_eye(114, 122, 2.8, 3.6)}
+    ${_mouth(92, 136, 100, 142, 108, 136, 2.4)}
+    <ellipse cx="72" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    <ellipse cx="128" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
   </g>
   ''';
   }

@@ -4,6 +4,7 @@ import '../../../features/character/models/character_models.dart';
 import '../../../features/character/widgets/animated_mochi_widget.dart';
 import '../../../features/character/widgets/mochi_character_view.dart';
 import '../../../theme/colors.dart';
+import '../character_diko_intro_screen.dart';
 import '../character_evolution_screen.dart';
 import '../character_levelup_screen.dart';
 
@@ -198,6 +199,13 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                       );
                     }
                     if (!mounted) return;
+                    if (widget.result.dikoJustUnlocked) {
+                      await CharacterDikoIntroScreen.show(
+                        context,
+                        character: widget.result.character,
+                      );
+                      if (!mounted) return;
+                    }
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(

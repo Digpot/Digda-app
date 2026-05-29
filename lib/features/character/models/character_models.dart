@@ -97,6 +97,7 @@ class CharacterState {
     required this.expForNextLevel,
     required this.coin,
     required this.maxLevelReached,
+    required this.dikoUnlocked,
     required this.equippedItems,
   });
 
@@ -107,6 +108,9 @@ class CharacterState {
   final int expForNextLevel;
   final int coin;
   final bool maxLevelReached;
+
+  /// 조력자 디코 해금 여부. true 면 메인 화면에서 디코를 함께 렌더.
+  final bool dikoUnlocked;
   final List<EquippedItem> equippedItems;
 
   double get progress {
@@ -154,6 +158,7 @@ class CharacterState {
       expForNextLevel: (json['expForNextLevel'] as num).toInt(),
       coin: (json['coin'] as num).toInt(),
       maxLevelReached: json['maxLevelReached'] as bool? ?? false,
+      dikoUnlocked: json['dikoUnlocked'] as bool? ?? false,
       equippedItems: ((json['equippedItems'] as List?) ?? const [])
           .map((e) => EquippedItem.fromJson(
                 (e as Map).cast<String, dynamic>(),
@@ -196,6 +201,7 @@ class AddExpResult {
     required this.stageAfter,
     required this.stageChanged,
     required this.coinDelta,
+    required this.dikoJustUnlocked,
   });
 
   final CharacterState character;
@@ -204,6 +210,9 @@ class AddExpResult {
   final CharacterStage stageAfter;
   final bool stageChanged;
   final int coinDelta;
+
+  /// 이번 응답으로 디코가 처음 해금된 경우만 true. 컷씬을 1회 띄울 때 사용.
+  final bool dikoJustUnlocked;
 
   factory AddExpResult.fromJson(Map<String, dynamic> json) {
     return AddExpResult(
@@ -215,6 +224,7 @@ class AddExpResult {
       stageAfter: CharacterStage.fromKey(json['stageAfter'] as String),
       stageChanged: json['stageChanged'] as bool? ?? false,
       coinDelta: (json['coinDelta'] as num? ?? 0).toInt(),
+      dikoJustUnlocked: json['dikoJustUnlocked'] as bool? ?? false,
     );
   }
 }
@@ -419,6 +429,7 @@ class CharacterQuiz {
     required this.options,
     required this.expMultiplier,
     required this.authorName,
+    this.imageUrl,
   });
 
   final int id;
@@ -430,7 +441,11 @@ class CharacterQuiz {
   final int expMultiplier;
   final String authorName;
 
+  /// 이미지 퀴즈일 때만 채워지는 원격 URL. null/공백이면 기존 텍스트 전용 퀴즈.
+  final String? imageUrl;
+
   factory CharacterQuiz.fromJson(Map<String, dynamic> json) {
+    final rawImage = json['imageUrl'] as String?;
     return CharacterQuiz(
       id: (json['id'] as num).toInt(),
       groupRoomId: (json['groupRoomId'] as num).toInt(),
@@ -442,6 +457,7 @@ class CharacterQuiz {
           .toList(),
       expMultiplier: (json['expMultiplier'] as num? ?? 1).toInt(),
       authorName: json['authorName'] as String? ?? '',
+      imageUrl: (rawImage == null || rawImage.trim().isEmpty) ? null : rawImage,
     );
   }
 }
@@ -486,6 +502,7 @@ class QuizAttemptResult {
     required this.stageBefore,
     required this.stageAfter,
     required this.stageChanged,
+    required this.dikoJustUnlocked,
   });
 
   final int quizId;
@@ -499,6 +516,7 @@ class QuizAttemptResult {
   final CharacterStage stageBefore;
   final CharacterStage stageAfter;
   final bool stageChanged;
+  final bool dikoJustUnlocked;
 
   factory QuizAttemptResult.fromJson(Map<String, dynamic> json) {
     return QuizAttemptResult(
@@ -515,6 +533,7 @@ class QuizAttemptResult {
       stageBefore: CharacterStage.fromKey(json['stageBefore'] as String),
       stageAfter: CharacterStage.fromKey(json['stageAfter'] as String),
       stageChanged: json['stageChanged'] as bool? ?? false,
+      dikoJustUnlocked: json['dikoJustUnlocked'] as bool? ?? false,
     );
   }
 }

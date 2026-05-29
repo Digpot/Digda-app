@@ -5,10 +5,12 @@ import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
+import '../../features/character/widgets/mochi_diko_stage.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
+import 'character_diko_intro_screen.dart';
 import 'character_evolution_screen.dart';
 import 'character_levelup_screen.dart';
 import 'character_master_game_screen.dart';
@@ -182,6 +184,13 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               levelGained: result.levelGained,
             );
           }
+          // 진화/레벨업 컷씬을 먼저 보여준 뒤 디코 등장. 동시 발생해도 사용자가 둘 다 본다.
+          if (result.dikoJustUnlocked && mounted) {
+            await CharacterDikoIntroScreen.show(
+              context,
+              character: result.character,
+            );
+          }
         })
         .catchError((_) {
           _petInProgress = false;
@@ -280,21 +289,19 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         children: [
           const SizedBox(height: 12),
           Center(
-            child: AnimatedMochiWidget(
-              appearance: MochiAppearance.fromState(s),
-              stage: s.stage,
-              size: 220,
-              happiness: s.progress,
-              controller: _mochiCtrl,
+            child: MochiDikoStage(
+              state: s,
+              mochiController: _mochiCtrl,
               onPet: _handlePet,
-              showBubble: true,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            '탭하거나 꾹 눌러서 쓰다듬어 봐요',
+          Text(
+            s.dikoUnlocked
+                ? '모찌와 디코를 함께 만나보세요'
+                : '탭하거나 꾹 눌러서 쓰다듬어 봐요',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
               fontSize: 12,
