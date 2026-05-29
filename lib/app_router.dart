@@ -19,7 +19,7 @@ import 'screens/diary/edit_diary_screen.dart';
 import 'screens/character/character_main_screen.dart';
 import 'screens/character/character_dex_screen.dart';
 import 'screens/character/character_stage_tree_screen.dart';
-import 'screens/character/character_color_shop_screen.dart';
+import 'screens/character/character_shop_screen.dart';
 import 'screens/character/quiz/character_quiz_play_screen.dart';
 import 'screens/character/quiz/character_quiz_create_screen.dart';
 import 'screens/mypage/my_page_screen.dart';
@@ -119,7 +119,7 @@ class AppRouter {
       case '/character-shop':
         return MaterialPageRoute(
             settings: settings,
-            builder: (_) => const CharacterColorShopScreen());
+            builder: (_) => const CharacterShopScreen());
       case '/character-quiz-play':
         return MaterialPageRoute(
             settings: settings,

@@ -4,13 +4,14 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/notification_bell_icon.dart';
 import 'character_levelup_screen.dart';
 import 'character_stage_tree_screen.dart';
-import 'character_color_shop_screen.dart';
+import 'character_shop_screen.dart';
 import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
@@ -18,7 +19,7 @@ import 'quiz/character_quiz_list_screen.dart';
 
 /// 모찌 키우기 탭의 메인 화면.
 /// - 캐릭터 시각화 + 레벨/EXP 진행도 + 코인
-/// - 진화 트리·색상 상점 진입
+/// - 진화 트리·아이템 상점 진입
 /// - 첫 진입은 서버가 캐릭터를 lazy 생성
 class CharacterMainScreen extends StatefulWidget {
   const CharacterMainScreen({super.key});
@@ -127,7 +128,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
 
   Future<void> _openShop() async {
     final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const CharacterColorShopScreen()),
+      MaterialPageRoute(builder: (_) => const CharacterShopScreen()),
     );
     if (changed == true) _load(silent: true);
   }
@@ -257,8 +258,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           const SizedBox(height: 12),
           Center(
             child: AnimatedMochiWidget(
-              color: s.color,
-              colorHex: s.colorHex,
+              appearance: MochiAppearance.fromState(s),
               stage: s.stage,
               size: 220,
               happiness: s.progress,
@@ -335,8 +335,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
                 onTap: _openDex,
               ),
               _MiniTile(
-                icon: Icons.palette_outlined,
-                label: '색상 상점',
+                icon: Icons.storefront_outlined,
+                label: '아이템 상점',
                 onTap: _openShop,
               ),
             ],
@@ -628,7 +628,7 @@ class _CharacterInfoSheet extends StatelessWidget {
             const Text(
               '디그팟 안에서 함께 키우는 작은 마스코트, 모찌예요.\n'
               '경험치를 모아 레벨업하면 진화 단계가 바뀌고,\n'
-              '코인을 모아 색상 상점에서 새 색을 해금할 수 있어요.',
+              '코인을 모아 상점에서 모자·안경·스킨 같은 아이템을 해금하고\n원하는 조합으로 모찌를 꾸며줄 수 있어요.',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w400,
@@ -649,9 +649,9 @@ class _CharacterInfoSheet extends StatelessWidget {
               body: '레벨이 3·6·10·15에 도달할 때마다 모찌가 새로운 모습으로 자라요.',
             ),
             const _InfoRow(
-              icon: Icons.palette_outlined,
-              title: '색상',
-              body: '상점에서 코인을 사용해 색을 해금하고 언제든 바꿔 적용할 수 있어요.',
+              icon: Icons.storefront_outlined,
+              title: '꾸미기',
+              body: '코인을 모아 스킨·모자·안경 같은 아이템을 해금하고 언제든 갈아입혀 줄 수 있어요.',
             ),
           ],
         ),

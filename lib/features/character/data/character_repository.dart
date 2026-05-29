@@ -5,6 +5,9 @@ import '../models/character_models.dart';
 ///
 /// 모찌는 그룹 1개당 1마리로 그룹원이 함께 키운다. 따라서 모든 메서드는 활성
 /// `groupRoomId` 를 인자로 받아 그 그룹의 캐릭터를 조회·변경한다.
+///
+/// 외형(스킨/안경/모자/머리핀/액세서리/잡화) 관련 작업은 `/character/shop` 하위로
+/// 분리되어 있고, 본 클래스는 두 도메인을 한 곳에서 호출할 수 있게 묶었다.
 class CharacterRepository {
   CharacterRepository({required ApiClient apiClient}) : _api = apiClient;
 
@@ -45,36 +48,50 @@ class CharacterRepository {
     return CharacterStageTree.fromJson(res.data!);
   }
 
-  /// 색상 상점 (그룹 보유/현재/잔액 포함).
-  Future<CharacterColorShop> getColorShop({required int groupRoomId}) async {
+  // ─────────── 상점 (아이템 기반) ───────────
+
+  /// 상점 전체 — 카테고리별 [ShopSection] 리스트 + 잔액.
+  Future<CharacterShop> getShop({required int groupRoomId}) async {
     final res = await _api.get<Map<String, dynamic>>(
-      '/character/shop/colors',
+      '/character/shop',
       query: {'groupRoomId': groupRoomId},
     );
-    return CharacterColorShop.fromJson(res.data!);
+    return CharacterShop.fromJson(res.data!);
   }
 
-  /// 색상 구매. 잔액 부족·중복 보유는 4xx → 호출자가 다이얼로그 처리.
-  Future<CharacterColorShop> buyColor({
+  /// 아이템 구매. 잔액 부족·중복 보유는 4xx → 호출자가 다이얼로그 처리.
+  Future<CharacterShop> buyItem({
     required int groupRoomId,
-    required CharacterColor color,
+    required String itemKey,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
-      '/character/shop/colors/${color.serverKey}/buy',
+      '/character/shop/items/$itemKey/buy',
       query: {'groupRoomId': groupRoomId},
     );
-    return CharacterColorShop.fromJson(res.data!);
+    return CharacterShop.fromJson(res.data!);
   }
 
-  /// 보유한 색상으로 변경.
-  Future<CharacterState> applyColor({
+  /// 보유 아이템을 해당 카테고리 슬롯에 장착. 응답은 갱신된 캐릭터 상태.
+  Future<CharacterState> equipItem({
     required int groupRoomId,
-    required CharacterColor color,
+    required String itemKey,
   }) async {
     final res = await _api.put<Map<String, dynamic>>(
-      '/character/color',
+      '/character/shop/equip',
       query: {'groupRoomId': groupRoomId},
-      body: {'color': color.serverKey},
+      body: {'itemKey': itemKey},
+    );
+    return CharacterState.fromJson(res.data!);
+  }
+
+  /// 카테고리 슬롯 해제 (스킨은 default 로 복귀, 그 외는 빈 슬롯).
+  Future<CharacterState> unequipSlot({
+    required int groupRoomId,
+    required ShopItemType itemType,
+  }) async {
+    final res = await _api.delete<Map<String, dynamic>>(
+      '/character/shop/equip/${itemType.serverKey}',
+      query: {'groupRoomId': groupRoomId},
     );
     return CharacterState.fromJson(res.data!);
   }

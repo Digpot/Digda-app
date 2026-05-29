@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
 
 const _kIntroSeenKey = 'digda.characterIntroSeen';
 const _storage = FlutterSecureStorage();
@@ -97,9 +98,8 @@ class _PageOne extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(flex: 2),
-            AnimatedMochiWidget(
-              color: CharacterColor.coral,
-              colorHex: '#FF6B6B',
+            const AnimatedMochiWidget(
+              appearance: MochiAppearance.coral,
               stage: CharacterStage.egg,
               size: 200,
               happiness: 0.8,
@@ -157,9 +157,8 @@ class _PageTwo extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(flex: 2),
-            AnimatedMochiWidget(
-              color: CharacterColor.coral,
-              colorHex: '#FF6B6B',
+            const AnimatedMochiWidget(
+              appearance: MochiAppearance.coral,
               stage: CharacterStage.bloom,
               size: 160,
               happiness: 1.0,
@@ -194,8 +193,8 @@ class _PageTwo extends StatelessWidget {
                   SizedBox(height: 14),
                   _GuideRow(
                     emoji: '🎨',
-                    title: '코인으로 색 바꾸기',
-                    body: '색상 상점에서 새로운 색을 해금해요.',
+                    title: '코인으로 아이템 해금',
+                    body: '상점에서 스킨·모자·안경 등으로 모찌를 꾸며줘요.',
                   ),
                 ],
               ),

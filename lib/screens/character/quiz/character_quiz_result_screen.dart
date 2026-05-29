@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../features/character/models/character_models.dart';
 import '../../../features/character/widgets/animated_mochi_widget.dart';
+import '../../../features/character/widgets/mochi_character_view.dart';
 import '../../../theme/colors.dart';
 import '../character_levelup_screen.dart';
 
@@ -88,8 +89,8 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                         child: FadeTransition(
                           opacity: _opacityAnim,
                           child: AnimatedMochiWidget(
-                            color: widget.result.character.color,
-                            colorHex: widget.result.character.colorHex,
+                            appearance: MochiAppearance.fromState(
+                                widget.result.character),
                             stage: widget.result.character.stage,
                             size: 160,
                             controller: _mochiCtrl,

@@ -159,8 +159,7 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
                 final s = tree.stages[i];
                 return _DexCard(
                   info: s,
-                  myColor: me.color,
-                  myColorHex: me.colorHex,
+                  appearance: MochiAppearance.fromState(me),
                   isCurrent: s.stage == tree.currentStage,
                 );
               },
@@ -175,14 +174,12 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
 class _DexCard extends StatelessWidget {
   const _DexCard({
     required this.info,
-    required this.myColor,
-    required this.myColorHex,
+    required this.appearance,
     required this.isCurrent,
   });
 
   final CharacterStageInfo info;
-  final CharacterColor myColor;
-  final String myColorHex;
+  final MochiAppearance appearance;
   final bool isCurrent;
 
   @override
@@ -219,8 +216,7 @@ class _DexCard extends StatelessWidget {
                             0, 0, 0, 1, 0,
                           ]),
                     child: MochiCharacterView(
-                      color: myColor,
-                      colorHex: myColorHex,
+                      appearance: appearance,
                       stage: info.stage,
                       size: 120,
                     ),

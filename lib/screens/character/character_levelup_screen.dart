@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
 
 class CharacterLevelUpScreen extends StatefulWidget {
@@ -197,8 +198,7 @@ class _CharacterLevelUpScreenState extends State<CharacterLevelUpScreen>
                     child: SlideTransition(
                       position: _contentSlide,
                       child: AnimatedMochiWidget(
-                        color: widget.character.color,
-                        colorHex: widget.character.colorHex,
+                        appearance: MochiAppearance.fromState(widget.character),
                         stage: widget.character.stage,
                         size: 190,
                         controller: _mochiCtrl,

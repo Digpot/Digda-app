@@ -146,8 +146,7 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
           info: s,
           currentLevel: tree.currentLevel,
           isCurrent: isCurrent,
-          myColor: me.color,
-          myColorHex: me.colorHex,
+          appearance: MochiAppearance.fromState(me),
         );
       },
     );
@@ -159,15 +158,13 @@ class _StageCard extends StatelessWidget {
     required this.info,
     required this.currentLevel,
     required this.isCurrent,
-    required this.myColor,
-    required this.myColorHex,
+    required this.appearance,
   });
 
   final CharacterStageInfo info;
   final int currentLevel;
   final bool isCurrent;
-  final CharacterColor myColor;
-  final String myColorHex;
+  final MochiAppearance appearance;
 
   @override
   Widget build(BuildContext context) {
@@ -196,8 +193,7 @@ class _StageCard extends StatelessWidget {
                       0, 0, 0, 1, 0,
                     ]),
               child: MochiCharacterView(
-                color: myColor,
-                colorHex: myColorHex,
+                appearance: appearance,
                 stage: info.stage,
                 size: 56,
               ),

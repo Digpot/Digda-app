@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_message.dart';
 import '../../../features/character/models/character_models.dart';
 import '../../../features/character/widgets/animated_mochi_widget.dart';
+import '../../../features/character/widgets/mochi_character_view.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import '../character_levelup_screen.dart';
@@ -225,8 +226,7 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
                 if (c != null)
                   Center(
                     child: AnimatedMochiWidget(
-                      color: c.color,
-                      colorHex: c.colorHex,
+                      appearance: MochiAppearance.fromState(c),
                       stage: c.stage,
                       size: 120,
                       happiness: c.progress,

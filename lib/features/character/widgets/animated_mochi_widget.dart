@@ -26,8 +26,7 @@ class MochiAnimationController {
 class AnimatedMochiWidget extends StatefulWidget {
   const AnimatedMochiWidget({
     super.key,
-    required this.color,
-    required this.colorHex,
+    required this.appearance,
     required this.stage,
     this.size = 220,
     this.happiness = 1.0,
@@ -35,8 +34,7 @@ class AnimatedMochiWidget extends StatefulWidget {
     this.onPet,
   });
 
-  final CharacterColor color;
-  final String colorHex;
+  final MochiAppearance appearance;
   final CharacterStage stage;
   final double size;
 
@@ -324,8 +322,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
               children: [
                 // squircle 배경 — 고정, 흔들리지 않음.
                 MochiCharacterView(
-                  color: widget.color,
-                  colorHex: widget.colorHex,
+                  appearance: widget.appearance,
                   stage: widget.stage,
                   size: widget.size,
                   part: MochiCharacterPart.background,
@@ -337,8 +334,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
                     angle: sway,
                     alignment: Alignment.bottomCenter,
                     child: MochiCharacterView(
-                      color: widget.color,
-                      colorHex: widget.colorHex,
+                      appearance: widget.appearance,
                       stage: widget.stage,
                       size: widget.size,
                       expression: _emotion,
