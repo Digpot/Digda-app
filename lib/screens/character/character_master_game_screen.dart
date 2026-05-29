@@ -290,6 +290,8 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
       _reward = null;
       _error = null;
       _score = 0;
+      _starting = false;
+      _startError = null;
     });
   }
 

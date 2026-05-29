@@ -50,7 +50,6 @@ class _CharacterEvolutionScreenState extends State<CharacterEvolutionScreen>
     with TickerProviderStateMixin {
   late final AnimationController _enterCtrl;
   late final AnimationController _starsCtrl;
-  late final AnimationController _morphCtrl;
   late final Animation<double> _badgeScale;
   late final Animation<double> _flashOpacity;
   late final Animation<double> _beforeOpacity;
@@ -83,11 +82,6 @@ class _CharacterEvolutionScreenState extends State<CharacterEvolutionScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     )..repeat();
-
-    _morphCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    );
 
     _badgeScale = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
@@ -140,7 +134,6 @@ class _CharacterEvolutionScreenState extends State<CharacterEvolutionScreen>
   void dispose() {
     _enterCtrl.dispose();
     _starsCtrl.dispose();
-    _morphCtrl.dispose();
     super.dispose();
   }
 
