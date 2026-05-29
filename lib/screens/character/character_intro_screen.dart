@@ -188,7 +188,7 @@ class _PageTwo extends StatelessWidget {
                   _GuideRow(
                     emoji: '🌱',
                     title: '레벨업하면 진화',
-                    body: '3·6·10·15 레벨마다 모찌가 새 모습으로 자라요.',
+                    body: '3·6·10·15·20 레벨마다 모찌가 새 모습으로 자라요. Lv.20 = 마스터!',
                   ),
                   SizedBox(height: 14),
                   _GuideRow(

@@ -154,6 +154,7 @@ class MochiCharacterView extends StatelessWidget {
       CharacterStage.bloom => _bloom(bodyFill: bodyFill, accent: bodyAccent, isPanda: isPanda),
       CharacterStage.blossom => _blossom(bodyFill: bodyFill, accent: bodyAccent, isPanda: isPanda),
       CharacterStage.glow => _glow(bodyFill: bodyFill, accent: bodyAccent, isPanda: isPanda),
+      CharacterStage.master => _master(bodyFill: bodyFill, accent: bodyAccent, isPanda: isPanda),
     };
     final overlays = _buildOverlays(stage, app.overlays);
     final layers = switch (part) {
@@ -206,7 +207,8 @@ class MochiCharacterView extends StatelessWidget {
   _Anchor? _anchor(CharacterStage stage, ShopItemType type) {
     final isDuo = stage == CharacterStage.bloom ||
         stage == CharacterStage.blossom ||
-        stage == CharacterStage.glow;
+        stage == CharacterStage.glow ||
+        stage == CharacterStage.master;
     final headCx = isDuo ? 82.0 : 100.0;
     final headCy = isDuo ? 86.0 : 92.0;
     final eyesCy = isDuo ? 116.0 : 122.0;
@@ -476,6 +478,77 @@ class MochiCharacterView extends StatelessWidget {
   </g>
   ''';
   }
+
+  /// MASTER (Lv 20) — 마스터 모찌: GLOW 의 모든 화려함 + 큰 후광 + 별빛 7개.
+  String _master({required String bodyFill, required String accent, required bool isPanda}) {
+    final rightPatch = isPanda
+        ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
+            '<ellipse cx="133" cy="105" rx="9" ry="7" fill="$accent"/>'
+        : '';
+    final leftPatch = isPanda
+        ? '<ellipse cx="70" cy="110" rx="10" ry="7" fill="$accent"/>'
+            '<ellipse cx="94" cy="110" rx="10" ry="7" fill="$accent"/>'
+        : '';
+    final rightBody = isPanda ? bodyFill : '#FFE4E4';
+    return '''
+  <defs>
+    <radialGradient id="masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.7"/>
+      <stop offset="60%" stop-color="#FFE066" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="118" r="92" fill="url(#masterHalo)"/>
+  <g opacity="0.95">
+    <path d="M30 36 L33 44 L41 44 L34.5 49 L37 57 L30 52 L23 57 L25.5 49 L19 44 L27 44 Z" fill="#FFE066"/>
+    <path d="M170 50 L172 56 L178 56 L173 60 L175 66 L170 62.5 L165 66 L167 60 L162 56 L168 56 Z" fill="#FFF59D"/>
+    <path d="M40 160 L42 165 L47 165 L43 168 L44.5 173 L40 170 L35.5 173 L37 168 L33 165 L38 165 Z" fill="#FFE066"/>
+    <path d="M170 152 L172 158 L178 158 L173 162 L175 168 L170 164.5 L165 168 L167 162 L162 158 L168 158 Z" fill="#FFF59D"/>
+    <circle cx="100" cy="30" r="3" fill="#FFE066"/>
+    <circle cx="14" cy="100" r="2.4" fill="#FFE066"/>
+    <circle cx="186" cy="100" r="2.4" fill="#FFE066"/>
+  </g>
+  <g>
+    <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
+    <g transform="translate(124 68)">
+      ${_starCrown()}
+    </g>
+    $rightPatch
+    ${_eye(112, 110, 2.4, 3.2)}
+    ${_eye(136, 110, 2.4, 3.2)}
+    ${_mouth(118, 121, 124, 127, 130, 121, 2.0)}
+    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
+    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.55"/>
+  </g>
+  <g>
+    <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
+    <g transform="translate(82 66)">
+      ${_crownDeluxe()}
+    </g>
+    $leftPatch
+    ${_eye(68, 116, 2.8, 3.6)}
+    ${_eye(96, 116, 2.8, 3.6)}
+    ${_mouth(74, 128, 82, 135, 90, 128, 2.4)}
+    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.55"/>
+  </g>
+  ''';
+  }
+
+  /// 큰 별 왕관 — 오른쪽 모찌용 (MASTER 단계).
+  static String _starCrown() => '''
+  <path d="M0 -12 L3 -3 L12 -3 L4.5 3 L7 12 L0 7 L-7 12 L-4.5 3 L-12 -3 L-3 -3 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1.2" stroke-linejoin="round"/>
+  <circle cx="0" cy="-1" r="2" fill="#FF6B6B"/>
+  ''';
+
+  /// 더 화려한 왕관 — 왼쪽 모찌용 (MASTER 단계). 보석 3개 + 별.
+  static String _crownDeluxe() => '''
+  <path d="M-16 4 L-16 -6 L-10 -2 L-6 -8 L0 -12 L6 -8 L10 -2 L16 -6 L16 4 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1.3" stroke-linejoin="round"/>
+  <circle cx="-9" cy="0" r="1.8" fill="#34D399"/>
+  <circle cx="0" cy="-2" r="2.2" fill="#FF6B6B"/>
+  <circle cx="9" cy="0" r="1.8" fill="#7CB1F5"/>
+  <path d="M0 -16 L1.4 -13 L4.5 -13 L2 -11 L2.8 -8 L0 -10 L-2.8 -8 L-2 -11 L-4.5 -13 L-1.4 -13 Z" fill="#FFF59D" stroke="#B8860B" stroke-width="0.8"/>
+  ''';
 
   static String _flower({double scale = 1.0, String accent = '#FFB6C1'}) {
     final s = scale.toStringAsFixed(2);

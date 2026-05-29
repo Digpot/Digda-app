@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../theme/colors.dart';
 import '../models/character_models.dart';
 import 'mochi_character_view.dart';
 
@@ -32,6 +33,7 @@ class AnimatedMochiWidget extends StatefulWidget {
     this.happiness = 1.0,
     this.controller,
     this.onPet,
+    this.showBubble = false,
   });
 
   final MochiAppearance appearance;
@@ -46,9 +48,31 @@ class AnimatedMochiWidget extends StatefulWidget {
   /// 쓰다듬기 쿨다운(10s) 후 콜백.
   final VoidCallback? onPet;
 
+  /// true 면 10초 주기로 자동 말풍선이 뜨고, 터치 시 즉시 새 말풍선이 뜬다.
+  /// 위젯 size 위쪽으로 추가 영역(48px)을 차지한다.
+  final bool showBubble;
+
   @override
   State<AnimatedMochiWidget> createState() => _AnimatedMochiWidgetState();
 }
+
+/// 자동/터치 시 모찌가 띄우는 말풍선 후보. 진화 단계와 무관하게 공통.
+const List<String> _kBubbleMessages = [
+  '안녕!',
+  '오늘 뭐했어?',
+  '쓰담쓰담 좋아~',
+  '또 보자!',
+  '같이 놀자!',
+  '기분 좋아 ☺',
+  '졸려...',
+  '뭐 먹을까?',
+  '히히히',
+  '심심해~',
+  '사랑해 ♡',
+  '고마워!',
+  '오늘도 화이팅!',
+  '나 멋지지?',
+];
 
 class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     with TickerProviderStateMixin {
@@ -75,6 +99,13 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   // ── 쓰다듬 쿨다운 ──
   DateTime _lastPetCall = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // ── 말풍선 ──
+  String? _bubbleMessage;
+  int _bubbleSeq = 0;
+  Timer? _bubbleAutoTimer;
+  Timer? _bubbleHideTimer;
+  int _lastBubbleIndex = -1;
+
   final _rng = math.Random();
 
   @override
@@ -85,6 +116,16 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     _scheduleNextBlink();
     _startSleepCheck();
     _applyHappiness();
+    if (widget.showBubble) {
+      // 첫 진입에 잠시 후 인사 — 너무 즉시 떠 있으면 모찌가 안 보이는 느낌이라 1.5s 딜레이.
+      Timer(const Duration(milliseconds: 1500), () {
+        if (mounted) _showRandomBubble();
+      });
+      _bubbleAutoTimer = Timer.periodic(
+        const Duration(seconds: 10),
+        (_) => _showRandomBubble(),
+      );
+    }
   }
 
   @override
@@ -94,6 +135,17 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     if (old.controller != widget.controller) {
       old.controller?._state = null;
       widget.controller?._state = this;
+    }
+    if (old.showBubble != widget.showBubble) {
+      _bubbleAutoTimer?.cancel();
+      _bubbleHideTimer?.cancel();
+      setState(() => _bubbleMessage = null);
+      if (widget.showBubble) {
+        _bubbleAutoTimer = Timer.periodic(
+          const Duration(seconds: 10),
+          (_) => _showRandomBubble(),
+        );
+      }
     }
   }
 
@@ -106,6 +158,8 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     _blinkTimer?.cancel();
     _emotionResetTimer?.cancel();
     _sleepCheckTimer?.cancel();
+    _bubbleAutoTimer?.cancel();
+    _bubbleHideTimer?.cancel();
     super.dispose();
   }
 
@@ -242,6 +296,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     _jump();
     _spawnParticles(d.localPosition);
     _tryPetCallback();
+    _showRandomBubble();
   }
 
   void _onLongPress() {
@@ -255,6 +310,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       count: 3,
     );
     _tryPetCallback();
+    _showRandomBubble();
   }
 
   void _tryPetCallback() {
@@ -263,6 +319,32 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       _lastPetCall = now;
       widget.onPet?.call();
     }
+  }
+
+  // ── 말풍선 ──
+
+  /// 랜덤 메시지 1개를 띄우고 4.5초 후 자동으로 사라지게 한다.
+  /// showBubble=false 면 no-op (메인 화면 외에서는 동작 안 함).
+  void _showRandomBubble() {
+    if (!widget.showBubble || !mounted) return;
+    int index;
+    if (_kBubbleMessages.length == 1) {
+      index = 0;
+    } else {
+      do {
+        index = _rng.nextInt(_kBubbleMessages.length);
+      } while (index == _lastBubbleIndex);
+    }
+    _lastBubbleIndex = index;
+    _bubbleHideTimer?.cancel();
+    setState(() {
+      _bubbleSeq++;
+      _bubbleMessage = _kBubbleMessages[index];
+    });
+    _bubbleHideTimer = Timer(const Duration(milliseconds: 4500), () {
+      if (!mounted) return;
+      setState(() => _bubbleMessage = null);
+    });
   }
 
   void _jump() {
@@ -312,50 +394,91 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       part: MochiCharacterPart.background,
     );
 
+    // 말풍선이 활성화돼 있으면 위쪽 영역을 추가로 확보한다.
+    final topPad = widget.showBubble ? 56.0 : 0.0;
+
+    final mochi = AnimatedBuilder(
+      animation: Listenable.merge([_swayCtrl, _floatCtrl, _jumpCtrl]),
+      builder: (_, __) {
+        final sway = math.sin(_swayCtrl.value * math.pi) * 0.038;
+        final floatY = math.sin(_floatCtrl.value * math.pi) * 4.0;
+        final jumpY = _jumpAnim.value;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            background,
+            // 본체·표정·액세서리 — 캐릭터만 sway/float/jump.
+            Transform.translate(
+              offset: Offset(0, floatY + jumpY),
+              child: Transform.rotate(
+                angle: sway,
+                alignment: Alignment.bottomCenter,
+                child: MochiCharacterView(
+                  appearance: widget.appearance,
+                  stage: widget.stage,
+                  size: widget.size,
+                  expression: _emotion,
+                  eyeOpenness: _eyeOpenness,
+                  part: MochiCharacterPart.body,
+                ),
+              ),
+            ),
+            for (final p in List.of(_particles))
+              _ParticleWidget(
+                key: ValueKey(p.id),
+                data: p,
+                onDone: () => _removeParticle(p.id),
+              ),
+          ],
+        );
+      },
+    );
+
     return GestureDetector(
       onTapDown: _onTapDown,
       onLongPress: _onLongPress,
       child: SizedBox(
         width: widget.size,
-        height: widget.size + 24,
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_swayCtrl, _floatCtrl, _jumpCtrl]),
-          builder: (_, __) {
-            final sway =
-                math.sin(_swayCtrl.value * math.pi) * 0.038;
-            final floatY =
-                math.sin(_floatCtrl.value * math.pi) * 4.0;
-            final jumpY = _jumpAnim.value;
-
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                background,
-                // 본체·표정·액세서리 — 캐릭터만 sway/float/jump.
-                Transform.translate(
-                  offset: Offset(0, floatY + jumpY),
-                  child: Transform.rotate(
-                    angle: sway,
-                    alignment: Alignment.bottomCenter,
-                    child: MochiCharacterView(
-                      appearance: widget.appearance,
-                      stage: widget.stage,
-                      size: widget.size,
-                      expression: _emotion,
-                      eyeOpenness: _eyeOpenness,
-                      part: MochiCharacterPart.body,
-                    ),
-                  ),
+        height: widget.size + 24 + topPad,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: topPad,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: mochi,
+            ),
+            if (widget.showBubble)
+              Positioned(
+                top: 0,
+                left: widget.size * 0.45,
+                right: -8,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) {
+                    return FadeTransition(
+                      opacity: anim,
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.7, end: 1.0).animate(anim),
+                        alignment: Alignment.bottomLeft,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _bubbleMessage == null
+                      ? const SizedBox.shrink(key: ValueKey('empty'))
+                      : _SpeechBubble(
+                          key: ValueKey('bubble-$_bubbleSeq'),
+                          message: _bubbleMessage!,
+                        ),
                 ),
-                for (final p in List.of(_particles))
-                  _ParticleWidget(
-                    key: ValueKey(p.id),
-                    data: p,
-                    onDone: () => _removeParticle(p.id),
-                  ),
-              ],
-            );
-          },
+              ),
+          ],
         ),
       ),
     );
@@ -456,4 +579,97 @@ class _ParticleWidgetState extends State<_ParticleWidget>
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────
+// 말풍선 — 모찌 머리 위에 떠 있는 코멘트
+// ─────────────────────────────────────────────
+
+class _SpeechBubble extends StatelessWidget {
+  const _SpeechBubble({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = AppColors.primary.withValues(alpha: 0.22);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 168),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: borderColor, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                height: 1.25,
+                color: AppColors.gray900,
+              ),
+            ),
+          ),
+        ),
+        // 꼬리 — 말풍선 좌하단 살짝 안쪽에서 모찌 쪽을 가리킴
+        Padding(
+          padding: const EdgeInsets.only(left: 18),
+          child: CustomPaint(
+            size: const Size(14, 9),
+            painter: _BubbleTailPainter(borderColor: borderColor),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  _BubbleTailPainter({required this.borderColor});
+
+  final Color borderColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fillPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width * 0.55, size.height)
+      ..lineTo(size.width, 0);
+
+    // 채움 — 본체와 이어지도록 위쪽은 닫지 않음.
+    final fillPath = Path.from(path)..close();
+    canvas.drawPath(fillPath, fillPaint);
+    // 위쪽(0~size.width 라인) 은 본체 border 와 겹치므로 그리지 않는다.
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BubbleTailPainter old) =>
+      old.borderColor != borderColor;
 }

@@ -63,6 +63,7 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
         CharacterStage.bloom => '꽃봄',
         CharacterStage.blossom => '만개',
         CharacterStage.glow => '빛남',
+        CharacterStage.master => '마스터',
       };
 
   @override

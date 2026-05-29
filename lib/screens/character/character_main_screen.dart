@@ -264,6 +264,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               happiness: s.progress,
               controller: _mochiCtrl,
               onPet: _handlePet,
+              showBubble: true,
             ),
           ),
           const SizedBox(height: 6),
@@ -447,9 +448,44 @@ class _ExpProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final atMax = state.maxLevelReached;
-    final label = atMax
-        ? '최고 레벨 달성!'
-        : 'EXP ${state.exp} / ${state.expForNextLevel}';
+    if (atMax) {
+      // 마스터 — 추가 EXP 불가. 진행도 바 대신 트로피 배지로 마무리.
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFFB347)],
+            ),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFB347).withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('🏆', style: TextStyle(fontSize: 16)),
+              SizedBox(width: 6),
+              Text(
+                '마스터 도달!',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Column(
       children: [
         Container(
@@ -471,7 +507,7 @@ class _ExpProgress extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          label,
+          'EXP ${state.exp} / ${state.expForNextLevel}',
           style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
@@ -646,7 +682,7 @@ class _CharacterInfoSheet extends StatelessWidget {
             const _InfoRow(
               icon: Icons.auto_awesome,
               title: '진화',
-              body: '레벨이 3·6·10·15에 도달할 때마다 모찌가 새로운 모습으로 자라요.',
+              body: '레벨이 3·6·10·15·20에 도달할 때마다 모찌가 새로운 모습으로 자라요. Lv.20 은 마스터!',
             ),
             const _InfoRow(
               icon: Icons.storefront_outlined,

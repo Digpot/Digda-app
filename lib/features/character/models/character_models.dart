@@ -14,7 +14,8 @@ enum CharacterStage {
   sprout,
   bloom,
   blossom,
-  glow;
+  glow,
+  master;
 
   static CharacterStage fromKey(String key) {
     return CharacterStage.values.firstWhere(
