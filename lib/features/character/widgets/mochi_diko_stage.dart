@@ -34,17 +34,33 @@ class MochiDikoStage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 디코가 추가되더라도 메인은 모찌 — Mochi 본체 사이즈는 그대로 두고, 디코를 우측
-    // 하단 외곽에 약간 겹쳐 배치한다. 가로 폭은 모찌 size + 디코 size*0.5 만큼 잡는다.
+    // 하단 외곽에 약간 겹쳐 배치한다. 가로 폭은 모찌 size + 디코 size*0.45 만큼 잡는다.
     final containerWidth = mochiSize + (state.dikoUnlocked ? dikoSize * 0.45 : 0);
+    // 상단 영역(말풍선용) 56px:
+    //   - 디코 해금 전: 모찌 자체의 자동 말풍선(showBubble=true)이 위쪽 56px 를 사용.
+    //   - 디코 해금 후: 모찌 자동 말풍선은 끄고(showBubble=false) 같은 56px 를
+    //     Mochi↔Diko 채팅 밴드가 사용. 두 경우 모두 모찌 본체는 56만큼 내려 그려야
+    //     상단 말풍선과 겹치지 않는다.
+    const topBand = 56.0;
+    // AnimatedMochiWidget 의 자체 높이 = size + 24 + (말풍선 활성 시 56).
+    // showBubble 값에 맞춰 정확한 컨테이너 높이를 계산해 ListView 가 자식을 잘리지
+    // 않게 배치하도록 한다 (이전엔 mochiSize+56 만 잡아 모찌 단독 모드에서 24px 오버플로).
+    final mochiSelfHeight =
+        mochiSize + 24 + (state.dikoUnlocked ? 0 : topBand);
+    final totalHeight = state.dikoUnlocked
+        ? (topBand + mochiSize + 24)
+        : mochiSelfHeight;
     return SizedBox(
       width: containerWidth,
-      height: mochiSize + 56 + (showChat ? 0 : 0),
+      height: totalHeight,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned(
             left: 0,
-            top: 0,
+            // 디코 해금 후 모찌 자체의 자동 말풍선을 끄면 모찌가 컨테이너 최상단부터
+            // 그려지므로, 상단 56px 채팅 밴드를 위해 명시적으로 내려준다.
+            top: state.dikoUnlocked ? topBand : 0,
             child: AnimatedMochiWidget(
               appearance: MochiAppearance.fromState(state),
               stage: state.stage,
@@ -68,6 +84,8 @@ class MochiDikoStage extends StatelessWidget {
               top: 0,
               left: mochiSize * 0.18,
               right: 0,
+              // height 를 강제하면 2줄 버블이 잘려 보일 수 있어 컨테이너 의도(56)를
+              // 살리는 align 만 두고 실제 높이는 버블이 자유롭게 잡게 둔다.
               child: _MochiDikoChat(stage: state.stage),
             ),
         ],
@@ -151,20 +169,23 @@ class _MochiDikoChat extends StatefulWidget {
 
 class _MochiDikoChatState extends State<_MochiDikoChat> {
   Timer? _ticker;
-  int _index = 0;
+  Timer? _firstShowTimer;
+  // null 이면 아직 첫 라인 등장 전이라 빈 화면. 1200ms 후 0 으로 전환되며
+  // 주기적 ticker 가 그 뒤를 이어받는다 — Mochi/Diko 가 먼저 등장한 다음 대화가
+  // 시작되는 느낌을 준다.
+  int? _index;
 
   @override
   void initState() {
     super.initState();
-    // 첫 라인은 약간 지연 후 표시 — 진입 시 모찌가 먼저 보이게.
-    Timer(const Duration(milliseconds: 1200), () {
+    _firstShowTimer = Timer(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       setState(() => _index = 0);
     });
     _ticker = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted) return;
+      if (!mounted || _index == null) return;
       setState(() {
-        _index = (_index + 1) % _corpus(widget.stage).length;
+        _index = (_index! + 1) % _corpus(widget.stage).length;
       });
     });
   }
@@ -174,13 +195,17 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
     super.didUpdateWidget(old);
     if (old.stage != widget.stage) {
       // 단계가 변하면 인덱스 초기화 — 다른 톤의 라인으로 즉시 갈아치움.
-      setState(() => _index = 0);
+      // 단, 아직 첫 라인 등장 전(null) 이면 null 을 유지해 1200ms 지연을 보장.
+      setState(() {
+        if (_index != null) _index = 0;
+      });
     }
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _firstShowTimer?.cancel();
     super.dispose();
   }
 
@@ -212,7 +237,10 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
   @override
   Widget build(BuildContext context) {
     final lines = _corpus(widget.stage);
-    final line = lines[_index];
+    // 첫 라인 지연 중에는 빈 영역(같은 슬롯 유지) 으로 두고, 1200ms 후 첫 라인이 fade-in.
+    // 인덱스가 corpus 길이를 넘는 비정상 케이스(이론상 없음)도 안전하게 모듈로.
+    final idx = _index;
+    final line = idx == null ? null : lines[idx % lines.length];
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
       switchInCurve: Curves.easeOutBack,
@@ -227,10 +255,12 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
           ),
         );
       },
-      child: _ChatBubble(
-        key: ValueKey(_index),
-        line: line,
-      ),
+      child: line == null
+          ? const SizedBox.shrink(key: ValueKey('chat-empty'))
+          : _ChatBubble(
+              key: ValueKey('chat-$idx'),
+              line: line,
+            ),
     );
   }
 }
