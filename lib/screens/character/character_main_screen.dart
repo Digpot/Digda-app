@@ -99,6 +99,18 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           if (mounted) _mochiCtrl.triggerHappy();
         });
       }
+      // 디코가 이미 풀려있지만 컷씬을 본 적 없는 경우 (예: 이 기능 배포 전부터 Lv.10+ 이던
+      // 기존 그룹) 한 번만 등장 컷씬을 보여준다. markSeen 은 그룹 단위.
+      if (isFirst && state.dikoUnlocked) {
+        final seen = await CharacterDikoIntroScreen.isAlreadySeen(groupId);
+        if (!seen && mounted) {
+          await CharacterDikoIntroScreen.show(
+            context,
+            character: state,
+            groupId: groupId,
+          );
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       if (_state != null) {
@@ -185,10 +197,12 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             );
           }
           // 진화/레벨업 컷씬을 먼저 보여준 뒤 디코 등장. 동시 발생해도 사용자가 둘 다 본다.
+          // markSeen 까지 묶어 처리해 다음 _load 에서 중복 트리거되지 않게 한다.
           if (result.dikoJustUnlocked && mounted) {
             await CharacterDikoIntroScreen.show(
               context,
               character: result.character,
+              groupId: groupId,
             );
           }
         })

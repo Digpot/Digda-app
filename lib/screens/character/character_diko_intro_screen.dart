@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
@@ -6,10 +7,17 @@ import '../../features/character/widgets/diko_character_view.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../theme/colors.dart';
 
+const _kDikoIntroSeenPrefix = 'digda.dikoIntroSeen.';
+const _storage = FlutterSecureStorage();
+
 /// 디코 최초 등장 컷씬.
 ///
-/// `addExp`/퀴즈 응시 응답에서 `dikoJustUnlocked == true` 일 때 1회만 띄운다.
-/// 일반 진화·레벨업 화면과 동일하게 fullscreenDialog 로 push.
+/// 트리거는 두 갈래다.
+/// 1) Lv.9 → Lv.10 으로 처음 넘는 순간: 서버 응답 `dikoJustUnlocked=true` → 호출 측에서 즉시 push.
+/// 2) 디코가 풀린 줄 모르고 들어온 기존 Lv.10+ 그룹: 메인 화면 load 시 `dikoUnlocked=true`
+///    이지만 [isAlreadySeen(groupId)] 가 false 면 push. ([show] 호출 후 [markSeen] 으로 기록)
+///
+/// 키는 그룹 단위 — 같은 사용자라도 그룹마다 한 번씩 인사하는 게 자연스럽다.
 class CharacterDikoIntroScreen extends StatelessWidget {
   const CharacterDikoIntroScreen({
     super.key,
@@ -18,17 +26,43 @@ class CharacterDikoIntroScreen extends StatelessWidget {
 
   final CharacterState character;
 
-  /// 호출 측 단축. 등장한 적이 없는 케이스에서만 fire-and-forget 으로 push.
+  /// 호출 측 단축. 표시 후 [groupId] 를 인자로 받으면 자동 markSeen 까지 처리한다.
+  /// dikoJustUnlocked 경로처럼 markSeen 을 호출 측이 직접 다루고 싶을 땐 [groupId] 생략.
   static Future<void> show(
     BuildContext context, {
     required CharacterState character,
-  }) {
-    return Navigator.of(context).push<void>(
+    int? groupId,
+  }) async {
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => CharacterDikoIntroScreen(character: character),
         fullscreenDialog: true,
       ),
     );
+    if (groupId != null) {
+      await markSeen(groupId);
+    }
+  }
+
+  /// 해당 그룹에서 이미 디코 등장 컷씬을 본 적이 있는지.
+  static Future<bool> isAlreadySeen(int groupId) async {
+    try {
+      final v = await _storage.read(key: '$_kDikoIntroSeenPrefix$groupId');
+      return v == 'true';
+    } catch (_) {
+      // secure storage 가 막혀 있으면 보수적으로 false — 한 번 더 보여주는 쪽이 안전.
+      return false;
+    }
+  }
+
+  /// 컷씬을 봤다고 기록. 실패는 무시 (다음 진입에서 한 번 더 봐도 큰 문제 아님).
+  static Future<void> markSeen(int groupId) async {
+    try {
+      await _storage.write(
+        key: '$_kDikoIntroSeenPrefix$groupId',
+        value: 'true',
+      );
+    } catch (_) {}
   }
 
   @override

@@ -203,6 +203,7 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                       await CharacterDikoIntroScreen.show(
                         context,
                         character: widget.result.character,
+                        groupId: widget.quiz.groupRoomId,
                       );
                       if (!mounted) return;
                     }
