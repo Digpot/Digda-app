@@ -352,6 +352,7 @@ class MochiCharacterView extends StatelessWidget {
   ''';
   }
 
+  /// BLOOM (Lv 6) — 꽃 모찌: 머리에 막 피어난 작은 벚꽃.
   String _bloom({required String bodyFill, required String accent, required bool isPanda}) {
     final rightPatch = isPanda
         ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
@@ -365,6 +366,9 @@ class MochiCharacterView extends StatelessWidget {
     return '''
   <g>
     <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
+    <g transform="translate(124 78)">
+      ${_flower(scale: 0.55, accent: '#FFB6C1')}
+    </g>
     $rightPatch
     ${_eye(112, 110, 2.4, 3.2)}
     ${_eye(136, 110, 2.4, 3.2)}
@@ -375,7 +379,9 @@ class MochiCharacterView extends StatelessWidget {
   <g>
     <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
     $leftPatch
-    <path d="M82 70 C78 64 68 64 68 73 C68 79 75 84 82 90 C89 84 96 79 96 73 C96 64 86 64 82 70 Z" fill="#FF9FB0"/>
+    <g transform="translate(82 76)">
+      ${_flower(scale: 0.7, accent: '#FF9FB0')}
+    </g>
     ${_eye(68, 116, 2.8, 3.6)}
     ${_eye(96, 116, 2.8, 3.6)}
     ${_mouth(74, 128, 82, 135, 90, 128, 2.4)}
@@ -385,6 +391,7 @@ class MochiCharacterView extends StatelessWidget {
   ''';
   }
 
+  /// BLOSSOM (Lv 10) — 활짝 모찌: 양쪽 모찌 모두 활짝 핀 큰 벚꽃 + 옆에 작은 봉오리.
   String _blossom({required String bodyFill, required String accent, required bool isPanda}) {
     final rightPatch = isPanda
         ? '<ellipse cx="115" cy="105" rx="9" ry="7" fill="$accent"/>'
@@ -398,8 +405,11 @@ class MochiCharacterView extends StatelessWidget {
     return '''
   <g>
     <ellipse cx="124" cy="112" rx="42" ry="36" fill="$rightBody"/>
-    <g transform="translate(124 70)">
-      ${_flower(scale: 0.7, accent: '#FFB6C1')}
+    <g transform="translate(124 68)">
+      ${_flower(scale: 1.0, accent: '#FFB6C1')}
+    </g>
+    <g transform="translate(148 80)">
+      ${_flower(scale: 0.4, accent: '#FFC9D9')}
     </g>
     $rightPatch
     ${_eye(112, 110, 2.4, 3.2)}
@@ -410,8 +420,11 @@ class MochiCharacterView extends StatelessWidget {
   </g>
   <g>
     <ellipse cx="82" cy="118" rx="48" ry="41" fill="$bodyFill"/>
-    <g transform="translate(82 72)">
-      ${_flower(scale: 1.0, accent: '#FF9FB0')}
+    <g transform="translate(82 66)">
+      ${_flower(scale: 1.3, accent: '#FF9FB0')}
+    </g>
+    <g transform="translate(54 80)">
+      ${_flower(scale: 0.5, accent: '#FFB6C1')}
     </g>
     $leftPatch
     ${_eye(68, 116, 2.8, 3.6)}

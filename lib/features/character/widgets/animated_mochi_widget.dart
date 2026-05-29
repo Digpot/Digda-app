@@ -302,6 +302,16 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
 
   @override
   Widget build(BuildContext context) {
+    // 배경 squircle 은 애니메이션을 받지 않으므로 build 마다 한 번만 생성하고,
+    // AnimatedBuilder 의 매 tick builder 안에서는 캐싱된 인스턴스를 그대로 사용한다.
+    // (SvgPicture.string 의 parse 비용이 매 frame 발생하는 걸 막기 위함)
+    final background = MochiCharacterView(
+      appearance: widget.appearance,
+      stage: widget.stage,
+      size: widget.size,
+      part: MochiCharacterPart.background,
+    );
+
     return GestureDetector(
       onTapDown: _onTapDown,
       onLongPress: _onLongPress,
@@ -320,13 +330,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
             return Stack(
               clipBehavior: Clip.none,
               children: [
-                // squircle 배경 — 고정, 흔들리지 않음.
-                MochiCharacterView(
-                  appearance: widget.appearance,
-                  stage: widget.stage,
-                  size: widget.size,
-                  part: MochiCharacterPart.background,
-                ),
+                background,
                 // 본체·표정·액세서리 — 캐릭터만 sway/float/jump.
                 Transform.translate(
                   offset: Offset(0, floatY + jumpY),
