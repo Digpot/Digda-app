@@ -14,8 +14,16 @@ import '../../../widgets/image_pick_helper.dart';
 ///
 /// 와이어는 단계별 화면이지만, 입력 항목이 그리 많지 않아 1화면으로 통합해
 /// 사용자가 전후 컨텍스트를 잃지 않도록 했다. (재설계)
+///
+/// [dikoUnlocked] = true 면 사진 퀴즈를 만들 수 있다. false 면 사진 슬롯이 잠금 상태로
+/// 표시되며 안내 문구가 같이 노출된다. 호출 측이 현재 그룹의 캐릭터 상태에서 전달.
 class CharacterQuizCreateScreen extends StatefulWidget {
-  const CharacterQuizCreateScreen({super.key});
+  const CharacterQuizCreateScreen({
+    super.key,
+    this.dikoUnlocked = false,
+  });
+
+  final bool dikoUnlocked;
 
   @override
   State<CharacterQuizCreateScreen> createState() =>
@@ -59,6 +67,14 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
 
   Future<void> _pickAndUploadImage() async {
     if (_uploadingImage || _submitting) return;
+    if (!widget.dikoUnlocked) {
+      showErrorDialog(
+        context,
+        '사진 퀴즈는 디코가 등장한 그룹에서만 만들 수 있어요.\n'
+        '모찌가 Lv.10 에 도달해 디코가 나타나면 활성화됩니다.',
+      );
+      return;
+    }
     final file = await pickImage(context);
     if (file == null || !mounted) return;
     setState(() {
@@ -188,9 +204,11 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
           const SizedBox(height: 18),
           const _SectionLabel('사진 (선택)'),
           const SizedBox(height: 4),
-          const Text(
-            '사진을 첨부하면 이미지 퀴즈가 돼요. 비워두면 텍스트 퀴즈로 등록돼요.',
-            style: TextStyle(
+          Text(
+            widget.dikoUnlocked
+                ? '사진을 첨부하면 이미지 퀴즈가 돼요. 비워두면 텍스트 퀴즈로 등록돼요.'
+                : '사진 퀴즈는 디코가 등장한 후(모찌 Lv.10) 부터 만들 수 있어요.',
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
               fontSize: 12,
@@ -202,11 +220,12 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
             image: _pickedImage,
             uploading: _uploadingImage,
             uploaded: _uploadedImageUrl != null,
+            locked: !widget.dikoUnlocked,
             onPick: _pickAndUploadImage,
             onRemove: _removeImage,
           ),
           const SizedBox(height: 24),
-          const _SectionLabel('선택지 4개 — 정답 라디오 선택'),
+          const _SectionLabel('선택지 4개 — 정답을 선택해 주세요'),
           const SizedBox(height: 8),
           Column(
             children: [
@@ -264,6 +283,7 @@ class _QuizImagePicker extends StatelessWidget {
     required this.image,
     required this.uploading,
     required this.uploaded,
+    required this.locked,
     required this.onPick,
     required this.onRemove,
   });
@@ -271,6 +291,7 @@ class _QuizImagePicker extends StatelessWidget {
   final File? image;
   final bool uploading;
   final bool uploaded;
+  final bool locked;
   final VoidCallback onPick;
   final VoidCallback onRemove;
 
@@ -285,21 +306,26 @@ class _QuizImagePicker extends StatelessWidget {
             color: AppColors.gray50,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: AppColors.gray200,
+              color: locked ? AppColors.gray200 : AppColors.gray200,
               width: 1.4,
               style: BorderStyle.solid,
             ),
           ),
-          child: const Center(
+          child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add_photo_alternate_outlined,
-                    color: AppColors.gray400, size: 32),
-                SizedBox(height: 6),
+                Icon(
+                  locked
+                      ? Icons.lock_outline
+                      : Icons.add_photo_alternate_outlined,
+                  color: AppColors.gray400,
+                  size: 32,
+                ),
+                const SizedBox(height: 6),
                 Text(
-                  '사진 추가하기',
-                  style: TextStyle(
+                  locked ? '디코 등장 후 사용 가능' : '사진 추가하기',
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,
                     fontSize: 13,

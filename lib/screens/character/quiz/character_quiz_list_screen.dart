@@ -25,6 +25,9 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
   bool _loading = true;
   bool _loadingMore = false;
   String? _errorMessage;
+  // 사진 퀴즈 만들기/잠금 표시를 위해 그룹의 디코 해금 여부를 함께 들고 있는다.
+  // 응답 실패 시 보수적으로 false (사진 슬롯 잠금 노출).
+  bool _dikoUnlocked = false;
 
   @override
   void initState() {
@@ -74,6 +77,13 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
         page: page,
         size: 20,
       );
+      // 캐릭터 상태는 best-effort — 실패해도 목록은 보여준다 (dikoUnlocked=false 보수).
+      bool dikoUnlocked = false;
+      try {
+        final state = await Di.characterRepository
+            .getMyState(groupRoomId: groupRoomId);
+        dikoUnlocked = state.dikoUnlocked;
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _items
@@ -81,6 +91,7 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
           ..addAll(result.items);
         _page = result.page;
         _totalPages = result.totalPages;
+        _dikoUnlocked = dikoUnlocked;
         _loading = false;
       });
     } catch (e) {
@@ -124,7 +135,9 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
 
   Future<void> _openCreate() async {
     final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const CharacterQuizCreateScreen()),
+      MaterialPageRoute(
+        builder: (_) => CharacterQuizCreateScreen(dikoUnlocked: _dikoUnlocked),
+      ),
     );
     if (created == true) _fetchPage(0);
   }
