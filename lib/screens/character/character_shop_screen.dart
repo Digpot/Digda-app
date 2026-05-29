@@ -242,11 +242,20 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
         _character = updated;
         // 스킨은 default 로 자동 복귀, 그 외는 미리보기에서 제거
         if (type == ShopItemType.skin) {
-          final defaultSkin = updated.equippedItems.firstWhere(
-            (e) => e.itemType == ShopItemType.skin,
-            orElse: () => updated.equippedItems.first,
-          );
-          _previewByType[type] = defaultSkin.itemKey;
+          // 서버가 default 스킨을 다시 장착했어야 하지만, 시드 누락 같은
+          // 비정상 상황에서 list 가 비어있을 수 있어 방어적으로 처리.
+          EquippedItem? defaultSkin;
+          for (final e in updated.equippedItems) {
+            if (e.itemType == ShopItemType.skin) {
+              defaultSkin = e;
+              break;
+            }
+          }
+          if (defaultSkin != null) {
+            _previewByType[type] = defaultSkin.itemKey;
+          } else {
+            _previewByType.remove(type);
+          }
         } else {
           _previewByType.remove(type);
         }

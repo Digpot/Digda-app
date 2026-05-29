@@ -144,7 +144,9 @@ class MochiCharacterView extends StatelessWidget {
   String _buildStageSvg(CharacterStage stage, String hex, MochiAppearance app) {
     final bg = '<rect width="200" height="200" rx="48" fill="$hex"/>';
     final isPanda = app.skinAssetKey == 'skin/panda';
-    final bodyFill = isPanda ? '#FFFFFF' : '#FFFFFF';
+    // 모찌 본체는 항상 흰색 — 스킨이 색을 결정하는 것은 배경 squircle 한정.
+    // 특수 스킨(판다 등) 만 본체 패치를 그려 시각적 차이를 만든다.
+    const bodyFill = '#FFFFFF';
     final bodyAccent = isPanda ? '#2F2F2F' : '#FFFFFF';
     final body = switch (stage) {
       CharacterStage.egg => _egg(bodyFill: bodyFill, accent: bodyAccent, isPanda: isPanda),
