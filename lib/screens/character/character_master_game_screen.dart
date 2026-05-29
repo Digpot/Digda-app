@@ -19,26 +19,43 @@ import '../../theme/colors.dart';
 ///
 /// 끝나면 서버에 점수 제출 → 등급(도전/우수/훌륭/전설) + 코인 보상.
 /// Navigator.pop(reward) 로 호출자에게 결과 전달.
+/// 마스터 게임의 결과 — 점수 보상 + 입장료 차감 후 잔액 등 호출자에 돌려준다.
+class MasterGameSessionResult {
+  const MasterGameSessionResult({this.reward, this.latestCharacter});
+
+  /// 보상 데이터 (한 번이라도 끝까지 도전한 적이 있으면 마지막 도전 결과).
+  final MasterGameReward? reward;
+
+  /// 입장료 차감만 일어났을 때 등, 보상은 없지만 잔액이 갱신된 캐릭터 상태.
+  final CharacterState? latestCharacter;
+}
+
 class CharacterMasterGameScreen extends StatefulWidget {
   const CharacterMasterGameScreen({
     super.key,
     required this.appearance,
     required this.stage,
+    required this.initialCoin,
   });
 
   final MochiAppearance appearance;
   final CharacterStage stage;
+  final int initialCoin;
 
-  static Future<MasterGameReward?> open(
+  static const int entryFee = 20;
+
+  static Future<MasterGameSessionResult?> open(
     BuildContext context, {
     required MochiAppearance appearance,
     required CharacterStage stage,
+    required int initialCoin,
   }) {
-    return Navigator.of(context).push<MasterGameReward>(
+    return Navigator.of(context).push<MasterGameSessionResult>(
       MaterialPageRoute(
         builder: (_) => CharacterMasterGameScreen(
           appearance: appearance,
           stage: stage,
+          initialCoin: initialCoin,
         ),
         fullscreenDialog: true,
       ),
@@ -73,8 +90,12 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
   Timer? _countdownTimer;
 
   bool _claiming = false;
+  bool _starting = false;
   MasterGameReward? _reward;
+  CharacterState? _latestCharacter;
+  late int _currentCoin = widget.initialCoin;
   String? _error;
+  String? _startError;
 
   final _rng = math.Random();
 
@@ -100,15 +121,51 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
 
   // ─── 게임 흐름 ────────────────────────────────────────────
 
-  void _startCountdown() {
+  Future<void> _startCountdown() async {
+    if (_starting) return;
+    if (_currentCoin < CharacterMasterGameScreen.entryFee) {
+      setState(() => _startError = '코인이 부족해요. 퀴즈로 모아주세요.');
+      return;
+    }
     setState(() {
-      _phase = _GamePhase.countdown;
-      _countdown = 3;
-      _score = 0;
-      _activeCell = null;
-      _reward = null;
-      _error = null;
+      _starting = true;
+      _startError = null;
     });
+
+    final groupId = _activeGroupId;
+    if (groupId == null) {
+      setState(() {
+        _starting = false;
+        _startError = '그룹에 들어간 뒤 다시 시도해주세요.';
+      });
+      return;
+    }
+
+    try {
+      final updated = await Di.characterRepository.startMasterGame(
+        groupRoomId: groupId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentCoin = updated.coin;
+        _latestCharacter = updated;
+        _starting = false;
+        _phase = _GamePhase.countdown;
+        _countdown = 3;
+        _score = 0;
+        _activeCell = null;
+        _reward = null;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _starting = false;
+        _startError = errorMessageOf(e);
+      });
+      return;
+    }
+
     HapticFeedback.lightImpact();
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -205,6 +262,8 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
       if (!mounted) return;
       setState(() {
         _reward = reward;
+        _latestCharacter = reward.character;
+        _currentCoin = reward.character.coin;
         _claiming = false;
       });
     } catch (e) {
@@ -225,7 +284,13 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
   }
 
   void _retryGame() {
-    _startCountdown();
+    // intro 단계로 돌아가 잔액 확인 + 입장료 재차감을 거치도록 한다.
+    setState(() {
+      _phase = _GamePhase.intro;
+      _reward = null;
+      _error = null;
+      _score = 0;
+    });
   }
 
   // ─── UI ───────────────────────────────────────────────────
@@ -264,6 +329,11 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
     );
   }
 
+  MasterGameSessionResult get _sessionResult => MasterGameSessionResult(
+        reward: _reward,
+        latestCharacter: _latestCharacter,
+      );
+
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -271,7 +341,7 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.close, color: AppColors.gray900),
-            onPressed: () => Navigator.of(context).pop(_reward),
+            onPressed: () => Navigator.of(context).pop(_sessionResult),
           ),
           const Expanded(
             child: Center(
@@ -293,13 +363,13 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
   }
 
   Widget _buildIntro() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+    final canAfford = _currentCoin >= CharacterMasterGameScreen.entryFee;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🏆', style: TextStyle(fontSize: 72)),
-          const SizedBox(height: 12),
+          const Text('🏆', style: TextStyle(fontSize: 64)),
+          const SizedBox(height: 10),
           const Text(
             '챔피언 챌린지',
             style: TextStyle(
@@ -309,7 +379,7 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
               color: AppColors.gray900,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           const Text(
             '30초 동안 3×3 칸에서 튀어나오는\n모찌를 빠르게 두드려요.\n회색 가짜 모찌는 두드리면 -1점!',
             textAlign: TextAlign.center,
@@ -321,30 +391,76 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
               color: AppColors.gray700,
             ),
           ),
-          const SizedBox(height: 28),
-          _RewardTable(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 22),
+          _CoinStatusCard(
+            balance: _currentCoin,
+            entryFee: CharacterMasterGameScreen.entryFee,
+          ),
+          const SizedBox(height: 18),
+          const _RewardTable(),
+          if (_startError != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEDED),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: Color(0xFFFF6B6B), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _startError!,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Color(0xFFA23838),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 22),
           SizedBox(
             width: double.infinity,
             height: 54,
             child: ElevatedButton(
-              onPressed: _startCountdown,
+              onPressed:
+                  (_starting || !canAfford) ? null : _startCountdown,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.gray300,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: const Text(
-                '도전 시작!',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 17,
-                ),
-              ),
+              child: _starting
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      canAfford
+                          ? '도전 시작! (-${CharacterMasterGameScreen.entryFee} 코인)'
+                          : '코인 부족',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -567,7 +683,7 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(reward),
+                  onPressed: () => Navigator.of(context).pop(_sessionResult),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.gray700,
                     side: const BorderSide(color: AppColors.gray200),
@@ -664,6 +780,88 @@ class _MetricCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
               fontSize: 24,
               color: AppColors.gray900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoinStatusCard extends StatelessWidget {
+  const _CoinStatusCard({required this.balance, required this.entryFee});
+
+  final int balance;
+  final int entryFee;
+
+  @override
+  Widget build(BuildContext context) {
+    final canAfford = balance >= entryFee;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: canAfford
+            ? const Color(0xFFFFF7E2)
+            : const Color(0xFFFFEDED),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: canAfford
+              ? const Color(0xFFFCD34D)
+              : const Color(0xFFFFB1B1),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: canAfford
+                  ? const Color(0xFFFCD34D)
+                  : const Color(0xFFFF8A8A),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'C',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '내 잔액: $balance 코인',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  canAfford
+                      ? '입장료: $entryFee 코인'
+                      : '입장료 $entryFee 코인이 부족해요',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    color: canAfford
+                        ? AppColors.gray700
+                        : const Color(0xFFA23838),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

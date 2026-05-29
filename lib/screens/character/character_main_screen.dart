@@ -191,14 +191,16 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   Future<void> _openMasterGame() async {
     final state = _state;
     if (state == null || state.stage != CharacterStage.master) return;
-    final reward = await CharacterMasterGameScreen.open(
+    final session = await CharacterMasterGameScreen.open(
       context,
       appearance: MochiAppearance.fromState(state),
       stage: state.stage,
+      initialCoin: state.coin,
     );
     if (!mounted) return;
-    if (reward != null) {
-      setState(() => _state = reward.character);
+    final latest = session?.reward?.character ?? session?.latestCharacter;
+    if (latest != null) {
+      setState(() => _state = latest);
     }
   }
 
@@ -423,7 +425,7 @@ class _MasterGameCta extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      '마스터 전용 미니게임 · 코인 보상',
+                      '입장료 20코인 · 점수 따라 보상',
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w500,

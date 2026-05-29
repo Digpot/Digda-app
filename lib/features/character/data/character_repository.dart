@@ -48,6 +48,17 @@ class CharacterRepository {
     return CharacterStageTree.fromJson(res.data!);
   }
 
+  /// 마스터 챔피언 챌린지 시작 — 서버에서 입장료(20 코인) 차감.
+  /// 잔액 부족 시 INSUFFICIENT_COIN, 마스터 아닌 경우 NOT_MASTER_CHARACTER.
+  /// 차감된 잔액이 반영된 캐릭터 상태가 응답.
+  Future<CharacterState> startMasterGame({required int groupRoomId}) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/character/master-game-start',
+      query: {'groupRoomId': groupRoomId},
+    );
+    return CharacterState.fromJson(res.data!);
+  }
+
   /// 마스터 챔피언 챌린지 점수를 제출하고 코인 보상을 받는다.
   /// 마스터 단계가 아닐 경우 서버가 NOT_MASTER_CHARACTER 로 응답.
   Future<MasterGameReward> claimMasterGameReward({
