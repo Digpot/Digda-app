@@ -15,10 +15,17 @@ class NotificationsScreen extends StatefulWidget {
 enum _Filter { all, mochi }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  static const int _pageSize = 20;
+
   bool _loading = true;
+  bool _loadingMore = false;
   String? _errorMessage;
   List<AppNotification> _items = const [];
+  int _total = 0;
   _Filter _filter = _Filter.all;
+
+  /// 서버에 아직 더 가져올 알림이 남아있는지 (필터와 무관 — 다음 페이지엔 다른 타입이 섞여 있을 수 있음).
+  bool get _hasMore => _items.length < _total;
 
   @override
   void initState() {
@@ -32,10 +39,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _errorMessage = null;
     });
     try {
-      final result = await Di.notificationRepository.list();
+      final result =
+          await Di.notificationRepository.list(limit: _pageSize, offset: 0);
       if (!mounted) return;
       setState(() {
         _items = result.notifications;
+        _total = result.total;
         _loading = false;
       });
     } catch (e) {
@@ -44,6 +53,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _loading = false;
         _errorMessage = errorMessageOf(e);
       });
+    }
+  }
+
+  /// "더 많이 보기" — 현재 로드된 개수를 offset 으로 다음 페이지를 이어붙인다.
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final result = await Di.notificationRepository
+          .list(limit: _pageSize, offset: _items.length);
+      if (!mounted) return;
+      setState(() {
+        // offset 페이징 사이에 새 알림이 들어와 중복이 생길 수 있어 id 기준으로 합친다.
+        final seen = _items.map((e) => e.id).toSet();
+        _items = [
+          ..._items,
+          ...result.notifications.where((n) => seen.add(n.id)),
+        ];
+        _total = result.total;
+        _loadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      showErrorDialog(context, errorMessageOf(e));
     }
   }
 
@@ -365,6 +399,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         ),
                                       ),
                                     ),
+                                    // 현재 필터엔 없어도 다음 페이지에 있을 수 있어 더 보기 노출.
+                                    const SizedBox(height: 24),
+                                    _buildLoadMore(),
                                   ],
                                 )
                               : _buildSectionList(),
@@ -381,8 +418,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(top: 8, bottom: 24),
-      itemCount: sections.length,
+      // 마지막 한 칸은 "더 많이 보기" 푸터 (남은 게 없으면 빈 위젯).
+      itemCount: sections.length + 1,
       itemBuilder: (context, sectionIndex) {
+        if (sectionIndex == sections.length) {
+          return _buildLoadMore();
+        }
         final s = sections[sectionIndex];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,6 +453,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         );
       },
+    );
+  }
+
+  /// 하단 "더 많이 보기" 버튼. 더 받을 게 없으면 빈 위젯, 로딩 중이면 스피너.
+  Widget _buildLoadMore() {
+    if (!_hasMore && !_loadingMore) return const SizedBox.shrink();
+    final remaining = _total - _items.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+      child: Center(
+        child: _loadingMore
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : OutlinedButton(
+                onPressed: _loadMore,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.gray200),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 22, vertical: 11),
+                ),
+                child: Text(
+                  remaining > 0 ? '더 많이 보기 ($remaining)' : '더 많이 보기',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+      ),
     );
   }
 
