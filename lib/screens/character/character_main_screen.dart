@@ -50,8 +50,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   final GlobalKey _cleanCaptureKey = GlobalKey(); // 배경+모찌만 (글자 없음)
 
   // 사진 저장 해금 레벨 — 레벨 달성 시 1개씩 풀린다. 마지막(배경+모찌)이 가장 높은 레벨.
-  static const int _kInfoCardLevel = 10;
-  static const int _kCleanLevel = 20;
+  static const int _kInfoCardLevel = 3;
+  static const int _kCleanLevel = 6;
 
   @override
   void initState() {
