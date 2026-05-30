@@ -102,4 +102,19 @@ class NotificationType {
     mochiLevelup,
     dikoUnlocked,
   };
+
+  /// 일기 관련 — 작성 + 일기 댓글. (알림 필터 칩)
+  static const Set<String> diaryTypes = {
+    diaryWritten,
+    commentOnDiary,
+  };
+
+  /// 일정 관련 — 작성·수정·리마인더(하루전/당일) + 일정 댓글. (알림 필터 칩)
+  static const Set<String> scheduleTypes = {
+    scheduleCreated,
+    scheduleUpdated,
+    scheduleDayBefore,
+    scheduleToday,
+    commentOnSchedule,
+  };
 }

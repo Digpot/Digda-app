@@ -46,7 +46,12 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   bool _savingImage = false;
   final _mochiCtrl = MochiAnimationController();
   // 꾸민 모찌를 PNG 로 내보내기 위한 오프스크린 캡처 경계.
-  final GlobalKey _captureKey = GlobalKey();
+  final GlobalKey _captureKey = GlobalKey(); // 정보 카드(모찌+레벨+디그팟)
+  final GlobalKey _cleanCaptureKey = GlobalKey(); // 배경+모찌만 (글자 없음)
+
+  // 사진 저장 해금 레벨 — 레벨 달성 시 1개씩 풀린다. 마지막(배경+모찌)이 가장 높은 레벨.
+  static const int _kInfoCardLevel = 10;
+  static const int _kCleanLevel = 20;
 
   @override
   void initState() {
@@ -219,17 +224,39 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         });
   }
 
-  /// 현재 꾸민 모찌를 PNG 이미지로 캡처해 저장/공유 시트를 띄운다.
-  /// 화면 밖(offstage)에 깔끔한 정적 카드를 RepaintBoundary 로 그려두고 그걸 캡처해
-  /// 애니메이션/디코/말풍선이 섞이지 않은 단정한 결과물을 만든다.
-  Future<void> _downloadMochi() async {
+  /// 사진 저장 옵션 시트 — 해금 상태(레벨)에 따라 2종 중 선택.
+  void _openDownloadSheet() {
+    final s = _state;
+    if (s == null || _savingImage) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DownloadSheet(
+        level: s.level,
+        infoCardLevel: _kInfoCardLevel,
+        cleanLevel: _kCleanLevel,
+        onPickInfo: () {
+          Navigator.of(context).pop();
+          _captureAndShare(_captureKey, '디그팟에서 키운 내 모찌 🐹');
+        },
+        onPickClean: () {
+          Navigator.of(context).pop();
+          _captureAndShare(_cleanCaptureKey, '내 모찌 🐹');
+        },
+      ),
+    );
+  }
+
+  /// [key] 가 가리키는 오프스크린 카드를 PNG 로 캡처해 저장/공유 시트를 띄운다.
+  Future<void> _captureAndShare(GlobalKey key, String text) async {
     if (_savingImage || _state == null) return;
     setState(() => _savingImage = true);
     try {
       // 다음 프레임에 캡처 위젯이 확실히 그려지도록 한 프레임 양보.
       await WidgetsBinding.instance.endOfFrame;
-      final boundary = _captureKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
         throw StateError('capture boundary not ready');
       }
@@ -244,7 +271,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
       if (!mounted) return;
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png')],
-        text: '디그팟에서 키운 내 모찌 🐹',
+        text: text,
       );
     } catch (e) {
       if (mounted) showAppSnackBar(context, '이미지를 저장하지 못했어요.', isError: true);
@@ -294,9 +321,9 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               ],
             ),
           ),
-          // 화면 밖에 모찌 캡처 카드를 그려둔다 — 레이아웃/페인트는 되지만 사용자에겐
-          // 보이지 않는 위치. _downloadMochi 가 이 경계를 toImage 로 캡처한다.
-          if (_state != null)
+          // 화면 밖에 모찌 캡처 카드들을 그려둔다 — 레이아웃/페인트는 되지만 사용자에겐
+          // 보이지 않는 위치. _captureAndShare 가 해당 경계를 toImage 로 캡처한다.
+          if (_state != null) ...[
             Positioned(
               left: -4000,
               top: 0,
@@ -305,6 +332,16 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
                 child: _MochiCaptureCard(state: _state!),
               ),
             ),
+            // 배경 + 모찌만 (글자 없음)
+            Positioned(
+              left: -4000,
+              top: 600,
+              child: RepaintBoundary(
+                key: _cleanCaptureKey,
+                child: _MochiCleanCard(state: _state!),
+              ),
+            ),
+          ],
         ],
       ),
       bottomNavigationBar: const AppBottomNavBar(currentIndex: 3),
@@ -331,7 +368,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             // 꾸민 모찌 이미지 저장/공유
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: _state == null || _savingImage ? null : _downloadMochi,
+              onTap: _state == null || _savingImage ? null : _openDownloadSheet,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: _savingImage
@@ -998,6 +1035,198 @@ class _MochiCaptureCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 배경(squircle) + 모찌만 — 글자 없는 깔끔한 내보내기용. MochiCharacterView(full) 한 장.
+class _MochiCleanCard extends StatelessWidget {
+  const _MochiCleanCard({required this.state});
+  final CharacterState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return MochiCharacterView(
+      appearance: MochiAppearance.fromState(state),
+      stage: state.stage,
+      size: 360,
+    );
+  }
+}
+
+/// 모찌 사진 저장 옵션 시트 — 2종(정보 카드 / 배경+모찌). 레벨 미달 항목은 잠금 표시.
+class _DownloadSheet extends StatelessWidget {
+  const _DownloadSheet({
+    required this.level,
+    required this.infoCardLevel,
+    required this.cleanLevel,
+    required this.onPickInfo,
+    required this.onPickClean,
+  });
+
+  final int level;
+  final int infoCardLevel;
+  final int cleanLevel;
+  final VoidCallback onPickInfo;
+  final VoidCallback onPickClean;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.bottomSheetBg,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.gray200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '모찌 사진 저장',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: AppColors.gray900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '레벨을 올리면 저장할 수 있는 사진이 늘어나요',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 12,
+                  color: AppColors.gray500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _DownloadOption(
+              icon: Icons.badge_outlined,
+              title: '정보 카드',
+              subtitle: '모찌 + 레벨 · 디그팟',
+              unlocked: level >= infoCardLevel,
+              requiredLevel: infoCardLevel,
+              onTap: onPickInfo,
+            ),
+            const SizedBox(height: 10),
+            _DownloadOption(
+              icon: Icons.wallpaper_rounded,
+              title: '배경 + 모찌',
+              subtitle: '글자 없이 깔끔하게',
+              unlocked: level >= cleanLevel,
+              requiredLevel: cleanLevel,
+              onTap: onPickClean,
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadOption extends StatelessWidget {
+  const _DownloadOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.unlocked,
+    required this.requiredLevel,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool unlocked;
+  final int requiredLevel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: unlocked ? AppColors.gray50 : AppColors.gray100,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: unlocked ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: unlocked
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : AppColors.gray200,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  unlocked ? icon : Icons.lock_outline,
+                  size: 20,
+                  color: unlocked ? AppColors.primary : AppColors.gray500,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: unlocked ? AppColors.gray900 : AppColors.gray500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      unlocked ? subtitle : 'Lv.$requiredLevel 달성 시 해금',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: unlocked ? AppColors.gray500 : AppColors.gray400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                unlocked ? Icons.download_rounded : Icons.lock_outline,
+                size: 20,
+                color: unlocked ? AppColors.primary : AppColors.gray400,
+              ),
+            ],
+          ),
         ),
       ),
     );
