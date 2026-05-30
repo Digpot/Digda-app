@@ -147,6 +147,96 @@
     font-size: 10pt;
     text-align: center;
   }
+
+  /* ── 서비스 적용 화면 목업 ── */
+  .screens-legend {
+    background: #f4f6fb;
+    border-left: 4px solid #5b87e5;
+    padding: 9px 14px;
+    border-radius: 4px;
+    margin: 10px 0 14px 0;
+    font-size: 10pt;
+  }
+  .shots {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin: 16px 0 4px 0;
+    page-break-inside: avoid;
+  }
+  .shot { width: 32%; }
+  .phone {
+    border: 1.5px solid #1f2933;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .phone .statusbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 9px;
+    font-size: 6pt;
+    color: #1f2933;
+    background: #fafafa;
+  }
+  .phone .scr { padding: 8px 9px 10px 9px; min-height: 190px; }
+  .phone .topbar {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
+  }
+  .phone .title { font-size: 8.5pt; font-weight: 700; color: #1f2933; }
+  .mask {
+    display: inline-block;
+    background: #1f2933;
+    color: #fff;
+    border-radius: 2px;
+    font-size: 5.8pt;
+    letter-spacing: 1px;
+    padding: 1px 5px;
+    vertical-align: middle;
+  }
+  .row {
+    display: flex; justify-content: space-between;
+    border-bottom: 1px solid #eef0f3;
+    padding: 3.5px 0; font-size: 7pt; color: #555;
+  }
+  .place-entry {
+    border: 1.4px solid #d23a3a;
+    background: #fff5f5;
+    color: #b8302a;
+    border-radius: 6px;
+    padding: 5px 7px;
+    font-size: 7.4pt;
+    font-weight: 700;
+    margin-top: 9px;
+    text-align: center;
+  }
+  .searchbar {
+    border: 1.2px solid #d23a3a;
+    border-radius: 7px;
+    padding: 4px 7px;
+    font-size: 7pt;
+    color: #1f2933;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .searchbar .go {
+    color: #fff; background: #d23a3a; border-radius: 4px;
+    padding: 1px 6px; font-size: 6.2pt;
+  }
+  .api-tag {
+    display: inline-block; background: #fff3cd; color: #8a6d00;
+    border: 1px solid #ffe08a; border-radius: 3px;
+    font-size: 6pt; padding: 0 4px; margin-bottom: 5px;
+  }
+  .result { border-bottom: 1px solid #eef0f3; padding: 4.5px 2px; }
+  .result .name { font-size: 7.4pt; font-weight: 700; color: #1f2933; }
+  .result .addr { font-size: 6.4pt; color: #888; }
+  .cap {
+    font-size: 9pt; color: #555; text-align: center;
+    margin-top: 6px; line-height: 1.45;
+  }
+  .cap b { color: #b8302a; }
 </style>
 </head>
 <body>
@@ -276,12 +366,98 @@
   <ul>
     <li>서비스 전반 + 호출 화면 상세는 동일 폴더의
       <code>digpot_service_introduction.pdf</code> 참조.</li>
-    <li>장소 검색 호출 화면 캡처는
-      <code>screenshot_guide.md</code> 절차로 마스킹 후 별첨.</li>
+    <li>장소 검색 호출 화면은 <strong>본 문서 §4 “서비스 적용 화면”</strong> 에 마스킹 처리하여
+      직접 첨부 (캡처 절차는 <code>screenshot_guide.md</code>).</li>
   </ul>
 </div>
 
-<h2>4. 정책 준수 확인 사항</h2>
+<h2 class="page-break">4. 서비스 적용 화면 (카카오 로컬 API 호출 화면)</h2>
+<p>
+  카카오 로컬 키워드 검색 API 가 <strong>실제로 호출되는 디그팟 앱 화면</strong>의 흐름입니다.
+  개인정보 보호를 위해 그룹명·작성자명 등 <strong>이용자 식별 정보는 검은 박스로 마스킹</strong>
+  처리했으며, 검색 결과의 장소명·주소는 카카오 API 가 반환하는 상호/주소 정보입니다.
+</p>
+<div class="screens-legend">
+  <strong>마스킹 안내</strong> — <span class="mask">●●● 마스킹</span> 으로 표시된 영역은
+  그룹명·이용자명 등 개인정보로, 제출용 자료에서 검은 박스로 가려 식별이 불가능하도록 처리했습니다.
+</div>
+
+<div class="shots">
+  <div class="shot">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+      <div class="scr">
+        <div class="topbar">
+          <span style="font-size:9pt;">‹</span>
+          <span class="title">그림일기 작성</span>
+        </div>
+        <div style="font-size:6.6pt;color:#888;margin-bottom:7px;">
+          그룹 <span class="mask">●●●● 그룹</span>
+        </div>
+        <div class="row"><span>날짜</span><span>2026.05.28</span></div>
+        <div class="row"><span>날씨</span><span>☀ 맑음</span></div>
+        <div class="row"><span>기분</span><span>😊 좋음</span></div>
+        <div class="place-entry">📍 장소 추가하기</div>
+        <div style="font-size:6.2pt;color:#aaa;margin-top:8px;">
+          오늘 다녀온 곳을 기록해요
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>①</b> 작성 화면의 <b>‘장소 추가하기’</b> 탭<br/>→ 장소 검색 시트 열림</div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+      <div class="scr">
+        <div class="topbar"><span class="title">장소 검색</span></div>
+        <div class="searchbar"><span>성수동 카페</span><span class="go">검색</span></div>
+        <div class="api-tag">▶ 카카오 로컬 키워드 검색 API 호출</div>
+        <div class="result">
+          <div class="name">블루보틀 성수 카페</div>
+          <div class="addr">서울 성동구 아차산로 7</div>
+        </div>
+        <div class="result">
+          <div class="name">어니언 성수</div>
+          <div class="addr">서울 성동구 아차산로9길 8</div>
+        </div>
+        <div class="result">
+          <div class="name">대림창고 갤러리</div>
+          <div class="addr">서울 성동구 성수이로 78</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>②</b> 키워드 입력·검색 시 <b>API 호출</b><br/>→ 상호·주소 결과 표시 <i>(실제 호출 화면)</i></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+      <div class="scr">
+        <div class="topbar">
+          <span style="font-size:9pt;">‹</span>
+          <span class="title">그림일기 작성</span>
+        </div>
+        <div style="font-size:6.6pt;color:#888;margin-bottom:7px;">
+          작성자 <span class="mask">●●●</span>
+        </div>
+        <div class="place-entry" style="background:#fff;">📍 블루보틀 성수 카페</div>
+        <div style="border:1px solid #eef0f3;border-radius:6px;padding:6px;margin-top:8px;font-size:6.8pt;color:#555;min-height:62px;">
+          오늘 성수동 카페 투어 다녀왔다 ☕<br/>날씨도 좋고 커피도 맛있었던 하루!
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>③</b> 선택한 <b>장소명(place_name)만</b> 저장<br/>좌표·연락처·내부 ID 는 저장 안 함</div>
+  </div>
+</div>
+
+<div class="infobox">
+  <strong>저장 범위</strong> — 위 ③ 처럼 사용자가 선택한 장소의 <code>place_name</code>(상호 문자열)만
+  <code>diary.location</code> 에 저장합니다. 좌표(x/y)·카카오 내부 ID·전화번호 등은 저장하지 않으며,
+  카카오맵 JavaScript SDK·지도 임베드는 사용하지 않고 REST 로컬 검색 API 만 호출합니다.
+</div>
+
+<h2>5. 정책 준수 확인 사항</h2>
 <ul>
   <li>본 계정에는 디그팟 외의 <strong>동일 서비스 중복 앱 등록 없음</strong>
       (도메인 · PackageName · BundleID 기준).</li>
@@ -292,7 +468,7 @@
       호출량을 위 트래픽 표 기준으로 모니터링.</li>
 </ul>
 
-<h2>5. 요청 사항</h2>
+<h2>6. 요청 사항</h2>
 <p>
   위 정보로 <strong>디그팟(DigPot) 앱의 카카오맵 / 카카오 로컬 API 호출 권한</strong>
   심사를 재진행해 주시기 바랍니다. 추가 자료나 보완이 필요할 경우 아래 연락처로
