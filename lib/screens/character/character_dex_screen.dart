@@ -152,7 +152,8 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
-                childAspectRatio: 0.82,
+                // 카드 안의 모찌 + 이름 + 라벨이 하단에서 잘리지 않도록 셀을 더 길게.
+                childAspectRatio: 0.72,
               ),
               // 마지막 슬롯 한 칸은 차기 업데이트 placeholder ("???") 로 비워둔다.
               itemCount: tree.stages.length + 1,
@@ -162,8 +163,9 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
                 }
                 final s = tree.stages[i];
                 return _DexCard(
+                  // 도감은 사용자가 꾸민 외형이 아니라 단계별 "원본" 모찌를 보여준다.
                   info: s,
-                  appearance: MochiAppearance.fromState(me),
+                  appearance: MochiAppearance.coral,
                   isCurrent: s.stage == tree.currentStage,
                 );
               },
@@ -222,7 +224,7 @@ class _DexCard extends StatelessWidget {
                     child: MochiCharacterView(
                       appearance: appearance,
                       stage: info.stage,
-                      size: 120,
+                      size: 104,
                     ),
                   ),
                 ),
@@ -312,8 +314,8 @@ class _ComingSoonCard extends StatelessWidget {
                 children: [
                   // 검은 squircle (모찌 배경과 동일 비율 — radius 48/200)
                   Container(
-                    width: 120,
-                    height: 120,
+                    width: 104,
+                    height: 104,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,

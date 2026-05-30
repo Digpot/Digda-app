@@ -19,6 +19,7 @@ class MochiDikoStage extends StatelessWidget {
     required this.state,
     required this.mochiController,
     required this.onPet,
+    this.onDikoTap,
     this.mochiSize = 220,
     this.dikoSize = 96,
     this.showChat = true,
@@ -27,6 +28,10 @@ class MochiDikoStage extends StatelessWidget {
   final CharacterState state;
   final MochiAnimationController mochiController;
   final VoidCallback onPet;
+
+  /// 디코를 탭했을 때 부모에 알리는 콜백 (선택). 디코 자체의 반응 애니메이션은
+  /// [_DikoIdleFloat] 내부에서 처리되며, 이 콜백은 부가 동작(예: 메시지)용.
+  final VoidCallback? onDikoTap;
   final double mochiSize;
   final double dikoSize;
   final bool showChat;
@@ -76,7 +81,7 @@ class MochiDikoStage extends StatelessWidget {
             Positioned(
               right: -dikoSize * 0.65,
               bottom: 16,
-              child: _DikoIdleFloat(size: dikoSize),
+              child: _DikoIdleFloat(size: dikoSize, onTap: onDikoTap),
             ),
           if (state.dikoUnlocked && showChat)
             Positioned(
@@ -93,19 +98,26 @@ class MochiDikoStage extends StatelessWidget {
 
 /// 디코는 가볍게 위아래로 떠 있는다. 모찌 본체와는 다른 페이즈(주기 1.6s)라 둘이
 /// 같이 호흡하면서도 안 겹치는 리듬을 만든다.
+///
+/// 모찌처럼 탭하면 반응한다 — 윙크/하트 표정으로 바뀌며 통통 튀어오르는 한 번짜리
+/// 바운스. [onTap] 으로 부모에 알려 부가 동작(메시지 등)도 트리거할 수 있다.
 class _DikoIdleFloat extends StatefulWidget {
-  const _DikoIdleFloat({required this.size});
+  const _DikoIdleFloat({required this.size, this.onTap});
   final double size;
+  final VoidCallback? onTap;
 
   @override
   State<_DikoIdleFloat> createState() => _DikoIdleFloatState();
 }
 
 class _DikoIdleFloatState extends State<_DikoIdleFloat>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _ctrl;
+  late final AnimationController _popCtrl;
+  late final Animation<double> _pop;
   DikoMood _mood = DikoMood.idle;
   Timer? _moodTimer;
+  Timer? _reactTimer;
 
   static const _moods = [
     DikoMood.idle,
@@ -113,6 +125,9 @@ class _DikoIdleFloatState extends State<_DikoIdleFloat>
     DikoMood.curious,
     DikoMood.wink,
   ];
+  // 탭했을 때 번갈아 보여줄 반응 표정.
+  static const _reactMoods = [DikoMood.wink, DikoMood.happy];
+  int _reactIdx = 0;
 
   @override
   void initState() {
@@ -121,33 +136,76 @@ class _DikoIdleFloatState extends State<_DikoIdleFloat>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
+    // 탭 시 한 번 재생되는 통통 바운스 (1 → 1.22 → 1).
+    _popCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 360),
+    );
+    _pop = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.22)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.22, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 60,
+      ),
+    ]).animate(_popCtrl);
     // 4~7초 간격으로 mood 변주
     _moodTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted) return;
+      if (!mounted || _reactTimer != null) return;
       setState(() {
         _mood = _moods[(_moods.indexOf(_mood) + 1) % _moods.length];
       });
     });
   }
 
+  void _handleTap() {
+    if (!mounted) return;
+    // 반응 표정 + 바운스 한 번. 1.2초 후 idle 변주로 복귀.
+    setState(() {
+      _mood = _reactMoods[_reactIdx % _reactMoods.length];
+      _reactIdx++;
+    });
+    _popCtrl.forward(from: 0);
+    _reactTimer?.cancel();
+    _reactTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      setState(() => _mood = DikoMood.idle);
+      _reactTimer = null;
+    });
+    widget.onTap?.call();
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
+    _popCtrl.dispose();
     _moodTimer?.cancel();
+    _reactTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, __) {
-        final dy = math.sin(_ctrl.value * math.pi) * 5.0;
-        return Transform.translate(
-          offset: Offset(0, dy),
-          child: DikoCharacterView(size: widget.size, mood: _mood),
-        );
-      },
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _handleTap,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_ctrl, _popCtrl]),
+        builder: (_, __) {
+          final dy = math.sin(_ctrl.value * math.pi) * 5.0;
+          return Transform.translate(
+            offset: Offset(0, dy),
+            child: Transform.scale(
+              scale: _pop.value,
+              child: DikoCharacterView(size: widget.size, mood: _mood),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -207,28 +265,53 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
   }
 
   /// 단계별 대사 리스트. 짝수 index = 모찌 발화, 홀수 index = 디코 응답.
+  ///
+  /// 디코는 Lv.10(BLOSSOM) 이상에서만 등장하므로 실제로는 blossom/glow/master 의
+  /// 세 톤이 쓰인다 — 단계가 오를수록 모찌가 더 의젓한 톤으로 말한다.
   static List<_ChatLine> _corpus(CharacterStage stage) {
-    final isYoung =
-        stage == CharacterStage.egg || stage == CharacterStage.sprout;
-    if (isYoung) {
-      // 디코는 Lv.10 이상에서만 등장하므로 보통은 안 쓰이지만, race 안전용으로 둔다.
-      return const [
-        _ChatLine.mochi('만나서 반가워!'),
-        _ChatLine.diko('나도 잘 부탁해 ✨'),
-      ];
-    }
-    return const [
-      _ChatLine.mochi('디코, 오늘도 같이 있어줘서 고마워.'),
-      _ChatLine.diko('당연하지! 우리 한 팀이잖아 ☺'),
-      _ChatLine.mochi('퀴즈 하나 풀어볼까?'),
-      _ChatLine.diko('좋아! 내가 응원할게 ✨'),
-      _ChatLine.mochi('오늘은 사진 퀴즈도 풀 수 있대.'),
-      _ChatLine.diko('우와, 재밌겠다!'),
-      _ChatLine.mochi('같이 산책 갈래?'),
-      _ChatLine.diko('따라갈게! 후후~'),
-      _ChatLine.diko('모찌, 잘하고 있어 :)'),
-      _ChatLine.mochi('히히, 디코 덕분이야.'),
-    ];
+    return switch (stage) {
+      // 디코 등장 전 단계 — race 안전용 fallback.
+      CharacterStage.egg ||
+      CharacterStage.sprout ||
+      CharacterStage.bloom =>
+        const [
+          _ChatLine.mochi('만나서 반가워!'),
+          _ChatLine.diko('나도 잘 부탁해 ✨'),
+        ],
+      // BLOSSOM (Lv.10) — 디코를 막 만난 풋풋하고 들뜬 톤.
+      CharacterStage.blossom => const [
+          _ChatLine.mochi('디코! 우리 이제 같이 다니는 거야?'),
+          _ChatLine.diko('응! 잘 부탁해 ☺'),
+          _ChatLine.mochi('퀴즈 하나 풀어볼까?'),
+          _ChatLine.diko('좋아! 내가 응원할게 ✨'),
+          _ChatLine.mochi('오늘은 사진 퀴즈도 풀 수 있대.'),
+          _ChatLine.diko('우와, 재밌겠다!'),
+          _ChatLine.mochi('같이 산책 갈래?'),
+          _ChatLine.diko('따라갈게! 후후~'),
+        ],
+      // GLOW (Lv.15) — 한층 자라 차분하고 다정해진 톤.
+      CharacterStage.glow => const [
+          _ChatLine.mochi('디코, 우리 꽤 멀리 왔다 그치?'),
+          _ChatLine.diko('맞아, 네가 반짝반짝해졌어 ✨'),
+          _ChatLine.mochi('다 같이 만든 추억 덕분이야.'),
+          _ChatLine.diko('앞으로가 더 기대돼!'),
+          _ChatLine.mochi('오늘도 한 문제 풀어볼까?'),
+          _ChatLine.diko('좋지! 천천히 가자 ☺'),
+          _ChatLine.diko('모찌, 정말 의젓해졌어.'),
+          _ChatLine.mochi('헤헤, 디코 덕분이지.'),
+        ],
+      // MASTER (Lv.20) — 든든하고 어른스러운 마스터의 톤.
+      CharacterStage.master => const [
+          _ChatLine.mochi('여기까지 함께 와줘서 고마워, 디코.'),
+          _ChatLine.diko('우리 진짜 마스터가 됐네! 🏆'),
+          _ChatLine.mochi('이제 챔피언 챌린지도 도전해보자.'),
+          _ChatLine.diko('네 곁이라면 어디든 든든해 ✨'),
+          _ChatLine.mochi('앞으로도 잘 부탁해.'),
+          _ChatLine.diko('당연하지, 우린 한 팀이니까!'),
+          _ChatLine.diko('모찌, 넌 최고의 마스터야.'),
+          _ChatLine.mochi('히히, 너도 최고의 친구야.'),
+        ],
+    };
   }
 
   @override

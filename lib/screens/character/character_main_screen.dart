@@ -1,4 +1,9 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
@@ -38,7 +43,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   String? _errorMessage;
   bool _hasLoadedOnce = false;
   bool _petInProgress = false;
+  bool _savingImage = false;
   final _mochiCtrl = MochiAnimationController();
+  // 꾸민 모찌를 PNG 로 내보내기 위한 오프스크린 캡처 경계.
+  final GlobalKey _captureKey = GlobalKey();
 
   @override
   void initState() {
@@ -211,6 +219,40 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         });
   }
 
+  /// 현재 꾸민 모찌를 PNG 이미지로 캡처해 저장/공유 시트를 띄운다.
+  /// 화면 밖(offstage)에 깔끔한 정적 카드를 RepaintBoundary 로 그려두고 그걸 캡처해
+  /// 애니메이션/디코/말풍선이 섞이지 않은 단정한 결과물을 만든다.
+  Future<void> _downloadMochi() async {
+    if (_savingImage || _state == null) return;
+    setState(() => _savingImage = true);
+    try {
+      // 다음 프레임에 캡처 위젯이 확실히 그려지도록 한 프레임 양보.
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary = _captureKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw StateError('capture boundary not ready');
+      }
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      if (bytes == null) throw StateError('failed to encode png');
+      final file = File(
+        '${Directory.systemTemp.path}/mochi_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+      if (!mounted) return;
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        text: '디그팟에서 키운 내 모찌 🐹',
+      );
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, '이미지를 저장하지 못했어요.', isError: true);
+    } finally {
+      if (mounted) setState(() => _savingImage = false);
+    }
+  }
+
   Future<void> _openMasterGame() async {
     final state = _state;
     if (state == null || state.stage != CharacterStage.master) return;
@@ -231,13 +273,28 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(child: _buildBody()),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(child: _buildBody()),
+              ],
+            ),
+          ),
+          // 화면 밖에 모찌 캡처 카드를 그려둔다 — 레이아웃/페인트는 되지만 사용자에겐
+          // 보이지 않는 위치. _downloadMochi 가 이 경계를 toImage 로 캡처한다.
+          if (_state != null)
+            Positioned(
+              left: -4000,
+              top: 0,
+              child: RepaintBoundary(
+                key: _captureKey,
+                child: _MochiCaptureCard(state: _state!),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: const AppBottomNavBar(currentIndex: 3),
     );
@@ -260,6 +317,26 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               ),
             ),
             const Spacer(),
+            // 꾸민 모찌 이미지 저장/공유
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _state == null || _savingImage ? null : _downloadMochi,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _savingImage
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.gray700,
+                        ),
+                      )
+                    : const Icon(Icons.ios_share,
+                        size: 22, color: AppColors.gray700),
+              ),
+            ),
+            const SizedBox(width: 8),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _openInfoSheet,
@@ -806,6 +883,67 @@ class _CharacterInfoSheet extends StatelessWidget {
               icon: Icons.storefront_outlined,
               title: '꾸미기',
               body: '코인을 모아 스킨·모자·안경 같은 아이템을 해금하고 언제든 갈아입혀 줄 수 있어요.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 모찌 이미지 내보내기용 정적 카드. 화면 밖에서 RepaintBoundary 로 캡처된다.
+/// 흰 배경 + 꾸민 모찌(full) + 단계/레벨 라벨 + 디그팟 워터마크.
+class _MochiCaptureCard extends StatelessWidget {
+  const _MochiCaptureCard({required this.state});
+  final CharacterState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      child: Container(
+        width: 360,
+        height: 420,
+        decoration: const BoxDecoration(color: Colors.white),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            MochiCharacterView(
+              appearance: MochiAppearance.fromState(state),
+              stage: state.stage,
+              size: 240,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              state.stageDisplayName,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 22,
+                color: AppColors.gray900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Lv. ${state.level}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+            const Spacer(),
+            const Text(
+              '디그팟',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                letterSpacing: 1.0,
+                color: AppColors.gray400,
+              ),
             ),
           ],
         ),

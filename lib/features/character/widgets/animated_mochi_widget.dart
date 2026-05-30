@@ -56,23 +56,60 @@ class AnimatedMochiWidget extends StatefulWidget {
   State<AnimatedMochiWidget> createState() => _AnimatedMochiWidgetState();
 }
 
-/// 자동/터치 시 모찌가 띄우는 말풍선 후보. 진화 단계와 무관하게 공통.
-const List<String> _kBubbleMessages = [
-  '안녕!',
-  '오늘 뭐했어?',
-  '쓰담쓰담 좋아~',
-  '또 보자!',
-  '같이 놀자!',
-  '기분 좋아 ☺',
-  '졸려...',
-  '뭐 먹을까?',
-  '히히히',
-  '심심해~',
-  '사랑해 ♡',
-  '고마워!',
-  '오늘도 화이팅!',
-  '나 멋지지?',
-];
+/// 자동/터치 시 모찌가 띄우는 말풍선 후보 — 진화 단계에 따라 톤/내용이 달라진다.
+/// 어린 단계(알·새싹)는 아기 같은 옹알이, 자란 단계는 또렷하고 어른스러운 톤.
+List<String> _bubbleMessagesFor(CharacterStage stage) {
+  return switch (stage) {
+    CharacterStage.egg => const [
+        'zZ...',
+        '쿨... 쿨...',
+        '응애!',
+        '아직 졸려...',
+        '꿈꾸는 중~',
+        '음냐음냐',
+        '따뜻해...',
+      ],
+    CharacterStage.sprout => const [
+        '쑥쑥 자랄래!',
+        '햇빛 좋아 ☀',
+        '오늘도 자랐어!',
+        '간질간질~',
+        '새싹이 났어!',
+        '물 줘~',
+        '안녕!',
+      ],
+    CharacterStage.bloom => const [
+        '꽃 폈다! 🌸',
+        '예쁘지?',
+        '향기 맡아봐~',
+        '기분 좋아 ☺',
+        '같이 놀자!',
+        '오늘 뭐했어?',
+        '쓰담쓰담 좋아~',
+      ],
+    CharacterStage.blossom => const [
+        '활짝 폈어!',
+        '봄바람 좋다~',
+        '디코랑 같이 있어 ☺',
+        '오늘도 고마워!',
+        '우리 잘 어울리지?',
+      ],
+    CharacterStage.glow => const [
+        '반짝반짝 ✨',
+        '왕관 멋지지?',
+        '한 단계 더 컸어!',
+        '빛이 나는 것 같아!',
+        '늘 곁에 있어줘서 고마워.',
+      ],
+    CharacterStage.master => const [
+        '드디어 마스터야! 🏆',
+        '여기까지 함께 와줘서 고마워.',
+        '우리 정말 멋진 팀이야.',
+        '앞으로도 잘 부탁해!',
+        '챔피언 챌린지 도전해볼까?',
+      ],
+  };
+}
 
 class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     with TickerProviderStateMixin {
@@ -327,19 +364,20 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   /// showBubble=false 면 no-op (메인 화면 외에서는 동작 안 함).
   void _showRandomBubble() {
     if (!widget.showBubble || !mounted) return;
+    final messages = _bubbleMessagesFor(widget.stage);
     int index;
-    if (_kBubbleMessages.length == 1) {
+    if (messages.length == 1) {
       index = 0;
     } else {
       do {
-        index = _rng.nextInt(_kBubbleMessages.length);
+        index = _rng.nextInt(messages.length);
       } while (index == _lastBubbleIndex);
     }
     _lastBubbleIndex = index;
     _bubbleHideTimer?.cancel();
     setState(() {
       _bubbleSeq++;
-      _bubbleMessage = _kBubbleMessages[index];
+      _bubbleMessage = messages[index];
     });
     _bubbleHideTimer = Timer(const Duration(milliseconds: 4500), () {
       if (!mounted) return;
