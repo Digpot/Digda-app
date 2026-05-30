@@ -54,4 +54,4 @@
 
 ---
 
-**연락**: chltmdgh517@naver.com
+**연락**: chl****@naver.com
