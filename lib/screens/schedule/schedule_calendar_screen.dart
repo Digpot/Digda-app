@@ -7,6 +7,7 @@ import '../../features/common/models/common_models.dart';
 import '../../features/schedule/models/schedule_models.dart' as api;
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
+import '../../widgets/notification_bell_icon.dart';
 
 class _Schedule {
   final String? id;
@@ -100,7 +101,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
   bool _loadingSchedules = false;
   String? _scheduleError;
-  bool _hasUnreadNotifications = false;
 
   @override
   void initState() {
@@ -108,18 +108,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     _loadHolidays();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSchedules();
-      _checkUnreadNotifications();
     });
-  }
-
-  Future<void> _checkUnreadNotifications() async {
-    try {
-      final result = await Di.notificationRepository.list(limit: 20);
-      if (!mounted) return;
-      setState(() {
-        _hasUnreadNotifications = result.notifications.any((n) => !n.isRead);
-      });
-    } catch (_) {}
   }
 
   Future<void> _loadSchedules() async {
@@ -621,33 +610,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context)
-                        .pushNamed('/notifications')
-                        .then((_) => _checkUnreadNotifications()),
-                    child: Stack(
-                      children: [
-                        const Icon(
-                          Icons.notifications_outlined,
-                          size: 22,
-                          color: AppColors.gray700,
-                        ),
-                        if (_hasUnreadNotifications)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                  const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () =>

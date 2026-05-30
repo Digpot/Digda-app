@@ -306,6 +306,42 @@ class _CharacterEvolutionScreenState extends State<CharacterEvolutionScreen>
                               color: Colors.white,
                             ),
                           ),
+                          // 이번 진화로 풀리는 혜택 안내 (예: 모찌 사진 저장 해금)
+                          if (_rewardText() != null) ...[
+                            const SizedBox(height: 18),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('🎁',
+                                      style: TextStyle(fontSize: 16)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _rewardText()!,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -378,6 +414,14 @@ class _CharacterEvolutionScreenState extends State<CharacterEvolutionScreen>
       },
     );
   }
+
+  /// 이번 진화(도달 단계)로 새로 풀리는 혜택 문구. 없으면 null.
+  /// 사진 저장은 Lv.3(새싹)·Lv.6(꽃)에서 해금되므로 해당 단계 진화 시 안내한다.
+  String? _rewardText() => switch (widget.character.stage) {
+        CharacterStage.sprout => '모찌 사진(정보 카드) 저장 해금!',
+        CharacterStage.bloom => '모찌 사진(배경+모찌) 저장 해금!',
+        _ => null,
+      };
 
   String _stageDisplay(CharacterStage stage) => switch (stage) {
         CharacterStage.egg => '알 모찌',

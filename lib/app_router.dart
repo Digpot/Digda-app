@@ -78,10 +78,10 @@ class AppRouter {
       case '/group-home':
         final groupArgs = settings.arguments;
         final groupName = groupArgs is Map<String, dynamic>
-            ? groupArgs['name'] as String? ?? '대학 친구들'
+            ? groupArgs['name'] as String? ?? ''
             : groupArgs is String
                 ? groupArgs
-                : '대학 친구들';
+                : '';
         return _tabRoute(GroupHomeScreen(
           groupName: groupName,
         ), settings);

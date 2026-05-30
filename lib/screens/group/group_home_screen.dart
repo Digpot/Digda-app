@@ -10,7 +10,7 @@ import '../../widgets/notification_bell_icon.dart';
 class GroupHomeScreen extends StatefulWidget {
   const GroupHomeScreen({
     super.key,
-    this.groupName = '대학 친구들',
+    this.groupName = '',
     this.isOwner = true,
   });
 
@@ -77,14 +77,19 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments;
-    String dynamicName = widget.groupName;
-    int memberCount = 7;
+    // 상세 로드 전 초기 이름은 활성 그룹 세션의 실제 이름을 사용한다(하드코딩 mock 금지).
+    String dynamicName = widget.groupName.isNotEmpty
+        ? widget.groupName
+        : (Di.activeGroup.groupRoomName ?? '');
+    int memberCount = 0;
     bool dynamicIsOwner = widget.isOwner;
     if (args is Map<String, dynamic>) {
-      dynamicName = args['name'] as String? ?? widget.groupName;
-      memberCount = args['members'] as int? ?? 7;
+      dynamicName = (args['name'] as String?)?.isNotEmpty == true
+          ? args['name'] as String
+          : dynamicName;
+      memberCount = args['members'] as int? ?? memberCount;
       dynamicIsOwner = args['isOwner'] as bool? ?? widget.isOwner;
-    } else if (args is String) {
+    } else if (args is String && args.isNotEmpty) {
       dynamicName = args;
     }
 

@@ -147,7 +147,9 @@ class _CharacterDexScreenState extends State<CharacterDexScreen> {
           child: RefreshIndicator(
             onRefresh: _load,
             child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
+              // 하단 시스템 인셋(홈 인디케이터)만큼 더해 마지막 행/업데이트 카드가 잘리지 않게.
+              padding: EdgeInsets.fromLTRB(
+                  24, 4, 24, 40 + MediaQuery.of(context).padding.bottom),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 14,

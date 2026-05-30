@@ -356,11 +356,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             // 필터 칩: 전체 / 모찌 관련. 진입 직후엔 전체. 모찌 칩을 누르면 모찌
             // 4종(mochi_levelup/diko_unlocked/quiz_created/quiz_answered)만 필터링.
-            SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+              child: Row(
                 children: [
                   _FilterChipButton(
                     label: '전체',
