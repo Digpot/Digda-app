@@ -5,6 +5,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/notification_bell_icon.dart';
 import '../../features/user/models/user_models.dart';
 
 /// 디그팟 개인정보처리방침 호스팅 URL.
@@ -73,15 +74,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () =>
-                        Navigator.of(context).pushNamed('/notifications'),
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      size: 22,
-                      color: AppColors.gray700,
-                    ),
-                  ),
+                  const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () => Navigator.of(context)

@@ -6,7 +6,7 @@ import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 
 class TransferOwnerScreen extends StatefulWidget {
-  const TransferOwnerScreen({super.key, this.groupName = '대학 친구들'});
+  const TransferOwnerScreen({super.key, this.groupName = ''});
 
   final String groupName;
 

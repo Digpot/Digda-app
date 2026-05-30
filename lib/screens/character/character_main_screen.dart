@@ -1041,19 +1041,35 @@ class _MochiCaptureCard extends StatelessWidget {
   }
 }
 
-/// 배경(squircle) + 모찌만 — 글자 없는 깔끔한 내보내기용. MochiCharacterView(full) 한 장.
+/// 배경 + 모찌만 — 글자 없이 모서리 둥글지 않게 꽉 채운 내보내기용.
+/// 스킨 색을 가득 찬 정사각형 배경으로 깔고, 그 위에 모찌 본체(투명 배경)만 얹는다.
 class _MochiCleanCard extends StatelessWidget {
   const _MochiCleanCard({required this.state});
   final CharacterState state;
 
   @override
   Widget build(BuildContext context) {
-    return MochiCharacterView(
-      appearance: MochiAppearance.fromState(state),
-      stage: state.stage,
-      size: 360,
+    final appearance = MochiAppearance.fromState(state);
+    return Container(
+      width: 360,
+      height: 360,
+      color: _hexToColor(appearance.skinHex),
+      alignment: Alignment.center,
+      child: MochiCharacterView(
+        appearance: appearance,
+        stage: state.stage,
+        size: 360,
+        part: MochiCharacterPart.body,
+      ),
     );
   }
+}
+
+Color _hexToColor(String hex) {
+  var h = hex.replaceFirst('#', '').trim();
+  if (h.length == 6) h = 'FF$h';
+  final v = int.tryParse(h, radix: 16) ?? 0xFFFF6B6B;
+  return Color(v);
 }
 
 /// 모찌 사진 저장 옵션 시트 — 2종(정보 카드 / 배경+모찌). 레벨 미달 항목은 잠금 표시.
