@@ -316,16 +316,52 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             imageIds: combined,
           ),
         );
-        final groupRoomIdInt = int.tryParse(groupId);
-        if (groupRoomIdInt != null) {
-          Di.characterRepository
-              .addExp(
-                groupRoomId: groupRoomIdInt,
-                amount: 15,
-                source: 'diary_create',
-              )
-              .ignore();
-        }
+        if (!mounted) return;
+        // 모찌 EXP 는 서버가 일기 생성 시 한 번만 지급한다(앱에서 중복 호출하지 않음).
+        // 작성 완료 안내 후 상세로 이동.
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              '일기 작성 완료 🌸',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                color: _ink,
+              ),
+            ),
+            content: const Text(
+              '모찌 경험치가 +10 올랐어요!\n내일 또 작성해주세요~',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 14,
+                height: 1.5,
+                color: _sub,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text(
+                  '확인',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed(
           '/diary-detail',
