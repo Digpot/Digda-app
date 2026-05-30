@@ -110,6 +110,9 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
     return raw == null ? null : int.tryParse(raw);
   }
 
+  /// 마스터 진화 전(레벨 20·GLOW)에 응시하면 이 게임이 "진화 시험" 으로 동작한다.
+  bool get _isEvolutionExam => widget.stage != CharacterStage.master;
+
   @override
   void dispose() {
     _spawnTimer?.cancel();
@@ -345,11 +348,11 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
             icon: const Icon(Icons.close, color: AppColors.gray900),
             onPressed: () => Navigator.of(context).pop(_sessionResult),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
-                '마스터 챔피언 챌린지',
-                style: TextStyle(
+                _isEvolutionExam ? '마스터 진화 시험' : '마스터 챔피언 챌린지',
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -370,11 +373,12 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
       child: Column(
         children: [
-          const Text('🏆', style: TextStyle(fontSize: 64)),
+          Text(_isEvolutionExam ? '✨' : '🏆',
+              style: const TextStyle(fontSize: 64)),
           const SizedBox(height: 10),
-          const Text(
-            '챔피언 챌린지',
-            style: TextStyle(
+          Text(
+            _isEvolutionExam ? '마스터 진화 시험' : '챔피언 챌린지',
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w800,
               fontSize: 24,
@@ -382,10 +386,12 @@ class _CharacterMasterGameScreenState extends State<CharacterMasterGameScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            '30초 동안 3×3 칸에서 튀어나오는\n모찌를 빠르게 두드려요.\n회색 가짜 모찌는 두드리면 -1점!',
+          Text(
+            _isEvolutionExam
+                ? '30초 동안 3×3 칸에서 튀어나오는\n모찌를 빠르게 두드려요.\n"훌륭"(11점) 이상이면 마스터로 진화해요!'
+                : '30초 동안 3×3 칸에서 튀어나오는\n모찌를 빠르게 두드려요.\n회색 가짜 모찌는 두드리면 -1점!',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w500,
               fontSize: 14,
