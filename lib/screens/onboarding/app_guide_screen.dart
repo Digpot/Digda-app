@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/colors.dart';
+import '../../features/character/models/character_models.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
 
 class AppGuideScreen extends StatefulWidget {
   /// true면 마이페이지에서 다시 보기로 진입 (뒤로가기만)
@@ -18,10 +20,12 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
 
   final List<_GuidePageData> _pages = const [
     _GuidePageData(
-      gradient: [Color(0xFFFF9A9E), Color(0xFFFF6B6B)],
-      icon: Icons.auto_stories_rounded,
+      gradient: [Color(0xFFFFB3B8), Color(0xFFFF6B6B)],
+      skinHex: '#FF6B6B',
+      stage: CharacterStage.sprout,
+      speech: '안녕! 난 모찌야 🌸\n디그팟을 같이 둘러볼까?',
       title: '함께 쓰는 그룹 다이어리',
-      subtitle: '친구, 가족, 연인과 함께\n하루를 기록하고 공유하세요',
+      subtitle: '친구, 가족, 연인과 함께\n하루를 기록하고 공유해요',
       features: [
         _FeatureItem(Icons.group_add_outlined, '초대 코드로 간편 참여'),
         _FeatureItem(Icons.photo_camera_outlined, '사진과 함께 일기 작성'),
@@ -30,9 +34,11 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
     ),
     _GuidePageData(
       gradient: [Color(0xFF93C5FD), Color(0xFF60A5FA)],
-      icon: Icons.calendar_month_rounded,
+      skinHex: '#60A5FA',
+      stage: CharacterStage.bloom,
+      speech: '일정도 나랑 같이\n관리할 수 있어!',
       title: '일정을 함께 관리해요',
-      subtitle: '그룹 일정을 한 캘린더에서\n쉽게 확인하고 공유하세요',
+      subtitle: '그룹 일정을 한 캘린더에서\n쉽게 확인하고 공유해요',
       features: [
         _FeatureItem(Icons.event_outlined, '그룹 일정 등록 & 공유'),
         _FeatureItem(Icons.palette_outlined, '카테고리별 색상 구분'),
@@ -41,7 +47,9 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
     ),
     _GuidePageData(
       gradient: [Color(0xFF86EFAC), Color(0xFF34D399)],
-      icon: Icons.checklist_rounded,
+      skinHex: '#34D399',
+      stage: CharacterStage.blossom,
+      speech: '할 일은 나랑 같이\n체크하자! ✅',
       title: '할 일을 놓치지 마세요',
       subtitle: '그룹 투두리스트로\n해야 할 일을 함께 체크해요',
       features: [
@@ -52,7 +60,9 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
     ),
     _GuidePageData(
       gradient: [Color(0xFFC4B5FD), Color(0xFFA78BFA)],
-      icon: Icons.rocket_launch_rounded,
+      skinHex: '#A78BFA',
+      stage: CharacterStage.glow,
+      speech: '준비됐어?\n이제 시작해보자! 🚀',
       title: '지금 바로 시작하세요!',
       subtitle: '다이어리를 만들거나\n초대 코드로 참여해보세요',
       features: [
@@ -202,67 +212,148 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
   }
 
   Widget _buildGuidePage(_GuidePageData data) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        children: [
-          const Spacer(flex: 1),
-          // 아이콘 영역
-          Container(
-            width: 140,
-            height: 140,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: data.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: data.gradient[1].withValues(alpha: 0.3),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
+    final accent = data.gradient[1];
+    return Stack(
+      children: [
+        // 부드러운 테마색 장식 원 (배경)
+        Positioned(
+          top: -70,
+          left: -50,
+          child: _blurCircle(accent.withValues(alpha: 0.16), 240),
+        ),
+        Positioned(
+          top: 30,
+          right: -60,
+          child: _blurCircle(data.gradient[0].withValues(alpha: 0.18), 180),
+        ),
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
+          child: Column(
+            children: [
+              // 모찌 + 말풍선 (마스코트가 직접 설명)
+              _buildMochiStage(data),
+              const SizedBox(height: 22),
+              Text(
+                data.title,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 25,
+                  height: 1.3,
+                  color: AppColors.gray900,
                 ),
-              ],
-            ),
-            child: Icon(
-              data.icon,
-              size: 64,
-              color: AppColors.white,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                data.subtitle,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 15,
+                  height: 1.6,
+                  color: AppColors.gray500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              ...data.features.map((f) => _buildFeatureRow(f, accent)),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 페이지 마스코트 — 모찌(페이지 테마색 배경) + 머리 위 말풍선. 페이지가 넘어갈수록 성장.
+  Widget _buildMochiStage(_GuidePageData data) {
+    final accent = data.gradient[1];
+    return SizedBox(
+      height: 248,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          // 모찌 뒤 halo
+          Positioned(
+            bottom: 10,
+            child: Container(
+              width: 210,
+              height: 210,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    accent.withValues(alpha: 0.22),
+                    accent.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 36),
-          // 타이틀
-          Text(
-            data.title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w800,
-              fontSize: 26,
-              height: 1.3,
-              color: AppColors.gray900,
+          // 모찌 본체
+          Positioned(
+            bottom: 0,
+            child: MochiCharacterView(
+              appearance:
+                  MochiAppearance(skinHex: data.skinHex, skinAssetKey: 'skin/coral'),
+              stage: data.stage,
+              size: 172,
+              expression: MochiEmotion.happy,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          // 서브타이틀
-          Text(
-            data.subtitle,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w400,
-              fontSize: 15,
-              height: 1.6,
-              color: AppColors.gray500,
-            ),
-            textAlign: TextAlign.center,
+          // 말풍선 (모찌 우상단)
+          Positioned(
+            top: 0,
+            right: 6,
+            child: _speechBubble(data.speech, accent),
           ),
-          const SizedBox(height: 36),
-          // 기능 리스트
-          ...data.features.map((feature) => _buildFeatureRow(feature, data.gradient[1])),
-          const Spacer(flex: 2),
         ],
+      ),
+    );
+  }
+
+  Widget _speechBubble(String text, Color accent) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 210),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.28), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.14),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          height: 1.35,
+          color: AppColors.gray800,
+        ),
+      ),
+    );
+  }
+
+  Widget _blurCircle(Color color, double size) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [color, color.withValues(alpha: 0.0)],
+          ),
+        ),
       ),
     );
   }
@@ -310,14 +401,18 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
 
 class _GuidePageData {
   final List<Color> gradient;
-  final IconData icon;
+  final String skinHex; // 모찌 배경 squircle 색 (페이지 테마색)
+  final CharacterStage stage; // 페이지가 넘어갈수록 모찌가 성장
+  final String speech; // 모찌 말풍선 대사
   final String title;
   final String subtitle;
   final List<_FeatureItem> features;
 
   const _GuidePageData({
     required this.gradient,
-    required this.icon,
+    required this.skinHex,
+    required this.stage,
+    required this.speech,
     required this.title,
     required this.subtitle,
     required this.features,
