@@ -191,14 +191,19 @@ class MochiCharacterView extends StatelessWidget {
     return switch (item.assetKey) {
       'item/glasses_round' => _glassesRound(a),
       'item/glasses_heart' => _glassesHeart(a),
+      'item/glasses_sun' => _glassesSun(a),
       'item/hairpin_star' => _hairpinStar(a),
       'item/hairpin_ribbon' => _hairpinRibbon(a),
+      'item/hairpin_flower' => _hairpinFlower(a),
       'item/hat_party' => _hatParty(a),
       'item/hat_chef' => _hatChef(a),
       'item/bowtie' => _bowtie(a),
       'item/scarf' => _scarf(a),
+      'item/necklace' => _necklace(a),
       'item/balloon' => _balloon(a),
+      'item/balloon_heart' => _balloonHeart(a),
       'item/flower' => _flowerSide(a),
+      'item/star' => _starCharm(a),
       _ => '',
     };
   }
@@ -237,6 +242,26 @@ class MochiCharacterView extends StatelessWidget {
     <path d="M-16 -2 C-16 -8 -10 -10 -10 -4 C-10 -10 -4 -8 -4 -2 C-4 3 -10 8 -10 8 C-10 8 -16 3 -16 -2 Z" fill="#FF6B6B" stroke="#A23838" stroke-width="1.2"/>
     <path d="M4 -2 C4 -8 10 -10 10 -4 C10 -10 16 -8 16 -2 C16 3 10 8 10 8 C10 8 4 3 4 -2 Z" fill="#FF6B6B" stroke="#A23838" stroke-width="1.2"/>
     <line x1="-4" y1="-2" x2="4" y2="-2" stroke="#A23838" stroke-width="2"/>
+  </g>
+  ''';
+
+  String _glassesSun(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <rect x="-17" y="-6" width="14" height="11" rx="3" fill="#2B2B2B"/>
+    <rect x="3" y="-6" width="14" height="11" rx="3" fill="#2B2B2B"/>
+    <line x1="-3" y1="-3" x2="3" y2="-3" stroke="#2B2B2B" stroke-width="2"/>
+    <line x1="-10" y1="-4" x2="-6" y2="-4" stroke="#6B6B6B" stroke-width="1.4" stroke-linecap="round"/>
+  </g>
+  ''';
+
+  String _hairpinFlower(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <circle cx="0" cy="-3.2" r="3" fill="#FF9FB0"/>
+    <circle cx="3" cy="-0.5" r="3" fill="#FF9FB0"/>
+    <circle cx="-3" cy="-0.5" r="3" fill="#FF9FB0"/>
+    <circle cx="1.8" cy="3" r="3" fill="#FF9FB0"/>
+    <circle cx="-1.8" cy="3" r="3" fill="#FF9FB0"/>
+    <circle cx="0" cy="0" r="1.7" fill="#FFF3B0"/>
   </g>
   ''';
 
@@ -292,6 +317,29 @@ class MochiCharacterView extends StatelessWidget {
     <ellipse cx="0" cy="0" rx="14" ry="18" fill="#FCD34D" stroke="#B8860B" stroke-width="1.2"/>
     <path d="M-2 17 L0 22 L2 17 Z" fill="#B8860B"/>
     <path d="M0 22 Q-4 36 4 50" stroke="#9CA3AF" stroke-width="1.2" fill="none"/>
+  </g>
+  ''';
+
+  String _balloonHeart(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy - 30})">
+    <path d="M0 18 C0 7 -15 5 -15 -5 C-15 -13 -5 -13 0 -5 C5 -13 15 -13 15 -5 C15 5 0 7 0 18 Z" fill="#FF6B6B" stroke="#A23838" stroke-width="1.2"/>
+    <path d="M0 18 Q-4 34 4 50" stroke="#9CA3AF" stroke-width="1.2" fill="none"/>
+  </g>
+  ''';
+
+  String _necklace(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <path d="M-18 -3 Q0 14 18 -3" stroke="#E8E8EE" stroke-width="2" fill="none"/>
+    <circle cx="-8" cy="4" r="2" fill="#F2F2F7" stroke="#C9CBD6" stroke-width="0.6"/>
+    <circle cx="8" cy="4" r="2" fill="#F2F2F7" stroke="#C9CBD6" stroke-width="0.6"/>
+    <circle cx="0" cy="9" r="3.2" fill="#FFE08A" stroke="#C9A227" stroke-width="0.9"/>
+  </g>
+  ''';
+
+  String _starCharm(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <path d="M0 -9 L2.6 -2.6 L9 -2.6 L3.8 1.6 L5.6 8 L0 4.2 L-5.6 8 L-3.8 1.6 L-9 -2.6 L-2.6 -2.6 Z" fill="#FCD34D" stroke="#B8860B" stroke-width="1"/>
+    <circle cx="0" cy="-0.5" r="1.6" fill="#FFF3B0"/>
   </g>
   ''';
 

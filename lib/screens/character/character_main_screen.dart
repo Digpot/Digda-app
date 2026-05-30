@@ -255,7 +255,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
 
   Future<void> _openMasterGame() async {
     final state = _state;
-    if (state == null || state.stage != CharacterStage.master) return;
+    // 레벨 20(canChallengeMaster) 부터 응시 가능 — 마스터 진화 전에는 "진화 시험".
+    if (state == null || !state.canChallengeMaster) return;
     final session = await CharacterMasterGameScreen.open(
       context,
       appearance: MochiAppearance.fromState(state),
@@ -263,9 +264,19 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
       initialCoin: state.coin,
     );
     if (!mounted) return;
-    final latest = session?.reward?.character ?? session?.latestCharacter;
+    final reward = session?.reward;
+    final latest = reward?.character ?? session?.latestCharacter;
     if (latest != null) {
       setState(() => _state = latest);
+    }
+    // 이번 도전(훌륭 이상)으로 마스터 진화가 일어났다면 진화 컷씬을 띄운다.
+    if (reward?.evolvedToMaster == true && latest != null && mounted) {
+      _mochiCtrl.triggerProud();
+      await CharacterEvolutionScreen.show(
+        context,
+        character: latest,
+        stageBefore: CharacterStage.glow,
+      );
     }
   }
 
@@ -406,8 +417,12 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           const SizedBox(height: 28),
           _CoinChip(coin: s.coin),
           const SizedBox(height: 24),
-          if (s.stage == CharacterStage.master) ...[
-            _MasterGameCta(onTap: _openMasterGame),
+          if (s.canChallengeMaster) ...[
+            _MasterGameCta(
+              onTap: _openMasterGame,
+              // 마스터 진화 전(레벨 20·GLOW)에는 "진화 시험"으로 안내.
+              isEvolutionExam: s.stage != CharacterStage.master,
+            ),
             const SizedBox(height: 12),
           ],
           // 핵심 CTA — 퀴즈 풀어서 EXP/코인 얻기
@@ -474,11 +489,19 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
 }
 
 class _MasterGameCta extends StatelessWidget {
-  const _MasterGameCta({required this.onTap});
+  const _MasterGameCta({required this.onTap, this.isEvolutionExam = false});
   final VoidCallback onTap;
+
+  /// true 면 마스터 진화 전 "진화 시험" 안내, false 면 마스터 후 코인 파밍 안내.
+  final bool isEvolutionExam;
 
   @override
   Widget build(BuildContext context) {
+    final title = isEvolutionExam ? '마스터 진화 시험' : '챔피언 챌린지';
+    final subtitle = isEvolutionExam
+        ? '입장료 20코인 · 훌륭 이상이면 마스터로 진화!'
+        : '입장료 20코인 · 점수 따라 보상';
+    final emoji = isEvolutionExam ? '✨' : '🏆';
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -504,16 +527,16 @@ class _MasterGameCta extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Text('🏆', style: TextStyle(fontSize: 28)),
+              Text(emoji, style: const TextStyle(fontSize: 28)),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      '챔피언 챌린지',
-                      style: TextStyle(
+                      title,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
@@ -521,10 +544,10 @@ class _MasterGameCta extends StatelessWidget {
                         letterSpacing: 0.3,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      '입장료 20코인 · 점수 따라 보상',
-                      style: TextStyle(
+                      subtitle,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w500,
                         fontSize: 11,
@@ -642,6 +665,35 @@ class _ExpProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 레벨 20 도달했지만 아직 진화 시험을 통과하지 못한 상태 — 트로피 대신 시험 안내.
+    if (state.maxLevelReached && state.stage != CharacterStage.master) {
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7E2),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFFCD34D), width: 1),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('✨', style: TextStyle(fontSize: 15)),
+              SizedBox(width: 6),
+              Text(
+                'Lv.20 · 진화 시험에 도전하세요',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.gray900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final atMax = state.maxLevelReached;
     if (atMax) {
       // 마스터 — 추가 EXP 불가. 진행도 바 대신 트로피 배지로 마무리.

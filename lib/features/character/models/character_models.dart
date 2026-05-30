@@ -98,6 +98,8 @@ class CharacterState {
     required this.coin,
     required this.maxLevelReached,
     required this.dikoUnlocked,
+    this.masterUnlocked = false,
+    this.canChallengeMaster = false,
     required this.equippedItems,
   });
 
@@ -111,6 +113,13 @@ class CharacterState {
 
   /// 조력자 디코 해금 여부. true 면 메인 화면에서 디코를 함께 렌더.
   final bool dikoUnlocked;
+
+  /// 마스터 진화 시험(챔피언 챌린지) 통과 여부. true 면 stage 가 master.
+  final bool masterUnlocked;
+
+  /// 레벨 20 도달 — 챔피언 챌린지(진화 시험/코인 파밍) 응시 가능 여부.
+  final bool canChallengeMaster;
+
   final List<EquippedItem> equippedItems;
 
   double get progress {
@@ -159,6 +168,8 @@ class CharacterState {
       coin: (json['coin'] as num).toInt(),
       maxLevelReached: json['maxLevelReached'] as bool? ?? false,
       dikoUnlocked: json['dikoUnlocked'] as bool? ?? false,
+      masterUnlocked: json['masterUnlocked'] as bool? ?? false,
+      canChallengeMaster: json['canChallengeMaster'] as bool? ?? false,
       equippedItems: ((json['equippedItems'] as List?) ?? const [])
           .map((e) => EquippedItem.fromJson(
                 (e as Map).cast<String, dynamic>(),
@@ -174,12 +185,16 @@ class MasterGameReward {
     required this.coinReward,
     required this.tier,
     required this.character,
+    this.evolvedToMaster = false,
   });
 
   final int score;
   final int coinReward;
   final String tier;
   final CharacterState character;
+
+  /// 이번 도전(훌륭 이상)으로 마스터 진화가 일어났는지. 진화 연출 트리거용.
+  final bool evolvedToMaster;
 
   factory MasterGameReward.fromJson(Map<String, dynamic> json) {
     return MasterGameReward(
@@ -189,6 +204,7 @@ class MasterGameReward {
       character: CharacterState.fromJson(
         (json['character'] as Map).cast<String, dynamic>(),
       ),
+      evolvedToMaster: json['evolvedToMaster'] as bool? ?? false,
     );
   }
 }
@@ -431,6 +447,7 @@ class CharacterQuiz {
     required this.authorName,
     this.imageUrl,
     this.createdAt,
+    this.remainingCount,
   });
 
   final int id;
@@ -449,6 +466,10 @@ class CharacterQuiz {
   /// 호환 위해 nullable 로 두고, 파싱 실패도 null 로 fallback.
   final DateTime? createdAt;
 
+  /// 퀴즈 풀기(pickRandom) 응답에서만 채워지는 "지금 풀 수 있는 남은 퀴즈 수"
+  /// (현재 문제 포함). 목록/생성 응답에서는 null.
+  final int? remainingCount;
+
   factory CharacterQuiz.fromJson(Map<String, dynamic> json) {
     final rawImage = json['imageUrl'] as String?;
     final rawCreated = json['createdAt'] as String?;
@@ -465,6 +486,7 @@ class CharacterQuiz {
       authorName: json['authorName'] as String? ?? '',
       imageUrl: (rawImage == null || rawImage.trim().isEmpty) ? null : rawImage,
       createdAt: rawCreated == null ? null : DateTime.tryParse(rawCreated),
+      remainingCount: (json['remainingCount'] as num?)?.toInt(),
     );
   }
 }
