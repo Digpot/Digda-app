@@ -12,7 +12,7 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-enum _Filter { all, mochi }
+enum _Filter { all, mochi, diary, schedule }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   static const int _pageSize = 20;
@@ -206,13 +206,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   /// 현재 필터에 맞춰 표시할 알림.
   Iterable<AppNotification> _filtered() {
-    if (_filter == _Filter.mochi) {
-      return _items.where(
-        (n) => NotificationType.mochiTypes.contains(n.type),
-      );
-    }
-    return _items;
+    final set = switch (_filter) {
+      _Filter.mochi => NotificationType.mochiTypes,
+      _Filter.diary => NotificationType.diaryTypes,
+      _Filter.schedule => NotificationType.scheduleTypes,
+      _Filter.all => null,
+    };
+    if (set == null) return _items;
+    return _items.where((n) => set.contains(n.type));
   }
+
+  /// 특정 필터의 알림 개수 (칩 배지용).
+  int _countFor(Set<String> types) =>
+      _items.where((n) => types.contains(n.type)).length;
 
   /// 알림 목록을 (섹션, 알림들) 의 리스트로 묶는다. 와이어프레임의 오늘/어제/이전.
   List<_Section> _buildSections() {
@@ -350,9 +356,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             // 필터 칩: 전체 / 모찌 관련. 진입 직후엔 전체. 모찌 칩을 누르면 모찌
             // 4종(mochi_levelup/diko_unlocked/quiz_created/quiz_answered)만 필터링.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-              child: Row(
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 children: [
                   _FilterChipButton(
                     label: '전체',
@@ -364,11 +372,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   _FilterChipButton(
                     label: '모찌 알림',
                     selected: _filter == _Filter.mochi,
-                    badgeCount: _items
-                        .where((n) =>
-                            NotificationType.mochiTypes.contains(n.type))
-                        .length,
+                    badgeCount: _countFor(NotificationType.mochiTypes),
                     onTap: () => setState(() => _filter = _Filter.mochi),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '일기',
+                    selected: _filter == _Filter.diary,
+                    badgeCount: _countFor(NotificationType.diaryTypes),
+                    onTap: () => setState(() => _filter = _Filter.diary),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '일정',
+                    selected: _filter == _Filter.schedule,
+                    badgeCount: _countFor(NotificationType.scheduleTypes),
+                    onTap: () => setState(() => _filter = _Filter.schedule),
                   ),
                 ],
               ),
@@ -388,9 +407,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     const SizedBox(height: 100),
                                     Center(
                                       child: Text(
-                                        _filter == _Filter.mochi
-                                            ? '아직 모찌 관련 알림이 없어요'
-                                            : '아직 알림이 없어요',
+                                        switch (_filter) {
+                                          _Filter.mochi => '아직 모찌 관련 알림이 없어요',
+                                          _Filter.diary => '아직 일기 관련 알림이 없어요',
+                                          _Filter.schedule => '아직 일정 관련 알림이 없어요',
+                                          _Filter.all => '아직 알림이 없어요',
+                                        },
                                         style: const TextStyle(
                                           fontFamily: 'Inter',
                                           fontWeight: FontWeight.w500,
