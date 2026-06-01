@@ -18,6 +18,13 @@ class _Schedule {
   final String? time;
   final List<UserSummary> participants;
   final DateTime createdAt;
+  final bool allDay;
+
+  /// 타임라인 정렬 키 — 종일/다일은 -1(상단), 시간 일정은 0~1439(분).
+  final int sortMinutes;
+
+  /// 타임라인 좌측 시간 레일 라벨 — '종일' 또는 '오전 7시'.
+  final String railLabel;
 
   const _Schedule({
     this.id,
@@ -28,6 +35,9 @@ class _Schedule {
     this.time,
     this.participants = const [],
     required this.createdAt,
+    this.allDay = true,
+    this.sortMinutes = -1,
+    this.railLabel = '종일',
   }) : end = end ?? start;
 
   /// 'HH:mm[:ss]' → '오전 9시', '오후 2시 30분' 같은 한글 표기.
@@ -49,12 +59,19 @@ class _Schedule {
     final argb = int.tryParse('FF$cleaned', radix: 16);
     final color = argb != null ? Color(argb) : AppColors.primary;
     String? time;
+    var sortMinutes = -1;
+    var railLabel = '종일';
     if (s.allDay) {
       time = '종일';
     } else if (s.startTime != null) {
       time = s.endTime != null
           ? '${_toKorean(s.startTime!)} - ${_toKorean(s.endTime!)}'
           : _toKorean(s.startTime!);
+      railLabel = _toKorean(s.startTime!);
+      final parts = s.startTime!.split(':');
+      final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+      final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+      sortMinutes = h * 60 + m;
     }
     return _Schedule(
       id: s.id,
@@ -65,6 +82,9 @@ class _Schedule {
       time: time,
       participants: s.participants,
       createdAt: s.createdAt,
+      allDay: s.allDay,
+      sortMinutes: sortMinutes,
+      railLabel: railLabel,
     );
   }
 
@@ -156,6 +176,18 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       _selectedDay = null;
     });
     _loadSchedules();
+  }
+
+  /// '오늘' 칩 — 다른 달 탐색 후 현재 달로 즉시 복귀.
+  void _goToday() {
+    final now = DateTime.now();
+    final sameMonth =
+        _focusedDay.year == now.year && _focusedDay.month == now.month;
+    setState(() {
+      _focusedDay = now;
+      _selectedDay = null;
+    });
+    if (!sameMonth) _loadSchedules();
   }
 
   Future<void> _loadHolidays() async {
@@ -348,6 +380,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     Color? circleBg,
     required Color textColor,
     bool isOutside = false,
+    bool squareHighlight = false,
   }) {
     final holidayName = isOutside ? null : _getHolidayName(day);
     final dayTextColor =
@@ -386,7 +419,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               height: 24,
               decoration: BoxDecoration(
                 color: circleBg,
-                shape: BoxShape.circle,
+                shape: squareHighlight ? BoxShape.rectangle : BoxShape.circle,
+                borderRadius:
+                    squareHighlight ? BorderRadius.circular(8) : null,
               ),
               child: Center(
                 child: Text(
@@ -624,50 +659,69 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 ],
               ),
             ),
-            // 날짜 네비게이션 - 가운데 정렬
+            // 날짜 네비게이션 — 좌측 월 이동 + 우측 '오늘' 칩
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => _changeMonth(DateTime(
                       _focusedDay.year,
                       _focusedDay.month - 1,
                     )),
                     child: const Icon(
                       Icons.chevron_left,
-                      size: 20,
+                      size: 22,
                       color: AppColors.gray500,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   GestureDetector(
                     onTap: () => _showMonthPicker(),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${_focusedDay.year}년 ${_focusedDay.month}월',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                            color: AppColors.gray700,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      '${_focusedDay.year}년 ${_focusedDay.month}월',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        color: AppColors.gray900,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => _changeMonth(DateTime(
                       _focusedDay.year,
                       _focusedDay.month + 1,
                     )),
                     child: const Icon(
                       Icons.chevron_right,
-                      size: 20,
+                      size: 22,
                       color: AppColors.gray500,
+                    ),
+                  ),
+                  const Spacer(),
+                  Material(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: _goToday,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        child: Text(
+                          '오늘',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -781,12 +835,14 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                         );
                       },
                       todayBuilder: (context, day, focusedDay) {
+                        // 오늘 = coral 라운드 스퀘어 강조 (기존 검정 원에서 변경).
                         return _buildDayCell(
                           day,
                           rowHeight,
                           cellWidth,
-                          circleBg: AppColors.black,
+                          circleBg: AppColors.primary,
                           textColor: AppColors.white,
+                          squareHighlight: true,
                         );
                       },
                       selectedBuilder: (context, day, focusedDay) {
@@ -874,6 +930,7 @@ class _DayDetailBottomSheet extends StatelessWidget {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
+        final sorted = _timelineSorted;
         return Container(
           decoration: const BoxDecoration(
             color: AppColors.white,
@@ -948,83 +1005,123 @@ class _DayDetailBottomSheet extends StatelessWidget {
                     : ListView.builder(
                         controller: scrollController,
                         padding: EdgeInsets.only(
-                          left: 24,
+                          left: 20,
                           right: 24,
                           bottom:
                               MediaQuery.of(context).padding.bottom + 16,
                         ),
-                        itemCount: schedules.length,
-                        itemBuilder: (context, index) {
-                          final schedule = schedules[index];
-                          final color = schedule.color;
-                          // 다일 일정이면 날짜 범위 표시
-                          String timeText = schedule.time ?? '종일';
-                          if (schedule.isMultiDay) {
-                            timeText =
-                                '${schedule.start.month}/${schedule.start.day} - ${schedule.end.month}/${schedule.end.day}';
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: GestureDetector(
-                              onTap: () => onScheduleTap(schedule.id),
-                              child: Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.07),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 3,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        borderRadius:
-                                            BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            timeText,
-                                            style: TextStyle(
-                                              fontFamily: 'Inter',
-                                              fontWeight: FontWeight.w400,
-                                              fontSize: 11,
-                                              color: color,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            schedule.title,
-                                            style: const TextStyle(
-                                              fontFamily: 'Inter',
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 15,
-                                              color: AppColors.gray900,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    _buildAvatarStack(schedule),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                        itemCount: sorted.length,
+                        itemBuilder: (context, index) =>
+                            _buildTimelineItem(sorted[index]),
                       ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  /// 종일/다일 일정을 상단에, 시간 일정을 시간순으로 정렬.
+  List<_Schedule> get _timelineSorted {
+    final list = [...schedules];
+    list.sort((a, b) {
+      final at = (a.allDay || a.isMultiDay) ? -1 : a.sortMinutes;
+      final bt = (b.allDay || b.isMultiDay) ? -1 : b.sortMinutes;
+      if (at != bt) return at.compareTo(bt);
+      return a.createdAt.compareTo(b.createdAt);
+    });
+    return list;
+  }
+
+  /// 타임라인 한 줄 — 좌측 시간 레일 + 우측 이벤트 카드.
+  Widget _buildTimelineItem(_Schedule schedule) {
+    final railTop =
+        (schedule.allDay || schedule.isMultiDay) ? '종일' : schedule.railLabel;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 52,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(
+                railTop,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: schedule.color,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(child: _buildEventCard(schedule)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventCard(_Schedule schedule) {
+    final color = schedule.color;
+    String timeText = schedule.time ?? '종일';
+    if (schedule.isMultiDay) {
+      timeText =
+          '${schedule.start.month}/${schedule.start.day} - ${schedule.end.month}/${schedule.end.day}';
+    }
+    return GestureDetector(
+      onTap: () => onScheduleTap(schedule.id),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    timeText,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 11,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    schedule.title,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _buildAvatarStack(schedule),
+          ],
+        ),
+      ),
     );
   }
 
