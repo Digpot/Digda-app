@@ -216,9 +216,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return _items.where((n) => set.contains(n.type));
   }
 
-  /// 특정 필터의 알림 개수 (칩 배지용).
+  /// 특정 필터의 '미읽음' 알림 개수 (칩 배지용). 알림을 읽으면 줄어들어 0이 되면
+  /// 배지가 사라진다 — 읽었는데도 숫자가 남아있는 혼란을 막는다.
   int _countFor(Set<String> types) =>
-      _items.where((n) => types.contains(n.type)).length;
+      _items.where((n) => types.contains(n.type) && !n.isRead).length;
+
+  /// 전체 탭의 미읽음 개수.
+  int get _unreadTotal => _items.where((n) => !n.isRead).length;
 
   /// 알림 목록을 (섹션, 알림들) 의 리스트로 묶는다. 와이어프레임의 오늘/어제/이전.
   List<_Section> _buildSections() {
@@ -364,22 +368,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   _FilterChipButton(
                     label: '전체',
                     selected: _filter == _Filter.all,
-                    badgeCount: _items.length,
+                    badgeCount: _unreadTotal,
                     onTap: () => setState(() => _filter = _Filter.all),
                   ),
                   const SizedBox(width: 8),
                   _FilterChipButton(
-                    label: '모찌 알림',
+                    label: '모찌',
                     selected: _filter == _Filter.mochi,
                     badgeCount: _countFor(NotificationType.mochiTypes),
                     onTap: () => setState(() => _filter = _Filter.mochi),
-                  ),
-                  const SizedBox(width: 8),
-                  _FilterChipButton(
-                    label: '일기',
-                    selected: _filter == _Filter.diary,
-                    badgeCount: _countFor(NotificationType.diaryTypes),
-                    onTap: () => setState(() => _filter = _Filter.diary),
                   ),
                   const SizedBox(width: 8),
                   _FilterChipButton(
@@ -387,6 +384,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     selected: _filter == _Filter.schedule,
                     badgeCount: _countFor(NotificationType.scheduleTypes),
                     onTap: () => setState(() => _filter = _Filter.schedule),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '일기',
+                    selected: _filter == _Filter.diary,
+                    badgeCount: _countFor(NotificationType.diaryTypes),
+                    onTap: () => setState(() => _filter = _Filter.diary),
                   ),
                 ],
               ),

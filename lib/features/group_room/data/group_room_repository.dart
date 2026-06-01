@@ -33,6 +33,14 @@ class GroupRoomRepository {
     return GroupRoomDetail.fromJson(res.data!);
   }
 
+  /// 3-3b. 그룹 홈 대시보드 집계 (오늘 요약 + 활성 그룹 + 다가오는 일정).
+  Future<GroupHomeData> home(String groupRoomId) async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/home',
+    );
+    return GroupHomeData.fromJson(res.data!);
+  }
+
   /// 3-4. 그룹방 수정 (방장).
   Future<GroupRoom> update(
     String groupRoomId,

@@ -84,11 +84,19 @@ class MochiDikoStage extends StatelessWidget {
               child: _DikoIdleFloat(size: dikoSize, onTap: onDikoTap),
             ),
           if (state.dikoUnlocked && showChat)
-            Positioned(
-              top: 0,
-              left: mochiSize * 0.18,
-              right: -dikoSize * 0.3,
-              child: _MochiDikoChat(stage: state.stage),
+            // 말풍선은 각자 자기 머리 위에서 뜬다 — 모찌 대사는 모찌 위(상단),
+            // 디코 대사는 디코 위(우측 하단)에 떠서 누가 말하는지 헷갈리지 않게 한다.
+            // 채팅 오버레이는 컨테이너 전체를 덮으므로, 버블이 모찌/디코 본체 위에
+            // 겹쳐도 탭(쓰다듬기·디코 반응)이 항상 아래 캐릭터로 전달되도록
+            // IgnorePointer 로 감싼다 — 말풍선 자체는 장식이라 입력이 필요 없다.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: _MochiDikoChat(
+                  stage: state.stage,
+                  mochiSize: mochiSize,
+                  dikoSize: dikoSize,
+                ),
+              ),
             ),
         ],
       ),
@@ -215,8 +223,14 @@ class _DikoIdleFloatState extends State<_DikoIdleFloat>
 /// 진화 단계에 따라 모찌가 더 어른스러운 톤으로 말하도록 [_corpus] 가 단계별로
 /// 분기된다.
 class _MochiDikoChat extends StatefulWidget {
-  const _MochiDikoChat({required this.stage});
+  const _MochiDikoChat({
+    required this.stage,
+    required this.mochiSize,
+    required this.dikoSize,
+  });
   final CharacterStage stage;
+  final double mochiSize;
+  final double dikoSize;
 
   @override
   State<_MochiDikoChat> createState() => _MochiDikoChatState();
@@ -317,10 +331,54 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
   @override
   Widget build(BuildContext context) {
     final lines = _corpus(widget.stage);
-    // 첫 라인 지연 중에는 빈 영역(같은 슬롯 유지) 으로 두고, 1200ms 후 첫 라인이 fade-in.
+    // 첫 라인 지연 중에는 빈 영역으로 두고, 1200ms 후 첫 라인이 fade-in.
     // 인덱스가 corpus 길이를 넘는 비정상 케이스(이론상 없음)도 안전하게 모듈로.
     final idx = _index;
     final line = idx == null ? null : lines[idx % lines.length];
+    final isMochi = line?.speaker == _Speaker.mochi;
+    final isDiko = line?.speaker == _Speaker.diko;
+    final mochiSize = widget.mochiSize;
+    final dikoSize = widget.dikoSize;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // 모찌 말풍선 — 모찌 머리 위(상단 밴드).
+        Positioned(
+          top: 0,
+          left: mochiSize * 0.04,
+          child: _slot(
+            show: isMochi,
+            line: line,
+            keyId: 'mochi-$idx',
+            maxWidth: mochiSize * 0.78,
+          ),
+        ),
+        // 디코 말풍선 — 디코 머리 위(우측). 디코는 bottom:16, 높이 dikoSize 로 컨테이너
+        // 오른쪽에 매달려 있다. 버블을 디코 쪽으로 더 붙이고(우측) 위로 더 띄워(상단)
+        // 모찌 본체와 덜 겹치게 한다. 단 버블 오른쪽 끝이 디코 오른쪽 끝(≈ +dikoSize*0.65)
+        // 을 넘으면 작은 화면에서 ListView 가 가로로 잘라먹으므로 그 안쪽으로 둔다.
+        Positioned(
+          right: -dikoSize * 0.62,
+          bottom: 16 + dikoSize + 14,
+          child: _slot(
+            show: isDiko,
+            line: line,
+            keyId: 'diko-$idx',
+            maxWidth: mochiSize * 0.58,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 한쪽 화자의 말풍선 슬롯. 현재 라인이 그 화자의 것이 아니면 빈 위젯으로 접힌다.
+  /// 슬롯 위치는 고정이라 말풍선이 항상 같은 자리(머리 위)에서 fade-in/out 된다.
+  Widget _slot({
+    required bool show,
+    required _ChatLine? line,
+    required String keyId,
+    required double maxWidth,
+  }) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
       switchInCurve: Curves.easeOutBack,
@@ -335,12 +393,13 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
           ),
         );
       },
-      child: line == null
-          ? const SizedBox.shrink(key: ValueKey('chat-empty'))
-          : _ChatBubble(
-              key: ValueKey('chat-$idx'),
-              line: line,
-            ),
+      child: (show && line != null)
+          ? ConstrainedBox(
+              key: ValueKey(keyId),
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: _ChatBubble(line: line),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }
@@ -368,55 +427,49 @@ class _ChatBubble extends StatelessWidget {
     final speakerLabel = isMochi ? '모찌' : '디코';
     final speakerColor =
         isMochi ? AppColors.primary : const Color(0xFFA78BFA);
-    return Align(
-      alignment: isMochi ? Alignment.centerLeft : Alignment.centerRight,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 220),
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: border, width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    // 폭 제약(maxWidth)은 바깥 슬롯에서 화자별로 잡아준다. 여기선 내용 크기에 맞춘다.
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                speakerLabel,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 10,
-                  letterSpacing: 0.4,
-                  color: speakerColor,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                line.text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  height: 1.25,
-                  color: AppColors.gray900,
-                ),
-              ),
-            ],
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            speakerLabel,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+              letterSpacing: 0.4,
+              color: speakerColor,
+            ),
           ),
-        ),
+          const SizedBox(height: 2),
+          Text(
+            line.text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              height: 1.25,
+              color: AppColors.gray900,
+            ),
+          ),
+        ],
       ),
     );
   }
