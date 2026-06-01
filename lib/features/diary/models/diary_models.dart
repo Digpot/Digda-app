@@ -104,6 +104,95 @@ class DiarySummary {
   }
 }
 
+/// 7-2. 일기 캘린더 — 날짜별 대표 일기(사진 그리드용).
+class DiaryCalendarEntry {
+  DiaryCalendarEntry({
+    required this.date,
+    required this.diaryId,
+    this.thumbnailUrl,
+    required this.mood,
+    required this.count,
+  });
+
+  final DateTime date; // 로컬 날짜(자정)
+  final String diaryId;
+  final String? thumbnailUrl;
+  final int mood; // 0 행복 / 1 평온 / 2 슬픔 / 3 화남 / 4 피곤
+  final int count; // 그날 작성된 일기 편수
+
+  factory DiaryCalendarEntry.fromJson(Map<String, dynamic> json) {
+    final d = _parseUtc(json['date'] as String).toLocal();
+    return DiaryCalendarEntry(
+      date: DateTime(d.year, d.month, d.day),
+      diaryId: json['diaryId'].toString(),
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      mood: (json['mood'] as num? ?? 0).toInt(),
+      count: (json['count'] as num? ?? 1).toInt(),
+    );
+  }
+}
+
+/// 통계 스트립 값 — 편수/연속 기록/최다 기분.
+class DiaryCalendarStats {
+  DiaryCalendarStats({
+    required this.count,
+    required this.streak,
+    this.topMood,
+  });
+
+  final int count;
+  final int streak;
+  final int? topMood;
+
+  factory DiaryCalendarStats.fromJson(Map<String, dynamic> json) {
+    return DiaryCalendarStats(
+      count: (json['count'] as num? ?? 0).toInt(),
+      streak: (json['streak'] as num? ?? 0).toInt(),
+      topMood: (json['topMood'] as num?)?.toInt(),
+    );
+  }
+}
+
+/// 7-2. 일기 캘린더 응답 전체.
+class DiaryCalendarResult {
+  DiaryCalendarResult({
+    required this.dates,
+    required this.entries,
+    required this.stats,
+  });
+
+  final List<DateTime> dates; // 일기 있는 날 (하위호환)
+  final List<DiaryCalendarEntry> entries;
+  final DiaryCalendarStats stats;
+
+  /// 날짜(자정) → 대표 일기 매핑.
+  Map<DateTime, DiaryCalendarEntry> get byDay => {
+        for (final e in entries)
+          DateTime(e.date.year, e.date.month, e.date.day): e,
+      };
+
+  factory DiaryCalendarResult.fromJson(Map<String, dynamic> json) {
+    final entries = ((json['entries'] as List?) ?? const [])
+        .map((e) => DiaryCalendarEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+    // dates 가 비어도 entries 에서 역산(구버전/신버전 모두 대응).
+    final rawDates = (json['dates'] as List?) ?? const [];
+    final dates = rawDates.isNotEmpty
+        ? rawDates.map((e) {
+            final d = _parseUtc(e as String).toLocal();
+            return DateTime(d.year, d.month, d.day);
+          }).toList()
+        : entries.map((e) => e.date).toList();
+    return DiaryCalendarResult(
+      dates: dates,
+      entries: entries,
+      stats: json['stats'] != null
+          ? DiaryCalendarStats.fromJson(json['stats'] as Map<String, dynamic>)
+          : DiaryCalendarStats(count: 0, streak: 0),
+    );
+  }
+}
+
 class DiaryListResult {
   DiaryListResult({required this.diaries, required this.total});
 

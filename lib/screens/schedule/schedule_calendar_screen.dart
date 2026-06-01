@@ -4,10 +4,15 @@ import 'package:world_holidays/world_holidays.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/common/models/common_models.dart';
+import '../../features/membership/models/membership_models.dart';
 import '../../features/schedule/models/schedule_models.dart' as api;
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
+
+/// 일정 캘린더 뷰 모드 — 월/주/일.
+enum _CalView { month, week, day }
 
 class _Schedule {
   final String? id;
@@ -116,37 +121,64 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  /// 뷰 모드(월/주/일).
+  _CalView _view = _CalView.month;
+
   /// 공휴일 맵: 날짜(utc normalized) → 공휴일명
   final Map<DateTime, String> _holidays = {};
 
-  bool _loadingSchedules = false;
-  String? _scheduleError;
+  /// 멤버 필터 — 그룹 구성원 목록과 선택된 userId 집합(빈 집합 = 전체).
+  List<Membership> _members = [];
+  final Set<String> _memberFilter = {};
+
+  /// 멤버별 아바타 색 — userId → color.
+  final Map<String, Color> _memberColors = {};
 
   @override
   void initState() {
     super.initState();
     _loadHolidays();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMembers();
       _loadSchedules();
     });
   }
+
+  Future<void> _loadMembers() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    try {
+      final members = await Di.membershipRepository.list(groupId);
+      if (!mounted) return;
+      setState(() {
+        _members = members;
+        _memberColors.clear();
+        for (final m in members) {
+          final cleaned = m.color.replaceAll('#', '');
+          final argb = int.tryParse('FF$cleaned', radix: 16);
+          _memberColors[m.userId] =
+              argb != null ? Color(argb) : AppColors.primary;
+        }
+      });
+    } catch (_) {
+      // 멤버 로드 실패는 필터 비활성 상태로 무시.
+    }
+  }
+
+  /// 서버에서 받아온 전체 일정(필터 전).
+  List<_Schedule> _allSchedules = [];
 
   Future<void> _loadSchedules() async {
     final groupId = Di.activeGroup.groupRoomId;
     if (groupId == null) {
       setState(() {
-        _schedules = [];
-        _loadingSchedules = false;
-        _computeLaneAssignments();
+        _allSchedules = [];
+        _applyMemberFilter();
       });
       return;
     }
     final start = DateTime.utc(_focusedDay.year, _focusedDay.month, 1);
     final end = DateTime.utc(_focusedDay.year, _focusedDay.month + 1, 0);
-    setState(() {
-      _loadingSchedules = true;
-      _scheduleError = null;
-    });
     try {
       final list = await Di.scheduleRepository.list(
         groupId,
@@ -156,18 +188,45 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       if (!mounted) return;
       setState(() {
         // 최신 생성 일정이 위에 표시되도록 createdAt 내림차순 정렬
-        _schedules = list.map(_Schedule.fromApi).toList()
+        _allSchedules = list.map(_Schedule.fromApi).toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        _loadingSchedules = false;
-        _computeLaneAssignments();
+        _applyMemberFilter();
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _loadingSchedules = false;
-        _scheduleError = errorMessageOf(e);
-      });
+      showErrorDialog(context, errorMessageOf(e));
     }
+  }
+
+  /// 멤버 필터를 적용해 표시용 `_schedules` 를 갱신하고 레인을 재계산.
+  /// 필터가 비어 있으면 전체 노출. 선택 시 참석자에 한 명이라도 포함되면 노출.
+  void _applyMemberFilter() {
+    if (_memberFilter.isEmpty) {
+      _schedules = List.of(_allSchedules);
+    } else {
+      _schedules = _allSchedules.where((s) {
+        return s.participants.any((p) => _memberFilter.contains(p.id));
+      }).toList();
+    }
+    _computeLaneAssignments();
+  }
+
+  void _toggleMemberFilter(String userId) {
+    setState(() {
+      if (_memberFilter.contains(userId)) {
+        _memberFilter.remove(userId);
+      } else {
+        _memberFilter.add(userId);
+      }
+      _applyMemberFilter();
+    });
+  }
+
+  void _clearMemberFilter() {
+    setState(() {
+      _memberFilter.clear();
+      _applyMemberFilter();
+    });
   }
 
   void _changeMonth(DateTime newMonth) {
@@ -623,6 +682,729 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     );
   }
 
+  // ─── 공통 네비게이션 ──────────────────────────────────────────────────────────
+  Future<void> _openDetail(String? id) async {
+    if (id == null) return;
+    await Navigator.of(context).pushNamed('/schedule-detail', arguments: id);
+    _loadSchedules();
+  }
+
+  Future<void> _openAdd(DateTime? day) async {
+    await Navigator.of(context).pushNamed(
+      '/add-schedule',
+      arguments: day != null ? {'date': day.toIso8601String()} : null,
+    );
+    _loadSchedules();
+  }
+
+  // ─── 뷰 토글 (월/주/일) ───────────────────────────────────────────────────────
+  Widget _buildViewToggle() {
+    Widget seg(String label, _CalView v) {
+      final active = _view == v;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() {
+            _view = v;
+            if (v == _CalView.day && _selectedDay == null) {
+              _selectedDay = _focusedDay;
+            }
+          }),
+          child: Container(
+            margin: const EdgeInsets.all(2),
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: active ? AppColors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: AppColors.gray900.withValues(alpha: 0.08),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 13,
+                color: active ? AppColors.primary : AppColors.gray500,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: AppColors.gray100,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            seg('월', _CalView.month),
+            seg('주', _CalView.week),
+            seg('일', _CalView.day),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── 멤버 필터 ────────────────────────────────────────────────────────────────
+  Widget _buildMemberFilter() {
+    if (_members.isEmpty) return const SizedBox.shrink();
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: [
+          _allChip(),
+          const SizedBox(width: 8),
+          for (final m in _members) ...[
+            _memberAvatar(m),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _allChip() {
+    final active = _memberFilter.isEmpty;
+    return GestureDetector(
+      onTap: _clearMemberFilter,
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary : AppColors.gray50,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          '전체',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: active ? AppColors.white : AppColors.gray500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _memberAvatar(Membership m) {
+    final selected = _memberFilter.contains(m.userId);
+    final dimmed = _memberFilter.isNotEmpty && !selected;
+    final color = _memberColors[m.userId] ?? AppColors.primary;
+    return GestureDetector(
+      onTap: () => _toggleMemberFilter(m.userId),
+      child: Opacity(
+        opacity: dimmed ? 0.4 : 1,
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? color : AppColors.white,
+                  width: selected ? 2 : 1.5,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: m.profileImage != null && m.profileImage!.isNotEmpty
+                  ? Image.network(
+                      m.profileImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _avatarInitial(m.name, color),
+                    )
+                  : _avatarInitial(m.name, color),
+            ),
+            if (selected) ...[
+              const SizedBox(width: 6),
+              Text(
+                m.name,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: color,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _avatarInitial(String name, Color color) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0] : '?',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  // ─── 주 뷰 — 7일 컬럼 ─────────────────────────────────────────────────────────
+  Widget _buildWeekView(BoxConstraints constraints) {
+    final weekSun = _weekSunday(_focusedDay);
+    final days = List.generate(7, (i) => weekSun.add(Duration(days: i)));
+    const labels = ['일', '월', '화', '수', '목', '금', '토'];
+
+    Color dayColor(DateTime d) => d.weekday == DateTime.saturday
+        ? AppColors.blue
+        : d.weekday == DateTime.sunday
+            ? AppColors.primary
+            : AppColors.gray900;
+
+    bool isToday(DateTime d) {
+      final n = DateTime.now();
+      return d.year == n.year && d.month == n.month && d.day == n.day;
+    }
+
+    Widget header(DateTime d) {
+      final today = isToday(d);
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() {
+            _selectedDay = d;
+            _view = _CalView.day;
+          }),
+          child: Column(
+            children: [
+              Text(
+                labels[d.weekday % 7],
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 11,
+                  color: dayColor(d).withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: today ? AppColors.primary : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${d.day}',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: today ? AppColors.white : dayColor(d),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget column(DateTime d) {
+      final list = _schedulesTimelineSorted(_getSchedulesForDay(d));
+      return Expanded(
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(
+              left: BorderSide(color: AppColors.gray50, width: 0.5),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          child: Column(
+            children: [
+              for (final s in list) _weekChip(s),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(children: days.map(header).toList()),
+        ),
+        const SizedBox(height: 6),
+        const Divider(height: 1, color: AppColors.gray100),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: days.map(column).toList(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _weekChip(_Schedule s) {
+    return GestureDetector(
+      onTap: () => _openDetail(s.id),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        decoration: BoxDecoration(
+          color: s.color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          s.title,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w500,
+            fontSize: 9,
+            color: s.color,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
+  // ─── 일 뷰 — 시간 레일 타임라인 ────────────────────────────────────────────────
+  Widget _buildDayView() {
+    final day = _selectedDay ?? _focusedDay;
+    final list = _schedulesTimelineSorted(_getSchedulesForDay(day));
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final label =
+        '${day.month}월 ${day.day}일 ${weekdays[day.weekday - 1]}요일';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '일정 ${list.length}개',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 13,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _openAdd(day),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, color: AppColors.white, size: 20),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: list.isEmpty
+              ? _dayEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 24, 24),
+                  itemCount: list.length,
+                  itemBuilder: (context, i) => _timelineRow(list[i]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dayEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.event_available_outlined,
+              size: 48, color: AppColors.gray200),
+          SizedBox(height: 12),
+          Text(
+            '이 날은 비어 있어요',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 14,
+              color: AppColors.gray400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_Schedule> _schedulesTimelineSorted(List<_Schedule> input) {
+    final list = [...input];
+    list.sort((a, b) {
+      final at = (a.allDay || a.isMultiDay) ? -1 : a.sortMinutes;
+      final bt = (b.allDay || b.isMultiDay) ? -1 : b.sortMinutes;
+      if (at != bt) return at.compareTo(bt);
+      return a.createdAt.compareTo(b.createdAt);
+    });
+    return list;
+  }
+
+  Widget _timelineRow(_Schedule schedule) {
+    final railTop =
+        (schedule.allDay || schedule.isMultiDay) ? '종일' : schedule.railLabel;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 52,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(
+                railTop,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: schedule.color,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(child: _inlineEventCard(schedule)),
+        ],
+      ),
+    );
+  }
+
+  Widget _inlineEventCard(_Schedule schedule) {
+    final color = schedule.color;
+    var timeText = schedule.time ?? '종일';
+    if (schedule.isMultiDay) {
+      timeText =
+          '${schedule.start.month}/${schedule.start.day} - ${schedule.end.month}/${schedule.end.day}';
+    }
+    return GestureDetector(
+      onTap: () => _openDetail(schedule.id),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    timeText,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 11,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    schedule.title,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _inlineAvatarStack(schedule),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _inlineAvatarStack(_Schedule schedule) {
+    final participants = schedule.participants.take(3).toList();
+    if (participants.isEmpty) return const SizedBox.shrink();
+    const palette = [AppColors.primary, AppColors.blue, AppColors.green];
+    return SizedBox(
+      width: 28 + (participants.length - 1) * 16.0,
+      height: 28,
+      child: Stack(
+        children: List.generate(participants.length, (i) {
+          final p = participants[i];
+          final color = _memberColors[p.id] ?? palette[i % palette.length];
+          return Positioned(
+            left: i * 16.0,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.white, width: 1.5),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: p.profileImage != null && p.profileImage!.isNotEmpty
+                  ? Image.network(
+                      p.profileImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _avatarInitial(p.name, color),
+                    )
+                  : _avatarInitial(p.name, color),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ─── 검색 ────────────────────────────────────────────────────────────────────
+  void _showSearch() {
+    final controller = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (context, scrollController) {
+              return StatefulBuilder(
+                builder: (context, setSheetState) {
+                  final q = controller.text.trim().toLowerCase();
+                  final results = q.isEmpty
+                      ? <_Schedule>[]
+                      : _allSchedules
+                          .where((s) => s.title.toLowerCase().contains(q))
+                          .toList();
+                  return Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.gray200,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                          child: TextField(
+                            controller: controller,
+                            autofocus: true,
+                            onChanged: (_) => setSheetState(() {}),
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 15,
+                              color: AppColors.gray900,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '일정 제목 검색',
+                              hintStyle: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 15,
+                                color: AppColors.gray400,
+                              ),
+                              prefixIcon: const Icon(Icons.search,
+                                  size: 20, color: AppColors.gray500),
+                              filled: true,
+                              fillColor: AppColors.gray50,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 0),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: q.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    '이번 달 일정에서 검색해요',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 13,
+                                      color: AppColors.gray400,
+                                    ),
+                                  ),
+                                )
+                              : results.isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                        '검색 결과가 없어요',
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 13,
+                                          color: AppColors.gray400,
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      controller: scrollController,
+                                      padding: const EdgeInsets.fromLTRB(
+                                          20, 0, 20, 24),
+                                      itemCount: results.length,
+                                      itemBuilder: (context, i) =>
+                                          _searchResultRow(results[i]),
+                                    ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _searchResultRow(_Schedule s) {
+    final dateText = s.isMultiDay
+        ? '${s.start.month}/${s.start.day} - ${s.end.month}/${s.end.day}'
+        : '${s.start.month}월 ${s.start.day}일 · ${s.time ?? '종일'}';
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pop();
+        _openDetail(s.id);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.gray100),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 40,
+              decoration: BoxDecoration(
+                color: s.color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.title,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.gray900,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dateText,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -645,6 +1427,15 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     ),
                   ),
                   const Spacer(),
+                  GestureDetector(
+                    onTap: _showSearch,
+                    child: const Icon(
+                      Icons.search,
+                      size: 22,
+                      color: AppColors.gray700,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
@@ -727,10 +1518,19 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 ],
               ),
             ),
-            // 캘린더 - 하단까지 확장
+            // 뷰 토글 (월/주/일) + 멤버 필터
+            _buildViewToggle(),
+            _buildMemberFilter(),
+            // 본문 — 월/주/일 뷰 전환
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  if (_view == _CalView.week) {
+                    return _buildWeekView(constraints);
+                  }
+                  if (_view == _CalView.day) {
+                    return _buildDayView();
+                  }
                   final rowHeight =
                       ((constraints.maxHeight - 28) / 6).clamp(64.0, 100.0);
                   final cellWidth = constraints.maxWidth / 7;

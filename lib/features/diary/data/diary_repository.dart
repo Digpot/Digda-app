@@ -29,8 +29,8 @@ class DiaryRepository {
     return DiaryListResult.fromJson(res.data!);
   }
 
-  /// 7-2. 일기 캘린더 (월별 dot marker).
-  Future<List<DateTime>> calendar(
+  /// 7-2. 일기 캘린더 (날짜별 썸네일/기분 + 통계).
+  Future<DiaryCalendarResult> calendar(
     String groupRoomId,
     DateTime month,
   ) async {
@@ -38,18 +38,7 @@ class DiaryRepository {
       '/group-rooms/$groupRoomId/diaries/calendar',
       query: {'month': _month(month)},
     );
-    return (res.data!['dates'] as List? ?? [])
-        .map((e) => _parseUtcDate(e as String))
-        .toList();
-  }
-
-  /// 서버의 timezone-naive datetime 문자열을 UTC로 파싱 후 로컬 시간으로 변환.
-  DateTime _parseUtcDate(String s) {
-    if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
-      return DateTime.parse(s).toLocal();
-    }
-    if (s.contains('T')) return DateTime.parse('${s}Z').toLocal();
-    return DateTime.parse(s).toLocal();
+    return DiaryCalendarResult.fromJson(res.data!);
   }
 
   /// 7-3. 일기 상세.
