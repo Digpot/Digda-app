@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/diary/models/diary_models.dart';
 import '../../features/group_room/models/group_room_models.dart';
 import '../../features/notification/models/notification_models.dart';
+import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/feature_card.dart';
@@ -60,24 +62,101 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       _loading = true;
       _errorMessage = null;
     });
-    // 최근 소식은 best-effort — 병렬로 시작하고 실패해도 빈 목록으로 둔다.
-    final activityFuture = Di.notificationRepository
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayUtc = DateTime.utc(today.year, today.month, today.day);
+
+    // 대시보드를 기존 엔드포인트들로 병렬 조립한다.
+    // (전용 /home 집계 엔드포인트가 서버에 없어 404 가 나던 것을 클라이언트 집계로 대체)
+    final detailFuture = Di.groupRoomRepository.detail(activeId);
+    final notiFuture = Di.notificationRepository
         .list(limit: 8, offset: 0)
-        .then((r) => r.notifications)
-        .catchError((_) => const <AppNotification>[]);
+        .catchError((_) =>
+            NotificationListResult(notifications: const [], total: 0, unreadCount: 0));
+    final scheduleFuture = Di.scheduleRepository
+        .list(
+          activeId,
+          startDate: todayUtc,
+          endDate: todayUtc.add(const Duration(days: 60)),
+          forceRefresh: true,
+        )
+        .catchError((_) => <Schedule>[]);
+    final diaryFuture = Di.diaryRepository
+        .list(activeId, month: now, limit: 31, forceRefresh: true)
+        .catchError((_) => DiaryListResult(diaries: const [], total: 0));
+
     try {
-      final home = await Di.groupRoomRepository.home(activeId);
-      final activity = await activityFuture;
+      final detail = await detailFuture; // 핵심 — 실패 시 에러 화면
+      final noti = await notiFuture;
+      final schedules = await scheduleFuture;
+      final diaryRes = await diaryFuture;
       if (!mounted) return;
+
+      DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+      // 오늘 일정 수 — 오늘을 포함(기간)하는 일정.
+      final todayScheduleCount = schedules.where((s) {
+        final sd = dateOnly(s.startDate);
+        final ed = dateOnly(s.endDate);
+        return !today.isBefore(sd) && !today.isAfter(ed);
+      }).length;
+
+      // 다가오는 일정 — 오늘 이후(포함) 가장 빠른 일정 1건.
+      final upcoming = schedules
+          .where((s) => !dateOnly(s.startDate).isBefore(today))
+          .toList()
+        ..sort((a, b) {
+          final c = a.startDate.compareTo(b.startDate);
+          if (c != 0) return c;
+          final at = a.allDay ? '' : (a.startTime ?? '');
+          final bt = b.allDay ? '' : (b.startTime ?? '');
+          return at.compareTo(bt);
+        });
+      final next = upcoming.isEmpty ? null : upcoming.first;
+
+      // 오늘 작성된(또는 오늘 날짜) 새 일기 수.
+      final newDiaryCount = diaryRes.diaries.where((d) {
+        final dd = dateOnly(d.date);
+        return dd == today;
+      }).length;
+
+      final home = GroupHomeData(
+        userName: Di.userSession.profile?.name ?? '',
+        today: TodaySummary(
+          scheduleCount: todayScheduleCount,
+          newDiaryCount: newDiaryCount,
+          unreadCount: noti.unreadCount,
+        ),
+        activeGroup: ActiveGroupSummary(
+          id: detail.groupRoom.id,
+          name: detail.groupRoom.name,
+          thumbnailImage: detail.groupRoom.thumbnailImage,
+          memberCount: detail.groupRoom.memberCount,
+          myRole: detail.myRole,
+          members: detail.memberships,
+          nextEvent: next == null
+              ? null
+              : HomeNextEvent(
+                  id: next.id,
+                  title: next.title,
+                  startDate: next.startDate,
+                  startTime: next.startTime,
+                  allDay: next.allDay,
+                  color: next.color,
+                ),
+        ),
+      );
+
       // 활성 컨텍스트(이름/역할)를 최신으로 동기화 — 다른 탭이 참조.
       Di.activeGroup.enter(
-        groupRoomId: home.activeGroup.id,
-        groupRoomName: home.activeGroup.name,
-        isOwner: home.activeGroup.isOwner,
+        groupRoomId: detail.groupRoom.id,
+        groupRoomName: detail.groupRoom.name,
+        isOwner: detail.isOwner,
       );
       setState(() {
         _home = home;
-        _activity = activity;
+        _activity = noti.notifications;
         _loading = false;
       });
     } catch (e) {
