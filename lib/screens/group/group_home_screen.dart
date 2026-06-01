@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/group_room/models/group_room_models.dart';
+import '../../features/notification/models/notification_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/feature_card.dart';
 import '../../widgets/notification_bell_icon.dart';
 
+/// 그룹 홈 — '대시보드' 리디자인.
+///
+/// 위 → 아래: 인사 헤더 / 오늘 요약 / 활성 그룹 카드(멤버+다가오는 일정) /
+/// 퀵 액션 / 그룹 기능 / 최근 소식 피드. (docs/GROUP_HOME_REDESIGN.md)
+///
+/// 데이터: `GET /group-rooms/:id/home`(집계) + 최근 소식은 `/notifications` 재사용.
 class GroupHomeScreen extends StatefulWidget {
   const GroupHomeScreen({
     super.key,
@@ -22,14 +29,15 @@ class GroupHomeScreen extends StatefulWidget {
 }
 
 class _GroupHomeScreenState extends State<GroupHomeScreen> {
-  static const _memberColors = [
+  static const _avatarColors = [
     AppColors.primary,
     AppColors.blue,
     AppColors.green,
     AppColors.purple,
   ];
 
-  GroupRoomDetail? _detail;
+  GroupHomeData? _home;
+  List<AppNotification> _activity = const [];
   bool _loading = true;
   String? _errorMessage;
 
@@ -52,17 +60,24 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       _loading = true;
       _errorMessage = null;
     });
+    // 최근 소식은 best-effort — 병렬로 시작하고 실패해도 빈 목록으로 둔다.
+    final activityFuture = Di.notificationRepository
+        .list(limit: 8, offset: 0)
+        .then((r) => r.notifications)
+        .catchError((_) => const <AppNotification>[]);
     try {
-      final detail = await Di.groupRoomRepository.detail(activeId);
+      final home = await Di.groupRoomRepository.home(activeId);
+      final activity = await activityFuture;
       if (!mounted) return;
-      // 활성 컨텍스트의 역할/이름을 최신으로 동기화.
+      // 활성 컨텍스트(이름/역할)를 최신으로 동기화 — 다른 탭이 참조.
       Di.activeGroup.enter(
-        groupRoomId: detail.groupRoom.id,
-        groupRoomName: detail.groupRoom.name,
-        isOwner: detail.isOwner,
+        groupRoomId: home.activeGroup.id,
+        groupRoomName: home.activeGroup.name,
+        isOwner: home.activeGroup.isOwner,
       );
       setState(() {
-        _detail = detail;
+        _home = home;
+        _activity = activity;
         _loading = false;
       });
     } catch (e) {
@@ -74,162 +89,291 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    // 상세 로드 전 초기 이름은 활성 그룹 세션의 실제 이름을 사용한다(하드코딩 mock 금지).
-    String dynamicName = widget.groupName.isNotEmpty
-        ? widget.groupName
-        : (Di.activeGroup.groupRoomName ?? '');
-    int memberCount = 0;
-    bool dynamicIsOwner = widget.isOwner;
-    if (args is Map<String, dynamic>) {
-      dynamicName = (args['name'] as String?)?.isNotEmpty == true
-          ? args['name'] as String
-          : dynamicName;
-      memberCount = args['members'] as int? ?? memberCount;
-      dynamicIsOwner = args['isOwner'] as bool? ?? widget.isOwner;
-    } else if (args is String && args.isNotEmpty) {
-      dynamicName = args;
-    }
+  // ── 네비게이션 헬퍼 ──────────────────────────────────────────
 
-    final detail = _detail;
-    if (detail != null) {
-      dynamicName = detail.groupRoom.name;
-      memberCount = detail.memberships.isNotEmpty
-          ? detail.memberships.length
-          : detail.groupRoom.memberCount;
-      dynamicIsOwner = detail.isOwner;
-    }
+  void _go(String route) => Navigator.of(context).pushNamed(route);
 
-    return Scaffold(
+  void _goThenReload(String route, {Object? arguments}) {
+    Navigator.of(context)
+        .pushNamed(route, arguments: arguments)
+        .then((_) => _load());
+  }
+
+  /// 그룹 전환 시트 — 내 그룹 목록을 띄우고 선택 시 활성 그룹을 바꿔 홈을 갱신.
+  Future<void> _openGroupSwitcher() async {
+    List<GroupRoomListItem> groups;
+    try {
+      groups = await Di.groupRoomRepository.myList();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessageOf(e))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final activeId = _home?.activeGroup.id ?? Di.activeGroup.groupRoomId;
+    await showModalBottomSheet<void>(
+      context: context,
       backgroundColor: AppColors.white,
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
-      body: SafeArea(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              // 그룹 홈은 하단 탭 진입점이므로 뒤로가기 화살표 없이
-              // 다른 탭(캘린더·일기·모찌) 과 동일한 좌측 정렬 타이틀로 통일.
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      dynamicName,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
-                        color: AppColors.gray900,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const NotificationBellIcon(),
-                  const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/my-page'),
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      size: 22,
-                      color: AppColors.gray700,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.gray200,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? _buildError()
-                      : RefreshIndicator(
-                          onRefresh: _load,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 16),
-                                _buildMemberSection(memberCount),
-                                const SizedBox(height: 60),
-                                FeatureCard(
-                                  icon: Icons.calendar_month_outlined,
-                                  iconBgColor: AppColors.primary
-                                      .withValues(alpha: 0.15),
-                                  iconColor: AppColors.primary,
-                                  cardBgColor: AppColors.primary
-                                      .withValues(alpha: 0.06),
-                                  title: '일정 관리',
-                                  subtitle: '우리 모임 일정을 한눈에',
-                                  onTap: () => Navigator.of(context)
-                                      .pushNamed('/schedule'),
-                                ),
-                                const SizedBox(height: 12),
-                                FeatureCard(
-                                  icon: Icons.book_outlined,
-                                  iconBgColor: const Color(0xFFFFE88A),
-                                  iconColor: const Color(0xFFC89A00),
-                                  cardBgColor: const Color(0xFFFFFBEE),
-                                  title: '그림일기',
-                                  subtitle: '오늘의 추억을 기록해요',
-                                  onTap: () => Navigator.of(context)
-                                      .pushNamed('/diary'),
-                                ),
-                                const SizedBox(height: 12),
-                                FeatureCard(
-                                  icon: Icons.favorite_rounded,
-                                  iconBgColor: AppColors.primary
-                                      .withValues(alpha: 0.15),
-                                  iconColor: AppColors.primary,
-                                  cardBgColor: AppColors.primary
-                                      .withValues(alpha: 0.06),
-                                  title: '모찌 키우기',
-                                  subtitle: '함께 모찌를 키워봐요',
-                                  onTap: () => Navigator.of(context)
-                                      .pushNamed('/character'),
-                                ),
-                                const SizedBox(height: 12),
-                                FeatureCard(
-                                  icon: Icons.check_box_outlined,
-                                  iconBgColor:
-                                      AppColors.blue.withValues(alpha: 0.2),
-                                  iconColor: AppColors.blue,
-                                  cardBgColor:
-                                      AppColors.blue.withValues(alpha: 0.06),
-                                  title: '투두리스트',
-                                  subtitle: '할 일을 함께 관리해요',
-                                  onTap: () => Navigator.of(context)
-                                      .pushNamed('/todo'),
-                                ),
-                                if (dynamicIsOwner) ...[
-                                  const SizedBox(height: 12),
-                                  FeatureCard(
-                                    icon: Icons.swap_horiz_rounded,
-                                    iconBgColor: AppColors.purple
-                                        .withValues(alpha: 0.15),
-                                    iconColor: AppColors.purple,
-                                    cardBgColor: AppColors.purple
-                                        .withValues(alpha: 0.06),
-                                    title: '방장 양도',
-                                    subtitle: '다른 멤버에게 방장을 넘겨요',
-                                    onTap: () => Navigator.of(context)
-                                        .pushNamed(
-                                      '/transfer-owner',
-                                      arguments: dynamicName,
-                                    ).then((_) => _load()),
-                                  ),
-                                ],
-                                const SizedBox(height: 24),
-                              ],
-                            ),
-                          ),
-                        ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '그룹 전환',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.gray900,
+                  ),
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                itemCount: groups.length,
+                itemBuilder: (_, i) {
+                  final g = groups[i];
+                  final selected = g.id == activeId;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                      backgroundImage:
+                          (g.thumbnailImage != null && g.thumbnailImage!.isNotEmpty)
+                              ? NetworkImage(g.thumbnailImage!)
+                              : null,
+                      child: (g.thumbnailImage == null || g.thumbnailImage!.isEmpty)
+                          ? const Icon(Icons.group_rounded,
+                              color: AppColors.primary, size: 20)
+                          : null,
+                    ),
+                    title: Text(
+                      g.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 15,
+                        color: AppColors.gray900,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${g.memberCount}명',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                    trailing: selected
+                        ? const Icon(Icons.check_circle,
+                            color: AppColors.primary, size: 20)
+                        : null,
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      if (g.id == activeId) return;
+                      Di.activeGroup.enter(
+                        groupRoomId: g.id,
+                        groupRoomName: g.name,
+                        isOwner: g.isOwner,
+                      );
+                      _load();
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// FAB — 새 일기/일정/퀴즈 생성 빠른 진입.
+  void _openCreateSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            _SheetAction(
+              icon: Icons.edit_outlined,
+              label: '새 일기 쓰기',
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _goThenReload('/write-diary');
+              },
+            ),
+            _SheetAction(
+              icon: Icons.event_outlined,
+              label: '새 일정 추가',
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _goThenReload('/add-schedule');
+              },
+            ),
+            _SheetAction(
+              icon: Icons.psychology_outlined,
+              label: '퀴즈 풀기',
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _go('/character-quiz-play');
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.white,
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
+      floatingActionButton: (_loading || _errorMessage != null)
+          ? null
+          : FloatingActionButton(
+              onPressed: _openCreateSheet,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 2,
+              child: const Icon(Icons.add, size: 28),
+            ),
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? _buildError()
+                : _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    final home = _home!;
+    final group = home.activeGroup;
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        children: [
+          _GreetingHeader(userName: home.userName),
+          const SizedBox(height: 20),
+          _SummaryStrip(
+            today: home.today,
+            onSchedules: () => _go('/schedule'),
+            onDiaries: () => _go('/diary'),
+            onUnread: () => _goThenReload('/notifications'),
+          ),
+          const SizedBox(height: 20),
+          _ActiveGroupCard(
+            group: group,
+            avatarColors: _avatarColors,
+            onSwitch: _openGroupSwitcher,
+            onNextEvent: () => _go('/schedule'),
+          ),
+          const SizedBox(height: 24),
+          const _SectionTitle('빠른 작업'),
+          const SizedBox(height: 12),
+          _QuickActions(
+            onDiary: () => _goThenReload('/write-diary'),
+            onSchedule: () => _goThenReload('/add-schedule'),
+            onQuiz: () => _go('/character-quiz-play'),
+            onInvite: () => _go('/code-generate'),
+          ),
+          const SizedBox(height: 24),
+          const _SectionTitle('그룹 기능'),
+          const SizedBox(height: 12),
+          FeatureCard(
+            icon: Icons.calendar_month_outlined,
+            iconBgColor: AppColors.primary.withValues(alpha: 0.15),
+            iconColor: AppColors.primary,
+            cardBgColor: AppColors.primary.withValues(alpha: 0.06),
+            title: '일정 관리',
+            subtitle: '우리 모임 일정을 한눈에',
+            onTap: () => _go('/schedule'),
+          ),
+          const SizedBox(height: 12),
+          FeatureCard(
+            icon: Icons.book_outlined,
+            iconBgColor: const Color(0xFFFFE88A),
+            iconColor: const Color(0xFFC89A00),
+            cardBgColor: const Color(0xFFFFFBEE),
+            title: '그림일기',
+            subtitle: '오늘의 추억을 기록해요',
+            onTap: () => _go('/diary'),
+          ),
+          const SizedBox(height: 12),
+          FeatureCard(
+            icon: Icons.favorite_rounded,
+            iconBgColor: AppColors.primary.withValues(alpha: 0.15),
+            iconColor: AppColors.primary,
+            cardBgColor: AppColors.primary.withValues(alpha: 0.06),
+            title: '모찌 키우기',
+            subtitle: '함께 모찌를 키워봐요',
+            onTap: () => _go('/character'),
+          ),
+          const SizedBox(height: 12),
+          FeatureCard(
+            icon: Icons.check_box_outlined,
+            iconBgColor: AppColors.blue.withValues(alpha: 0.2),
+            iconColor: AppColors.blue,
+            cardBgColor: AppColors.blue.withValues(alpha: 0.06),
+            title: '투두리스트',
+            subtitle: '할 일을 함께 관리해요',
+            onTap: () => _go('/todo'),
+          ),
+          if (group.isOwner) ...[
+            const SizedBox(height: 12),
+            FeatureCard(
+              icon: Icons.swap_horiz_rounded,
+              iconBgColor: AppColors.purple.withValues(alpha: 0.15),
+              iconColor: AppColors.purple,
+              cardBgColor: AppColors.purple.withValues(alpha: 0.06),
+              title: '방장 양도',
+              subtitle: '다른 멤버에게 방장을 넘겨요',
+              onTap: () => _goThenReload('/transfer-owner', arguments: group.name),
+            ),
+          ],
+          const SizedBox(height: 28),
+          const _SectionTitle('최근 소식'),
+          const SizedBox(height: 12),
+          _ActivitySection(
+            items: _activity,
+            onItemTap: () => _goThenReload('/notifications'),
+            onEmptyCta: () => _goThenReload('/write-diary'),
+          ),
+        ],
       ),
     );
   }
@@ -239,8 +383,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline,
-              size: 48, color: AppColors.gray400),
+          const Icon(Icons.error_outline, size: 48, color: AppColors.gray400),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -272,101 +415,850 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       ),
     );
   }
+}
 
-  Widget _buildMemberSection(int totalMembers) {
-    final displayCount = totalMembers > 4 ? 4 : totalMembers;
-    final extraCount = totalMembers - displayCount;
+// ────────────────────────────────────────────────────────────
+//  ① 인사 헤더
+// ────────────────────────────────────────────────────────────
 
-    return Column(
+class _GreetingHeader extends StatelessWidget {
+  const _GreetingHeader({required this.userName});
+  final String userName;
+
+  static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final dateLabel =
+        '${now.month}월 ${now.day}일 ${_weekdays[(now.weekday - 1) % 7]}요일';
+    final name = userName.isNotEmpty ? userName : '회원';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ...List.generate(displayCount, (i) {
-              final memberships = _detail?.memberships ?? [];
-              final member = i < memberships.length ? memberships[i] : null;
-              return _buildAvatar(i, member);
-            }),
-            if (extraCount > 0) ...[
-              const SizedBox(width: 8),
-              _buildExtraAvatar(extraCount),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dateLabel,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: AppColors.gray500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 24,
+                    height: 1.2,
+                    color: AppColors.gray900,
+                  ),
+                  children: [
+                    const TextSpan(text: '안녕하세요,\n'),
+                    TextSpan(
+                      text: name,
+                      style: const TextStyle(color: AppColors.primary),
+                    ),
+                    const TextSpan(text: '님 👋'),
+                  ],
+                ),
+              ),
             ],
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(
-            '$totalMembers명 참여 중',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-              color: AppColors.primary,
-            ),
+        ),
+        const SizedBox(width: 12),
+        const NotificationBellIcon(),
+        const SizedBox(width: 12),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pushNamed('/my-page'),
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(Icons.settings_outlined,
+                size: 24, color: AppColors.gray700),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildAvatar(int index, [MembershipSummary? member]) {
-    final color = _memberColors[index % _memberColors.length];
-    final profileImage = member?.profileImage;
+// ────────────────────────────────────────────────────────────
+//  ② 오늘 요약 스트립
+// ────────────────────────────────────────────────────────────
+
+class _SummaryStrip extends StatelessWidget {
+  const _SummaryStrip({
+    required this.today,
+    required this.onSchedules,
+    required this.onDiaries,
+    required this.onUnread,
+  });
+
+  final TodaySummary today;
+  final VoidCallback onSchedules;
+  final VoidCallback onDiaries;
+  final VoidCallback onUnread;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            count: today.scheduleCount,
+            label: '오늘 일정',
+            color: AppColors.primary,
+            bg: AppColors.primary.withValues(alpha: 0.08),
+            onTap: onSchedules,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SummaryCard(
+            count: today.newDiaryCount,
+            label: '새 일기',
+            color: AppColors.blue,
+            bg: AppColors.blue.withValues(alpha: 0.08),
+            onTap: onDiaries,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SummaryCard(
+            count: today.unreadCount,
+            label: '안읽음',
+            color: const Color(0xFFC89A00),
+            bg: const Color(0xFFFFFBEE),
+            onTap: onUnread,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.count,
+    required this.label,
+    required this.color,
+    required this.bg,
+    required this.onTap,
+  });
+
+  final int count;
+  final String label;
+  final Color color;
+  final Color bg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                count > 99 ? '99+' : '$count',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                  height: 1.0,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppColors.gray700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  ③ 활성 그룹 카드
+// ────────────────────────────────────────────────────────────
+
+class _ActiveGroupCard extends StatelessWidget {
+  const _ActiveGroupCard({
+    required this.group,
+    required this.avatarColors,
+    required this.onSwitch,
+    required this.onNextEvent,
+  });
+
+  final ActiveGroupSummary group;
+  final List<Color> avatarColors;
+  final VoidCallback onSwitch;
+  final VoidCallback onNextEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final shownMembers = group.members.take(4).toList();
+    final extra = group.memberCount - shownMembers.length;
     return Container(
-      margin: const EdgeInsets.only(right: 8),
-      width: 48,
-      height: 48,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFF8A8A), AppColors.primary],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🏠', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 6),
+              const Text(
+                '지금 보는 그룹',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+              ),
+              const Spacer(),
+              Material(
+                color: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(999),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: onSwitch,
+                  child: const Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '그룹 전환',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 18, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            group.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w800,
+              fontSize: 24,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < shownMembers.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(right: i == shownMembers.length - 1 ? 0 : 6),
+                  child: _Avatar(
+                    member: shownMembers[i],
+                    color: avatarColors[i % avatarColors.length],
+                  ),
+                ),
+              if (extra > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Text(
+                    '+$extra',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 10),
+              Text(
+                '${group.memberCount}명 함께',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _NextEventTile(event: group.nextEvent, onTap: onNextEvent),
+        ],
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.member, required this.color});
+  final MembershipSummary member;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final img = member.profileImage;
+    return Container(
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.white, width: 2),
+        border: Border.all(color: Colors.white, width: 1.5),
       ),
       child: ClipOval(
-        child: (profileImage != null && profileImage.isNotEmpty)
+        child: (img != null && img.isNotEmpty)
             ? Image.network(
-                profileImage,
-                width: 48,
-                height: 48,
+                img,
+                width: 34,
+                height: 34,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: color.withValues(alpha: 0.18),
-                  child: Center(
-                      child: Icon(Icons.person_outline, size: 22, color: color)),
-                ),
+                errorBuilder: (_, __, ___) => _fallback(),
               )
-            : Container(
-                color: color.withValues(alpha: 0.18),
-                child: Center(
-                    child: Icon(Icons.person_outline, size: 22, color: color)),
-              ),
+            : _fallback(),
       ),
     );
   }
 
-  Widget _buildExtraAvatar(int count) {
+  Widget _fallback() {
+    final initial =
+        member.name.isNotEmpty ? member.name.substring(0, 1) : '?';
     return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: AppColors.gray100,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.white, width: 2),
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          color: color,
+        ),
       ),
-      child: Center(
-        child: Text(
-          '+$count',
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: AppColors.gray500,
+    );
+  }
+}
+
+class _NextEventTile extends StatelessWidget {
+  const _NextEventTile({required this.event, required this.onTap});
+  final HomeNextEvent? event;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = event;
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.event_rounded,
+                    size: 20, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: e == null
+                    ? const Text(
+                        '예정된 일정이 없어요',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppColors.gray500,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _whenLabel(e),
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            e.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: AppColors.gray900,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 20, color: AppColors.gray400),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  /// "오늘 · 오후 7시" / "6월 3일 · 하루 종일" 식 라벨.
+  static String _whenLabel(HomeNextEvent e) {
+    final now = DateTime.now();
+    final d = e.startDate;
+    final today = DateTime(now.year, now.month, now.day);
+    final that = DateTime(d.year, d.month, d.day);
+    final diff = that.difference(today).inDays;
+    final dayLabel = diff == 0
+        ? '오늘'
+        : diff == 1
+            ? '내일'
+            : '${d.month}월 ${d.day}일';
+    if (e.allDay) return '$dayLabel · 하루 종일';
+    final t = _timeLabel(e.startTime);
+    return t == null ? dayLabel : '$dayLabel · $t';
+  }
+
+  /// "19:00:00" → "오후 7시" / "오후 7시 30분".
+  static String? _timeLabel(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '');
+    if (h == null) return null;
+    final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    final period = h < 12 ? '오전' : '오후';
+    final h12 = h % 12 == 0 ? 12 : h % 12;
+    return m > 0 ? '$period $h12시 $m분' : '$period $h12시';
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  ④ 퀵 액션
+// ────────────────────────────────────────────────────────────
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.onDiary,
+    required this.onSchedule,
+    required this.onQuiz,
+    required this.onInvite,
+  });
+
+  final VoidCallback onDiary;
+  final VoidCallback onSchedule;
+  final VoidCallback onQuiz;
+  final VoidCallback onInvite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionItem(
+            icon: Icons.edit_outlined,
+            label: '일기 쓰기',
+            color: const Color(0xFFC89A00),
+            bg: const Color(0xFFFFFBEE),
+            onTap: onDiary,
+          ),
+        ),
+        Expanded(
+          child: _QuickActionItem(
+            icon: Icons.event_outlined,
+            label: '일정 추가',
+            color: AppColors.primary,
+            bg: AppColors.primary.withValues(alpha: 0.08),
+            onTap: onSchedule,
+          ),
+        ),
+        Expanded(
+          child: _QuickActionItem(
+            icon: Icons.psychology_outlined,
+            label: '퀴즈',
+            color: AppColors.purple,
+            bg: AppColors.purple.withValues(alpha: 0.1),
+            onTap: onQuiz,
+          ),
+        ),
+        Expanded(
+          child: _QuickActionItem(
+            icon: Icons.person_add_alt_1_outlined,
+            label: '초대',
+            color: AppColors.blue,
+            bg: AppColors.blue.withValues(alpha: 0.1),
+            onTap: onInvite,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionItem extends StatelessWidget {
+  const _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.bg,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color bg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: AppColors.gray700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  ⑤ 최근 소식 피드
+// ────────────────────────────────────────────────────────────
+
+class _ActivitySection extends StatelessWidget {
+  const _ActivitySection({
+    required this.items,
+    required this.onItemTap,
+    required this.onEmptyCta,
+  });
+
+  final List<AppNotification> items;
+  final VoidCallback onItemTap;
+  final VoidCallback onEmptyCta;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+        decoration: BoxDecoration(
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.inbox_outlined,
+                size: 36, color: AppColors.gray400),
+            const SizedBox(height: 10),
+            const Text(
+              '아직 새 소식이 없어요',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onEmptyCta,
+              child: const Text(
+                '첫 일기 남기기',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (final n in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _ActivityTile(notification: n, onTap: onItemTap),
+          ),
+      ],
+    );
+  }
+}
+
+class _ActivityTile extends StatelessWidget {
+  const _ActivityTile({required this.notification, required this.onTap});
+  final AppNotification notification;
+  final VoidCallback onTap;
+
+  (IconData, Color) get _skin {
+    final type = notification.type;
+    if (type.contains('diary')) {
+      return (Icons.auto_stories_rounded, const Color(0xFFE91E63));
+    }
+    if (type.contains('schedule')) {
+      return (Icons.event_available_rounded, const Color(0xFF1A73E8));
+    }
+    if (type.contains('comment')) {
+      return (Icons.mode_comment_rounded, const Color(0xFF5E35B1));
+    }
+    if (type.contains('member') || type.contains('join')) {
+      return (Icons.person_add_alt_1_rounded, const Color(0xFF2E7D32));
+    }
+    if (type.contains('quiz') || type.contains('mochi') || type.contains('diko')) {
+      return (Icons.auto_awesome_rounded, AppColors.primary);
+    }
+    return (Icons.notifications_rounded, AppColors.gray500);
+  }
+
+  String get _timeAgo {
+    final diff = DateTime.now().difference(notification.createdAt);
+    if (diff.inMinutes < 1) return '방금';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    final d = notification.createdAt.toLocal();
+    return '${d.month}월 ${d.day}일';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color) = _skin;
+    final unread = !notification.isRead;
+    return Material(
+      color: unread ? const Color(0xFFEEF1FB) : AppColors.gray50,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 19, color: color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title.isNotEmpty
+                          ? notification.title
+                          : notification.message,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: unread ? AppColors.gray900 : AppColors.gray700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      notification.message,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _timeAgo,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 11,
+                  color: AppColors.gray400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  공용
+// ────────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
+          color: AppColors.gray900,
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetAction extends StatelessWidget {
+  const _SheetAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 22),
+      ),
+      title: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          fontSize: 15,
+          color: AppColors.gray900,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }
