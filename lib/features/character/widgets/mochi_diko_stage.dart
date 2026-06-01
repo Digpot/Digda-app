@@ -348,16 +348,18 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
             maxWidth: mochiSize * 0.78,
           ),
         ),
-        // 디코 말풍선 — 디코 머리 바로 위(우측 하단). 디코는 bottom:16, 높이 dikoSize 에
-        // 떠 있으므로 그 위로 살짝 올려 디코가 말하는 것처럼 보이게 한다.
+        // 디코 말풍선 — 디코 머리 위(우측). 디코는 bottom:16, 높이 dikoSize 로 컨테이너
+        // 오른쪽에 매달려 있다. 버블을 디코 쪽으로 더 붙이고(우측) 위로 더 띄워(상단)
+        // 모찌 본체와 덜 겹치게 한다. 단 버블 오른쪽 끝이 디코 오른쪽 끝(≈ +dikoSize*0.65)
+        // 을 넘으면 작은 화면에서 ListView 가 가로로 잘라먹으므로 그 안쪽으로 둔다.
         Positioned(
-          right: -dikoSize * 0.55,
-          bottom: 16 + dikoSize + 2,
+          right: -dikoSize * 0.62,
+          bottom: 16 + dikoSize + 14,
           child: _slot(
             show: isDiko,
             line: line,
             keyId: 'diko-$idx',
-            maxWidth: mochiSize * 0.62,
+            maxWidth: mochiSize * 0.58,
           ),
         ),
       ],
