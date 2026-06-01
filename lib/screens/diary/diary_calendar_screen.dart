@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/character/models/character_models.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
@@ -54,22 +56,36 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     if (groupId == null) return;
     setState(() => _loading = true);
     try {
+      // 그리드·통계는 calendar() 만으로 충분 — 즉시 표시(캐시 우선).
       final calendar = await Di.diaryRepository.calendar(groupId, _focusedDay);
-      final list = await Di.diaryRepository.list(
-        groupId,
-        month: _focusedDay,
-        limit: 31,
-      );
       if (!mounted) return;
       setState(() {
         _calendar = calendar;
-        _monthDiaries = list.diaries;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
       showErrorDialog(context, errorMessageOf(e));
+    }
+    // 리스트 뷰일 때만 일기 목록을 추가 로드(지연 로드).
+    if (_view == _DiaryView.list) _loadList();
+  }
+
+  /// 리스트 뷰용 일기 목록 — 캘린더 뷰에선 불필요하므로 분리해 지연 로드.
+  Future<void> _loadList() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    try {
+      final list = await Di.diaryRepository.list(
+        groupId,
+        month: _focusedDay,
+        limit: 31,
+      );
+      if (!mounted) return;
+      setState(() => _monthDiaries = list.diaries);
+    } catch (_) {
+      // 리스트 로드 실패는 캘린더 표시를 막지 않도록 무시.
     }
   }
 
@@ -173,7 +189,10 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     Widget seg(IconData icon, _DiaryView v) {
       final active = _view == v;
       return GestureDetector(
-        onTap: () => setState(() => _view = v),
+        onTap: () {
+          setState(() => _view = v);
+          if (v == _DiaryView.list) _loadList();
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -468,30 +487,28 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                     ),
                   ),
                 ),
-              // 날짜
+              // 날짜 — 사진/모찌 모두 어두운 배경이라 흰색으로 통일.
               Positioned(
                 top: 3,
                 left: 5,
                 child: Text(
                   '${day.day}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
-                    color: (entry.thumbnailUrl != null &&
-                            entry.thumbnailUrl!.isNotEmpty)
-                        ? AppColors.white
-                        : dayColor,
+                    color: AppColors.white,
                   ),
                 ),
               ),
-              // 기분 이모지
-              Positioned(
-                bottom: 2,
-                right: 3,
-                child: Text(_emojiOf(entry.mood),
-                    style: const TextStyle(fontSize: 12)),
-              ),
+              // 기분 이모지 — 사진 있을 때만(모찌 타일은 표정으로 기분 표현).
+              if (entry.thumbnailUrl != null && entry.thumbnailUrl!.isNotEmpty)
+                Positioned(
+                  bottom: 2,
+                  right: 3,
+                  child: Text(_emojiOf(entry.mood),
+                      style: const TextStyle(fontSize: 12)),
+                ),
               // 여러 편 +N
               if (entry.count > 1)
                 Positioned(
@@ -540,12 +557,36 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     );
   }
 
+  /// 기분(0~4) → 모찌 표정 매핑.
+  MochiEmotion _moodEmotion(int mood) {
+    switch (mood) {
+      case 0:
+        return MochiEmotion.happy; // 행복
+      case 1:
+        return MochiEmotion.idle; // 평온
+      case 2:
+        return MochiEmotion.sleepy; // 슬픔
+      case 3:
+        return MochiEmotion.proud; // 화남
+      case 4:
+        return MochiEmotion.sleepy; // 피곤
+      default:
+        return MochiEmotion.idle;
+    }
+  }
+
+  /// 사진 없는 일기 타일 — 웃는 이모지 대신 모찌 캐릭터(기분에 맞는 표정).
   Widget _moodTileBg(int mood) {
-    final color = _accentPalette[mood % _accentPalette.length];
-    return Container(
-      color: color.withValues(alpha: 0.14),
-      alignment: Alignment.center,
-      child: Text(_emojiOf(mood), style: const TextStyle(fontSize: 22)),
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: MochiCharacterView(
+          appearance: MochiAppearance.coral,
+          stage: CharacterStage.bloom,
+          size: 200,
+          expression: _moodEmotion(mood),
+        ),
+      ),
     );
   }
 
@@ -642,27 +683,46 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     final now = DateTime.now();
     final sameMonth =
         _focusedDay.year == now.year && _focusedDay.month == now.month;
-    final todayHasDiary = _calendar?.byDay[_key(now)] != null;
-    if (!sameMonth || todayHasDiary) return const SizedBox.shrink();
+    if (!sameMonth) return const SizedBox.shrink();
 
+    final todayEntry = _calendar?.byDay[_key(now)];
     final streak = _calendar?.stats.streak ?? 0;
+
+    // 오늘 일기가 있으면 사라지지 않고 '작성 완료' 멘트를 보여준다(탭 → 오늘 일기).
+    final bool done = todayEntry != null;
+    final String title =
+        done ? '✅ 오늘 일기를 남겼어요!' : '✏️ 오늘은 어떤 하루였나요?';
+    final String subtitle = done
+        ? (streak > 0 ? '연속 $streak일째 기록 중이에요 🔥' : '오늘의 추억을 남겼어요 💖')
+        : '지금 기록하면 연속 ${streak + 1}일째 🔥';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
       child: GestureDetector(
         onTap: () {
-          Navigator.of(context)
-              .pushNamed('/write-diary', arguments: now)
-              .then((_) {
-            if (mounted) _loadMonth();
-          });
+          if (done) {
+            Navigator.of(context)
+                .pushNamed('/diary-detail', arguments: todayEntry.diaryId)
+                .then((_) {
+              if (mounted) _loadMonth();
+            });
+          } else {
+            Navigator.of(context)
+                .pushNamed('/write-diary', arguments: now)
+                .then((_) {
+              if (mounted) _loadMonth();
+            });
+          }
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.primary, Color(0xFFFF9472)],
+              colors: done
+                  ? const [Color(0xFFFFB36B), Color(0xFFFF8A8A)]
+                  : const [AppColors.primary, Color(0xFFFF9472)],
             ),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -672,9 +732,9 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '✏️ 오늘은 어떤 하루였나요?',
-                      style: TextStyle(
+                    Text(
+                      title,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -683,7 +743,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '지금 기록하면 연속 ${streak + 1}일째 🔥',
+                      subtitle,
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w400,

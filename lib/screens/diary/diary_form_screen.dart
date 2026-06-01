@@ -254,15 +254,17 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
         }
       }
 
-      // 1. 새로 첨부된 파일들 업로드 → upload id 수집
-      final newIds = <String>[];
-      for (final file in _newFiles) {
-        final uploaded = await Di.uploadRepository.uploadImage(
-          filePath: file.path,
-          purpose: UploadPurpose.diary,
-        );
-        newIds.add(uploaded.id);
-      }
+      // 1. 새로 첨부된 파일들 업로드 → upload id 수집.
+      //    여러 장을 순차로 올리면 느려서 병렬 업로드한다(Future.wait 는 입력 순서 보존).
+      final uploadedList = await Future.wait(
+        _newFiles.map(
+          (file) => Di.uploadRepository.uploadImage(
+            filePath: file.path,
+            purpose: UploadPurpose.diary,
+          ),
+        ),
+      );
+      final newIds = uploadedList.map((u) => u.id).toList();
 
       // 2. imageIds 빌드.
       //    서버(DiaryServiceImpl.resolveImageUrls)는 항목별로 판별:

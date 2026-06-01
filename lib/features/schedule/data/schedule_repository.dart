@@ -7,15 +7,24 @@ class ScheduleRepository {
 
   final ApiClient _api;
 
+  /// 기간 목록 캐시 — 'groupId|start|end' → 일정 목록. 쓰기(생성/수정/삭제) 시 전체 무효화.
+  final Map<String, List<Schedule>> _listCache = {};
+
   String _date(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  /// 6-1. 일정 목록 (기간 조회).
+  /// 6-1. 일정 목록 (기간 조회). 캐시 우선 반환(즉시 표시), [forceRefresh] 로 강제 갱신.
   Future<List<Schedule>> list(
     String groupRoomId, {
     required DateTime startDate,
     required DateTime endDate,
+    bool forceRefresh = false,
   }) async {
+    final key = '$groupRoomId|${_date(startDate)}|${_date(endDate)}';
+    if (!forceRefresh) {
+      final cached = _listCache[key];
+      if (cached != null) return cached;
+    }
     final res = await _api.get<Map<String, dynamic>>(
       '/group-rooms/$groupRoomId/schedules',
       query: {
@@ -23,9 +32,11 @@ class ScheduleRepository {
         'endDate': _date(endDate),
       },
     );
-    return (res.data!['schedules'] as List? ?? [])
+    final list = (res.data!['schedules'] as List? ?? [])
         .map((e) => Schedule.fromJson(e as Map<String, dynamic>))
         .toList();
+    _listCache[key] = list;
+    return list;
   }
 
   /// 6-2. 일정 상세.
@@ -45,6 +56,7 @@ class ScheduleRepository {
       '/group-rooms/$groupRoomId/schedules',
       body: body.toJson(),
     );
+    _listCache.clear();
     return Schedule.fromJson(res.data!);
   }
 
@@ -58,6 +70,7 @@ class ScheduleRepository {
       '/group-rooms/$groupRoomId/schedules/$scheduleId',
       body: body.toJson(),
     );
+    _listCache.clear();
     return Schedule.fromJson(res.data!);
   }
 
@@ -66,5 +79,6 @@ class ScheduleRepository {
     await _api.delete<void>(
       '/group-rooms/$groupRoomId/schedules/$scheduleId',
     );
+    _listCache.clear();
   }
 }
