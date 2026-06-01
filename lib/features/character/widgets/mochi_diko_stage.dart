@@ -86,11 +86,16 @@ class MochiDikoStage extends StatelessWidget {
           if (state.dikoUnlocked && showChat)
             // 말풍선은 각자 자기 머리 위에서 뜬다 — 모찌 대사는 모찌 위(상단),
             // 디코 대사는 디코 위(우측 하단)에 떠서 누가 말하는지 헷갈리지 않게 한다.
+            // 채팅 오버레이는 컨테이너 전체를 덮으므로, 버블이 모찌/디코 본체 위에
+            // 겹쳐도 탭(쓰다듬기·디코 반응)이 항상 아래 캐릭터로 전달되도록
+            // IgnorePointer 로 감싼다 — 말풍선 자체는 장식이라 입력이 필요 없다.
             Positioned.fill(
-              child: _MochiDikoChat(
-                stage: state.stage,
-                mochiSize: mochiSize,
-                dikoSize: dikoSize,
+              child: IgnorePointer(
+                child: _MochiDikoChat(
+                  stage: state.stage,
+                  mochiSize: mochiSize,
+                  dikoSize: dikoSize,
+                ),
               ),
             ),
         ],
