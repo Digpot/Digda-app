@@ -38,10 +38,18 @@ class MochiDikoStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 모찌가 시각적으로 화면 정중앙에 오도록 컨테이너 폭은 mochiSize 그대로 유지.
-    // 디코는 모찌 오른쪽 옆에 약간 튀어나오게 (Stack clipBehavior: Clip.none) 배치 —
-    // 부모 Center 가 모찌를 중심에 맞추고, 디코가 그 옆에 자연스럽게 따라붙는 모양.
-    final containerWidth = mochiSize;
+    // 디코는 모찌 오른쪽으로 dikoPeek 만큼 삐져나오게 둔다. 예전엔 컨테이너 폭을
+    // mochiSize 로 두고 디코를 right:-dikoPeek 로 바깥에 그렸는데, Flutter 는 부모
+    // (SizedBox) 경계 '밖' 영역의 포인터를 자식에게 전달하지 않으므로(Clip.none 은
+    // 페인팅만 허용, 히트테스트는 부모 크기로 잘림) 디코의 보이는 부분 대부분이
+    // 탭 불가였다 — "디코를 터치해도 반응이 없다"의 원인.
+    //
+    // 그래서 컨테이너 폭에 dikoPeek 를 더해 디코를 '안쪽'에 완전히 담고(히트테스트 OK),
+    // 늘어난 폭만큼 부모 Center 가 왼쪽으로 밀어내는 것을 Transform 으로 되돌려
+    // 모찌·디코·말풍선이 기존과 동일한 화면 위치에 오도록 한다.
+    final dikoPeek = dikoSize * 0.65;
+    final containerWidth =
+        state.dikoUnlocked ? mochiSize + dikoPeek : mochiSize;
     // 상단 영역(말풍선용) 56px:
     //   - 디코 해금 전: 모찌 자체의 자동 말풍선(showBubble=true)이 위쪽 56px 를 사용.
     //   - 디코 해금 후: 모찌 자동 말풍선은 끄고(showBubble=false) 같은 56px 를
@@ -53,7 +61,7 @@ class MochiDikoStage extends StatelessWidget {
     final totalHeight = state.dikoUnlocked
         ? (topBand + mochiSize + 24)
         : mochiSelfHeight;
-    return SizedBox(
+    final stage = SizedBox(
       width: containerWidth,
       height: totalHeight,
       child: Stack(
@@ -77,9 +85,11 @@ class MochiDikoStage extends StatelessWidget {
             ),
           ),
           if (state.dikoUnlocked)
-            // 모찌 오른쪽 외곽에 디코가 살짝 튀어나오게. 모찌의 발 높이에 맞춰 정렬.
+            // 모찌 오른쪽에 디코가 살짝 튀어나오게. 컨테이너가 dikoPeek 만큼 더 넓어졌으니
+            // right:0 이면 예전 right:-dikoPeek 과 같은 절대 위치이면서 '안쪽'에 들어와
+            // 탭이 정상 전달된다. 모찌의 발 높이에 맞춰 정렬.
             Positioned(
-              right: -dikoSize * 0.65,
+              right: 0,
               bottom: 16,
               child: _DikoIdleFloat(size: dikoSize, onTap: onDikoTap),
             ),
@@ -100,6 +110,14 @@ class MochiDikoStage extends StatelessWidget {
             ),
         ],
       ),
+    );
+    // 디코가 없을 땐 폭이 mochiSize 라 그대로 중앙 정렬. 디코가 있으면 컨테이너가
+    // 오른쪽으로 dikoPeek 만큼 넓어졌으므로, 부모 Center 가 추가로 왼쪽으로 미는
+    // dikoPeek/2 만큼 다시 오른쪽으로 보정해 모찌를 정확히 화면 중앙에 둔다.
+    if (!state.dikoUnlocked) return stage;
+    return Transform.translate(
+      offset: Offset(dikoPeek / 2, 0),
+      child: stage,
     );
   }
 }
@@ -358,7 +376,10 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
         // 모찌 본체와 덜 겹치게 한다. 단 버블 오른쪽 끝이 디코 오른쪽 끝(≈ +dikoSize*0.65)
         // 을 넘으면 작은 화면에서 ListView 가 가로로 잘라먹으므로 그 안쪽으로 둔다.
         Positioned(
-          right: -dikoSize * 0.62,
+          // 컨테이너가 오른쪽으로 dikoPeek(=dikoSize*0.65) 넓어졌으므로, 디코 말풍선이
+          // 기존(폭 mochiSize 기준 right:-dikoSize*0.62)과 동일한 화면 위치에 오도록
+          // dikoPeek 만큼 안쪽으로 당긴다: -0.62 + 0.65 = +0.03.
+          right: dikoSize * 0.03,
           bottom: 16 + dikoSize + 14,
           child: _slot(
             show: isDiko,

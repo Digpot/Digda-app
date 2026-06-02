@@ -33,6 +33,8 @@ class AuthSession extends ChangeNotifier {
   AuthUser? _user;
   SocialProvider? _lastProvider;
   bool _isAuthenticated = false;
+  /// 한 프로세스 내에서 onTokenRefresh 리스너가 중복 부착되는 것을 막는 가드.
+  bool _tokenRefreshAttached = false;
 
   AuthUser? get user => _user;
   SocialProvider? get provider => _lastProvider;
@@ -42,6 +44,15 @@ class AuthSession extends ChangeNotifier {
   Future<void> hydrate() async {
     _isAuthenticated = await _api.tokens.hasSession;
     notifyListeners();
+  }
+
+  /// 자동 로그인(이미 인증된) 상태에서 부팅했을 때 FCM 디바이스 토큰을 다시 등록한다.
+  /// 예전엔 [signIn] 에서만 등록해, 로그인 상태를 유지하는 사용자는 FCM 토큰이
+  /// 회전/만료되거나 서버에서 무효 토큰으로 정리된 뒤 영영 재등록되지 않아
+  /// 일정 리마인더 등 푸시가 조용히 끊겼다. 부팅 때마다 best-effort 로 갱신한다.
+  Future<void> ensureDeviceRegistered() async {
+    if (!_isAuthenticated) return;
+    await _registerDevice();
   }
 
   Future<LoginResult> signIn(SocialProvider provider) async {
@@ -102,11 +113,14 @@ class AuthSession extends ChangeNotifier {
       final deviceId = await _deviceRepo.register(token: token, platform: platform);
       await _tokenStorage.saveDeviceId(deviceId);
 
-      // 토큰 갱신 시 서버에 재등록
-      messaging.onTokenRefresh.listen((newToken) async {
-        final id = await _deviceRepo.register(token: newToken, platform: platform);
-        await _tokenStorage.saveDeviceId(id);
-      });
+      // 토큰 갱신 시 서버에 재등록 (프로세스당 한 번만 부착).
+      if (!_tokenRefreshAttached) {
+        _tokenRefreshAttached = true;
+        messaging.onTokenRefresh.listen((newToken) async {
+          final id = await _deviceRepo.register(token: newToken, platform: platform);
+          await _tokenStorage.saveDeviceId(id);
+        });
+      }
     } catch (_) {
       // FCM 설정 미완료 시 무시 (google-services.json 등 미설치)
     }

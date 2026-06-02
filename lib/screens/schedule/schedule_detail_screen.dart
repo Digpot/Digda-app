@@ -205,7 +205,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.white,
       resizeToAvoidBottomInset: true,
+      // 하단은 SafeArea 로 인셋을 소비하지 않고, 댓글 입력바가 직접
+      // MediaQuery.padding.bottom 을 더해 화면 바닥에 밀착시킨다.
+      // (소비해 버리면 입력바가 시스템 인셋만큼 위로 떠 아래에 빈 공간이 생김 —
+      //  일기 상세 화면과 동일한 도킹 방식으로 통일)
       body: SafeArea(
+        bottom: false,
         child: Stack(
           children: [
             Column(
