@@ -43,6 +43,8 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   List<AppNotification> _activity = const [];
   bool _loading = true;
   String? _errorMessage;
+  /// 활성 그룹이 삭제 예정이어서 홈을 그릴 수 없는 상태. true 면 복구 안내 화면을 보여준다.
+  bool _deleteScheduledBlock = false;
 
   @override
   void initState() {
@@ -62,6 +64,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     setState(() {
       _loading = true;
       _errorMessage = null;
+      _deleteScheduledBlock = false;
     });
 
     final now = DateTime.now();
@@ -97,6 +100,24 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
 
     try {
       final detail = await detailFuture; // 핵심 — 실패 시 에러 화면
+      // 어떤 경로로 들어왔든 삭제 예정 그룹이면 홈 대시보드를 그리지 않는다.
+      // 자동 이동은 뒤로가기 시 다시 튕겨 들어가는 트랩이 되므로, 인라인 안내 +
+      // '그룹 관리로 이동' 버튼만 노출한다. (실제 진입 경로인 그룹 전환/리스트는
+      // 각각 /manage-diary 로 직접 보낸다)
+      if (detail.groupRoom.deleteScheduledAt != null) {
+        if (!mounted) return;
+        Di.activeGroup.enter(
+          groupRoomId: detail.groupRoom.id,
+          groupRoomName: detail.groupRoom.name,
+          isOwner: detail.isOwner,
+          isDeleteScheduled: true,
+        );
+        setState(() {
+          _loading = false;
+          _deleteScheduledBlock = true;
+        });
+        return;
+      }
       final noti = await notiFuture;
       final schedules = await scheduleFuture;
       final diaryRes = await diaryFuture;
@@ -249,17 +270,23 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                 itemBuilder: (_, i) {
                   final g = groups[i];
                   final selected = g.id == activeId;
+                  final scheduled = g.isDeleteScheduled;
                   return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                      backgroundImage:
-                          (g.thumbnailImage != null && g.thumbnailImage!.isNotEmpty)
-                              ? NetworkImage(g.thumbnailImage!)
-                              : null,
-                      child: (g.thumbnailImage == null || g.thumbnailImage!.isEmpty)
-                          ? const Icon(Icons.group_rounded,
-                              color: AppColors.primary, size: 20)
-                          : null,
+                    leading: Opacity(
+                      opacity: scheduled ? 0.45 : 1,
+                      child: CircleAvatar(
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.12),
+                        backgroundImage: (g.thumbnailImage != null &&
+                                g.thumbnailImage!.isNotEmpty)
+                            ? NetworkImage(g.thumbnailImage!)
+                            : null,
+                        child: (g.thumbnailImage == null ||
+                                g.thumbnailImage!.isEmpty)
+                            ? const Icon(Icons.group_rounded,
+                                color: AppColors.primary, size: 20)
+                            : null,
+                      ),
                     ),
                     title: Text(
                       g.name,
@@ -269,30 +296,44 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                         fontFamily: 'Inter',
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 15,
-                        color: AppColors.gray900,
+                        color: scheduled ? AppColors.gray400 : AppColors.gray900,
                       ),
                     ),
                     subtitle: Text(
-                      '${g.memberCount}명',
-                      style: const TextStyle(
+                      scheduled ? '삭제 예정' : '${g.memberCount}명',
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
-                        color: AppColors.gray500,
+                        fontWeight:
+                            scheduled ? FontWeight.w600 : FontWeight.w400,
+                        color: scheduled ? AppColors.primary : AppColors.gray500,
                       ),
                     ),
-                    trailing: selected
-                        ? const Icon(Icons.check_circle,
-                            color: AppColors.primary, size: 20)
-                        : null,
+                    trailing: scheduled
+                        ? const Icon(Icons.lock_clock_rounded,
+                            color: AppColors.gray400, size: 20)
+                        : selected
+                            ? const Icon(Icons.check_circle,
+                                color: AppColors.primary, size: 20)
+                            : null,
                     onTap: () {
                       Navigator.of(ctx).pop();
                       if (g.id == activeId) return;
+                      // 삭제 예정 그룹은 홈으로 진입시키지 않고 그룹 관리(복구) 화면으로
+                      // 보낸다. (그룹 리스트의 _enterGroup 과 동일한 정책)
                       Di.activeGroup.enter(
                         groupRoomId: g.id,
                         groupRoomName: g.name,
                         isOwner: g.isOwner,
+                        isDeleteScheduled: g.isDeleteScheduled,
                       );
-                      _load();
+                      if (g.isDeleteScheduled) {
+                        Navigator.of(context)
+                            .pushNamed('/manage-diary')
+                            .then((_) => _load());
+                      } else {
+                        _load();
+                      }
                     },
                   );
                 },
@@ -373,7 +414,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.white,
       bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
-      floatingActionButton: (_loading || _errorMessage != null)
+      floatingActionButton: (_loading || _errorMessage != null || _deleteScheduledBlock)
           ? null
           : FloatingActionButton(
               onPressed: _openCreateSheet,
@@ -385,9 +426,11 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? _buildError()
-                : _buildBody(),
+            : _deleteScheduledBlock
+                ? _buildDeleteScheduledBlock()
+                : _errorMessage != null
+                    ? _buildError()
+                    : _buildBody(),
       ),
     );
   }
@@ -500,6 +543,57 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             onEmptyCta: () => _goThenReload('/write-diary'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 활성 그룹이 삭제 예정일 때 홈 대신 노출하는 안내 — 접근 차단 + 관리 화면 진입.
+  Widget _buildDeleteScheduledBlock() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_clock_rounded, size: 48, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            const Text(
+              '삭제 예정인 그룹이에요',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: AppColors.gray900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '이 그룹은 삭제 예정 상태라 들어갈 수 없어요.\n그룹 관리에서 복구하거나 다른 그룹을 선택해 주세요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.of(context)
+                  .pushNamed('/manage-diary')
+                  .then((_) => _load()),
+              child: const Text(
+                '그룹 관리로 이동',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
