@@ -9,6 +9,7 @@ import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
+import '../../widgets/retrying_network_image.dart';
 
 /// 그림일기 캘린더 — 사진 모자이크 달력 + 통계 스트립 + 리스트 토글.
 /// 설계: docs/DIARY_CALENDAR.md
@@ -463,10 +464,12 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
             children: [
               if (entry.thumbnailUrl != null &&
                   entry.thumbnailUrl!.isNotEmpty)
-                Image.network(
-                  entry.thumbnailUrl!,
+                // 갓 작성한 일기 사진은 서버 썸네일 생성이 잠깐 늦을 수 있어, 첫 실패에
+                // 고정되지 않도록 자동 재시도하는 이미지로 그린다.
+                RetryingNetworkImage(
+                  url: entry.thumbnailUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _moodTileBg(entry.mood),
+                  fallback: _moodTileBg(entry.mood),
                 )
               else
                 _moodTileBg(entry.mood),
@@ -864,12 +867,12 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
             if (hasImage)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  diary.thumbnailUrl!,
+                child: RetryingNetworkImage(
+                  url: diary.thumbnailUrl!,
                   width: 52,
                   height: 52,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  fallback: Container(
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
