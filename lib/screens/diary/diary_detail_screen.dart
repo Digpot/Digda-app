@@ -171,10 +171,12 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     final entry = OverlayEntry(builder: (ctx) {
       return _MoreMenuOverlay(
         onClose: _closeMoreMenu,
-        onEdit: () {
-          _closeMoreMenu();
-          _onEditTap();
-        },
+        onEdit: _isMine
+            ? () {
+                _closeMoreMenu();
+                _onEditTap();
+              }
+            : null,
         onDelete: _isMine
             ? () {
                 _closeMoreMenu();
@@ -570,10 +572,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             onTap: () => Navigator.of(context).pop(),
           ),
           const Spacer(),
-          _CircleIconButton(
-            icon: Icons.more_horiz_rounded,
-            onTap: _openMoreMenu,
-          ),
+          // 일기는 작성자 본인만 수정/삭제 가능 — 메뉴에 그 두 항목뿐이므로
+          // 내 일기가 아니면 점 3개 메뉴 버튼 자체를 숨긴다.
+          if (_isMine)
+            _CircleIconButton(
+              icon: Icons.more_horiz_rounded,
+              onTap: _openMoreMenu,
+            ),
         ],
       ),
     );
@@ -1172,11 +1177,11 @@ class _CommentRow extends StatelessWidget {
 class _MoreMenuOverlay extends StatelessWidget {
   const _MoreMenuOverlay({
     required this.onClose,
-    required this.onEdit,
+    this.onEdit,
     this.onDelete,
   });
   final VoidCallback onClose;
-  final VoidCallback onEdit;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   @override
@@ -1213,12 +1218,13 @@ class _MoreMenuOverlay extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _MoreMenuRow(
-                      icon: Icons.edit_outlined,
-                      label: '수정하기',
-                      onTap: onEdit,
-                    ),
-                    if (onDelete != null) ...[
+                    if (onEdit != null)
+                      _MoreMenuRow(
+                        icon: Icons.edit_outlined,
+                        label: '수정하기',
+                        onTap: onEdit!,
+                      ),
+                    if (onEdit != null && onDelete != null)
                       const Divider(
                         height: 8,
                         thickness: 1,
@@ -1226,6 +1232,7 @@ class _MoreMenuOverlay extends StatelessWidget {
                         indent: 8,
                         endIndent: 8,
                       ),
+                    if (onDelete != null)
                       _MoreMenuRow(
                         icon: Icons.delete_outline_rounded,
                         label: '삭제하기',
@@ -1234,7 +1241,6 @@ class _MoreMenuOverlay extends StatelessWidget {
                         iconBg: const Color(0xFFFFEDED),
                         onTap: onDelete!,
                       ),
-                    ],
                   ],
                 ),
               ),
