@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 ///
 /// 일반 [Image.network] 는 첫 로드가 실패하면 errorBuilder 결과로 '고정'되고,
 /// 실패가 전역 [imageCache] 에 남아 같은 URL 재요청도 즉시 실패로 반환된다. 그래서
-/// 갓 업로드된 사진(서버 썸네일 생성이 잠깐 늦는 경우 등)이 곧 준비돼도 화면을
-/// 다시 열기 전까지 안 떴다 — 그림일기 캘린더에서 "작성 직후엔 안 뜨고 상세에 들어갔다
-/// 나와야 뜨는" 증상의 원인.
+/// 콜드스타트 직후 그리드가 사진 여러 장을 한꺼번에 요청하다 일부가 실패로 굳으면,
+/// 그 이미지가 멀쩡히 서버에 있어도 화면을 다시 열기 전까지 안 떴다 — 그림일기
+/// 캘린더에서 "첫 진입엔 안 뜨고 상세에 들어갔다 나와야 뜨는" 증상의 원인.
 ///
 /// 이 위젯은 로드 실패 시 [retryDelay] 뒤 캐시에서 해당 항목을 evict 하고 다시
 /// 시도하기를 [maxRetries] 회까지 반복하며, 그동안/최종 실패 시 [fallback] 을 보여준다.
@@ -19,8 +19,8 @@ class RetryingNetworkImage extends StatefulWidget {
     this.width,
     this.height,
     this.fallback,
-    this.maxRetries = 3,
-    this.retryDelay = const Duration(milliseconds: 1200),
+    this.maxRetries = 4,
+    this.retryDelay = const Duration(milliseconds: 300),
   });
 
   final String url;
@@ -59,7 +59,10 @@ class _RetryingNetworkImageState extends State<RetryingNetworkImage> {
 
   void _scheduleRetry() {
     if (_attempt >= widget.maxRetries || _timer != null) return;
-    _timer = Timer(widget.retryDelay, () {
+    // 점증 백오프 — 첫 재시도는 짧게(콜드스타트 동시요청 과부하는 보통 금방 풀림),
+    // 이후엔 조금씩 길게.
+    final delay = widget.retryDelay * (_attempt + 1);
+    _timer = Timer(delay, () {
       _timer = null;
       if (!mounted) return;
       // 실패가 캐시에 남아 있으면 같은 URL 재요청이 즉시 실패로 돌아오므로 비운다.

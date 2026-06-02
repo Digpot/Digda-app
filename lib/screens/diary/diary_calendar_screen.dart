@@ -64,6 +64,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         _calendar = calendar;
         _loading = false;
       });
+      _precacheThumbs(calendar);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -71,6 +72,19 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     }
     // 리스트 뷰일 때만 일기 목록을 추가 로드(지연 로드).
     if (_view == _DiaryView.list) _loadList();
+  }
+
+  /// 캘린더 썸네일을 미리 디코드해 이미지 캐시에 적재한다. 콜드스타트 첫 진입에서
+  /// 그리드가 사진 여러 장을 한꺼번에 요청하다 일부 첫 로드가 실패로 굳어(Flutter 는
+  /// 실패를 캐시하고 재시도하지 않음) 상세를 갔다 와야 보이던 문제를 막는다.
+  void _precacheThumbs(DiaryCalendarResult cal) {
+    for (final e in cal.byDay.values) {
+      final url = e.thumbnailUrl;
+      if (url != null && url.isNotEmpty) {
+        // 실패해도 RetryingNetworkImage 가 화면에서 다시 시도하므로 여기선 무시.
+        precacheImage(NetworkImage(url), context).catchError((_) {});
+      }
+    }
   }
 
   /// 리스트 뷰용 일기 목록 — 캘린더 뷰에선 불필요하므로 분리해 지연 로드.
