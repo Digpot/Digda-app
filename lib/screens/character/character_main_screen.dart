@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -42,6 +43,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   bool _loading = true;
   String? _errorMessage;
   bool _hasLoadedOnce = false;
+  // 풀 수 있는 남은 퀴즈 수 — '퀴즈 풀기' 버튼 위 말풍선용 (best-effort, null=미조회).
+  int? _remainingQuiz;
   bool _petInProgress = false;
   bool _savingImage = false;
   final _mochiCtrl = MochiAnimationController();
@@ -107,6 +110,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         _loading = false;
         _hasLoadedOnce = true;
       });
+      _loadRemainingQuiz(groupId); // 버튼 위 말풍선용 카운트 (best-effort, 비동기)
       if (isFirst) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _mochiCtrl.triggerHappy();
@@ -136,6 +140,20 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         });
       }
     }
+  }
+
+  /// 풀 수 있는 남은 퀴즈 수를 best-effort 로 받아 '퀴즈 풀기' 버튼 위 말풍선에 쓴다.
+  /// 전용 카운트 API 가 없어 random 픽 응답의 remainingCount 를 재사용한다(읽기 전용).
+  Future<void> _loadRemainingQuiz(int groupId) async {
+    int count;
+    try {
+      final q = await Di.characterRepository.pickRandomQuiz(groupId);
+      count = q.remainingCount ?? 0;
+    } catch (_) {
+      count = 0; // QUIZ_NO_AVAILABLE 등 — 지금 풀 수 있는 퀴즈 없음
+    }
+    if (!mounted) return;
+    setState(() => _remainingQuiz = count);
   }
 
   void _openInfoSheet() {
@@ -462,6 +480,9 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             ),
             const SizedBox(height: 12),
           ],
+          // 풀 수 있는 퀴즈가 남아 있으면 버튼 위에 알림 말풍선으로 안내.
+          if (_remainingQuiz != null && _remainingQuiz! > 0)
+            _QuizCountBubble(count: _remainingQuiz!),
           // 핵심 CTA — 퀴즈 풀어서 EXP/코인 얻기
           SizedBox(
             width: double.infinity,
@@ -521,6 +542,61 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// '퀴즈 풀기' 버튼 바로 위에 뜨는 알림 말풍선 — 지금 풀 수 있는 퀴즈 수를 안내한다.
+/// 아래쪽 꼬리가 버튼을 가리킨다.
+class _QuizCountBubble extends StatelessWidget {
+  const _QuizCountBubble({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🧠', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Text(
+                '지금 풀 수 있는 퀴즈 $count개!',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 말풍선 꼬리 — 회전한 정사각형을 버블 하단에 살짝 겹쳐 아래(버튼)를 가리킨다.
+        Transform.translate(
+          offset: const Offset(0, -3),
+          child: Transform.rotate(
+            angle: math.pi / 4,
+            child: Container(width: 12, height: 12, color: AppColors.primary),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 }

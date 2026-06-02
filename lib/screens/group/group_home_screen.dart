@@ -71,6 +71,11 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     // 대시보드를 기존 엔드포인트들로 병렬 조립한다.
     // (전용 /home 집계 엔드포인트가 서버에 없어 404 가 나던 것을 클라이언트 집계로 대체)
     final detailFuture = Di.groupRoomRepository.detail(activeId);
+    // 인사 헤더에 쓸 내 이름 — 프로필이 아직 캐시되지 않았으면(앱 첫 진입 등) 여기서
+    // 한 번 받아온다. 안 그러면 이름이 비어 '회원님' 으로 떨어진다.
+    final profileFuture = Di.userSession.profile != null
+        ? Future<void>.value()
+        : Di.userSession.refresh().then((_) {}).catchError((_) {});
     // 최근 소식 피드는 '지금 보는 그룹'의 알림만 보여줘야 하는데 /notifications 는
     // 전 그룹을 섞어서 내려준다. 그래서 넉넉히 받아(아래에서 groupRoomId 로 필터) 8건만
     // 추린다.
@@ -95,6 +100,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       final noti = await notiFuture;
       final schedules = await scheduleFuture;
       final diaryRes = await diaryFuture;
+      await profileFuture; // 이름 채우기 (best-effort)
       if (!mounted) return;
 
       DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -545,13 +551,8 @@ class _GreetingHeader extends StatelessWidget {
   const _GreetingHeader({required this.userName});
   final String userName;
 
-  static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final dateLabel =
-        '${now.month}월 ${now.day}일 ${_weekdays[(now.weekday - 1) % 7]}요일';
     final name = userName.isNotEmpty ? userName : '회원';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,16 +561,6 @@ class _GreetingHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                dateLabel,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                  color: AppColors.gray500,
-                ),
-              ),
-              const SizedBox(height: 4),
               RichText(
                 text: TextSpan(
                   style: const TextStyle(
