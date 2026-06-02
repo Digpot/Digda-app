@@ -598,7 +598,13 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return (span: span, offsetFromStart: offsetFromStart);
   }
 
-  Widget _buildEventPill(DateTime day, _Schedule schedule, double cellWidth) {
+  Widget _buildEventPill(
+    DateTime day,
+    _Schedule schedule,
+    double cellWidth, {
+    double barHeight = 14,
+    double fontSize = 8,
+  }) {
     final color = schedule.color;
     final isStart = schedule.isStartDay(day);
     final isEnd = schedule.isEndDay(day);
@@ -607,7 +613,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     // 단일 일정 — 둥근 pill
     if (!isMulti) {
       return Container(
-        height: 14,
+        height: barHeight,
         margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
         padding: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
@@ -620,7 +626,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
-            fontSize: 8,
+            fontSize: fontSize,
             color: color,
           ),
           overflow: TextOverflow.ellipsis,
@@ -653,7 +659,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       // 전체 바 너비 = 셀 너비 × span - 좌우 margin 보정
       final totalBarWidth = cellWidth * info.span - (roundLeft ? 2 : 0) - (roundRight ? 2 : 0);
       return Container(
-        height: 14,
+        height: barHeight,
         margin: EdgeInsets.only(
           top: 1,
           left: roundLeft ? 2 : 0,
@@ -671,7 +677,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w400,
-                  fontSize: 8,
+                  fontSize: fontSize,
                   color: color,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -685,7 +691,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
     // 나머지 셀 — 배경만
     return Container(
-      height: 14,
+      height: barHeight,
       margin: EdgeInsets.only(
         top: 1,
         left: roundLeft ? 2 : 0,
@@ -875,6 +881,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final weekSun = _weekSunday(_focusedDay);
     final days = List.generate(7, (i) => weekSun.add(Duration(days: i)));
     const labels = ['일', '월', '화', '수', '목', '금', '토'];
+    // 월 뷰와 동일한 셀 폭(maxWidth/7)이어야 멀티데이 연결 바의 span 계산이 맞다.
+    final cellWidth = constraints.maxWidth / 7;
 
     Color dayColor(DateTime d) => d.weekday == DateTime.saturday
         ? AppColors.blue
@@ -929,83 +937,88 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       );
     }
 
-    Widget column(DateTime d) {
-      final list = _schedulesTimelineSorted(_getSchedulesForDay(d));
-      return Expanded(
-        child: Container(
-          decoration: const BoxDecoration(
-            border: Border(
-              left: BorderSide(color: AppColors.gray50, width: 0.5),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-          child: Column(
-            children: [
-              for (final s in list) _weekChip(s),
-            ],
-          ),
+    // 이 주의 레인 배정 — 월 뷰와 '같은' 데이터(_weekLaneMap)를 그대로 사용한다.
+    // 그래야 26~29처럼 여러 날 걸친 일정이 월 뷰와 동일하게 한 줄로 쭉 이어진다.
+    final laneAssignments = _weekLaneMap[weekSun] ?? <_Schedule, int>{};
+    final weekMax = _weekMaxLane[weekSun] ?? -1;
+
+    // 날짜별 (레인 → 일정) 매핑. 한 날의 같은 레인에는 하나의 일정만 온다.
+    final Map<DateTime, Map<int, _Schedule>> laneToScheduleByDay = {
+      for (final d in days)
+        d: {
+          for (final s in _getSchedulesForDay(d))
+            if (laneAssignments[s] != null) laneAssignments[s]!: s,
+        },
+    };
+
+    const barHeight = 20.0;
+    const rowHeight = barHeight + 5; // 바 + 줄 간격
+
+    // 가로 한 줄(레인)을 7개 셀로 그린다. 멀티데이는 시작 셀에서 span 만큼 늘어난
+    // 연결 바(_buildEventPill)가 되고, 단일 일정은 그 칸의 pill 이 된다 — 월 뷰와 동일.
+    Widget laneRow(int lane) {
+      return SizedBox(
+        height: rowHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final d in days)
+              SizedBox(
+                width: cellWidth,
+                child: () {
+                  final s = laneToScheduleByDay[d]?[lane];
+                  if (s == null) return const SizedBox.shrink();
+                  final pill = _buildEventPill(
+                    d,
+                    s,
+                    cellWidth,
+                    barHeight: barHeight,
+                    fontSize: 11,
+                  );
+                  // 공휴일 의사 일정은 상세가 없으므로 탭을 막는다.
+                  return s.isHoliday
+                      ? pill
+                      : GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _openDetail(s.id),
+                          child: pill,
+                        );
+                }(),
+              ),
+          ],
         ),
       );
     }
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(children: days.map(header).toList()),
-        ),
+        Row(children: days.map(header).toList()),
         const SizedBox(height: 6),
         const Divider(height: 1, color: AppColors.gray100),
+        const SizedBox(height: 4),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: days.map(column).toList(),
-              ),
-            ),
-          ),
+          child: weekMax < 0
+              ? const Center(
+                  child: Text(
+                    '이번 주 일정이 없어요',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      color: AppColors.gray400,
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (int lane = 0; lane <= weekMax; lane++) laneRow(lane),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
-  }
-
-  Widget _weekChip(_Schedule s) {
-    return GestureDetector(
-      onTap: () => _openDetail(s.id),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-        decoration: BoxDecoration(
-          color: s.color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          s.title,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w500,
-            fontSize: 9,
-            color: s.color,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
-
-  List<_Schedule> _schedulesTimelineSorted(List<_Schedule> input) {
-    final list = [...input];
-    list.sort((a, b) {
-      final at = (a.allDay || a.isMultiDay) ? -1 : a.sortMinutes;
-      final bt = (b.allDay || b.isMultiDay) ? -1 : b.sortMinutes;
-      if (at != bt) return at.compareTo(bt);
-      return a.createdAt.compareTo(b.createdAt);
-    });
-    return list;
   }
 
   // ─── 검색 ────────────────────────────────────────────────────────────────────

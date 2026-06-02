@@ -8,6 +8,7 @@ import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/feature_card.dart';
+import '../../widgets/invite_code_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
 
 /// 그룹 홈 — '대시보드' 리디자인.
@@ -70,8 +71,11 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     // 대시보드를 기존 엔드포인트들로 병렬 조립한다.
     // (전용 /home 집계 엔드포인트가 서버에 없어 404 가 나던 것을 클라이언트 집계로 대체)
     final detailFuture = Di.groupRoomRepository.detail(activeId);
+    // 최근 소식 피드는 '지금 보는 그룹'의 알림만 보여줘야 하는데 /notifications 는
+    // 전 그룹을 섞어서 내려준다. 그래서 넉넉히 받아(아래에서 groupRoomId 로 필터) 8건만
+    // 추린다.
     final notiFuture = Di.notificationRepository
-        .list(limit: 8, offset: 0)
+        .list(limit: 40, offset: 0)
         .catchError((_) =>
             NotificationListResult(notifications: const [], total: 0, unreadCount: 0));
     final scheduleFuture = Di.scheduleRepository
@@ -154,9 +158,14 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         groupRoomName: detail.groupRoom.name,
         isOwner: detail.isOwner,
       );
+      // 현재 그룹 알림만 추려 최근 소식으로 노출 (다른 그룹방 알림 섞임 방지).
+      final groupActivity = noti.notifications
+          .where((n) => n.groupRoomId == activeId)
+          .take(8)
+          .toList();
       setState(() {
         _home = home;
-        _activity = noti.notifications;
+        _activity = groupActivity;
         _loading = false;
       });
     } catch (e) {
@@ -289,6 +298,26 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     );
   }
 
+  /// 초대 코드 발급 — 방장만. 서버에서 새 6자리 코드를 재발급받아 그룹 리스트와
+  /// 동일한 바텀시트로 노출한다. (예전엔 코드 없이 /code-generate 로 이동해 '------'
+  /// 만 떴고, 비방장에게도 버튼이 보였다.)
+  Future<void> _generateInvite() async {
+    final groupId = _home?.activeGroup.id ?? Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    String code;
+    try {
+      code = (await Di.inviteRepository.regenerate(groupId)).code;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessageOf(e))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    showInviteCodeSheet(context, code);
+  }
+
   /// FAB — 새 일기/일정/퀴즈 생성 빠른 진입.
   void _openCreateSheet() {
     showModalBottomSheet<void>(
@@ -385,10 +414,12 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
           const _SectionTitle('빠른 작업'),
           const SizedBox(height: 12),
           _QuickActions(
+            // 초대 코드 발급은 방장만 (서버도 NOT_GROUP_ROOM_OWNER 로 막는다).
+            isOwner: group.isOwner,
             onDiary: () => _goThenReload('/write-diary'),
             onSchedule: () => _goThenReload('/add-schedule'),
             onQuiz: () => _go('/character-quiz-play'),
-            onInvite: () => _go('/code-generate'),
+            onInvite: _generateInvite,
           ),
           const SizedBox(height: 24),
           const _SectionTitle('그룹 기능'),
@@ -433,6 +464,16 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             onTap: () => _go('/todo'),
           ),
           if (group.isOwner) ...[
+            const SizedBox(height: 12),
+            FeatureCard(
+              icon: Icons.settings_outlined,
+              iconBgColor: AppColors.gray200,
+              iconColor: AppColors.gray700,
+              cardBgColor: AppColors.gray50,
+              title: '그룹 설정',
+              subtitle: '그룹 정보·멤버를 관리해요',
+              onTap: () => _goThenReload('/update-diary'),
+            ),
             const SizedBox(height: 12),
             FeatureCard(
               icon: Icons.swap_horiz_rounded,
@@ -992,12 +1033,14 @@ class _NextEventTile extends StatelessWidget {
 
 class _QuickActions extends StatelessWidget {
   const _QuickActions({
+    required this.isOwner,
     required this.onDiary,
     required this.onSchedule,
     required this.onQuiz,
     required this.onInvite,
   });
 
+  final bool isOwner;
   final VoidCallback onDiary;
   final VoidCallback onSchedule;
   final VoidCallback onQuiz;
@@ -1034,15 +1077,17 @@ class _QuickActions extends StatelessWidget {
             onTap: onQuiz,
           ),
         ),
-        Expanded(
-          child: _QuickActionItem(
-            icon: Icons.person_add_alt_1_outlined,
-            label: '초대',
-            color: AppColors.blue,
-            bg: AppColors.blue.withValues(alpha: 0.1),
-            onTap: onInvite,
+        // 초대 코드 발급은 방장만 노출 (멤버에게는 숨김).
+        if (isOwner)
+          Expanded(
+            child: _QuickActionItem(
+              icon: Icons.person_add_alt_1_outlined,
+              label: '초대',
+              color: AppColors.blue,
+              bg: AppColors.blue.withValues(alpha: 0.1),
+              onTap: onInvite,
+            ),
           ),
-        ),
       ],
     );
   }
