@@ -75,12 +75,12 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      // QUIZ_NO_AVAILABLE 은 에러가 아닌 빈 상태로 처리.
-      final apiError = e is DioException ? e.error : null;
-      if (apiError is ApiException && apiError.code == 'QUIZ_NO_AVAILABLE') {
+      // 풀 수 있는 퀴즈가 없을 때(QUIZ_NO_AVAILABLE)는 에러가 아닌 빈 상태로 안내.
+      if (_isNoQuizError(e)) {
         setState(() {
           _loading = false;
-          _emptyMessage = '아직 풀 수 있는 퀴즈가 없어요.\n그룹원이 퀴즈를 만들면 여기에 나타나요.';
+          _emptyMessage =
+              '아직 풀 수 있는 퀴즈가 없어요.\n다른 멤버에게 퀴즈 목록에서 문제를 만들어 달라고 요청해 보세요.';
         });
         return;
       }
@@ -89,6 +89,23 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
         _errorMessage = errorMessageOf(e);
       });
     }
+  }
+
+  /// "풀 수 있는 퀴즈 없음"(QUIZ_NO_AVAILABLE) 판정 — ApiException 이 DioException 으로
+  /// 감싸졌든 그대로 던져졌든 모두 잡는다. (예전엔 DioException.error 경로만 봐서
+  /// 래핑 형태에 따라 빈 상태를 놓치고 일반 에러로 빠지는 경우가 있었다.)
+  bool _isNoQuizError(Object e) {
+    ApiException? apiErr;
+    if (e is ApiException) {
+      apiErr = e;
+    } else if (e is DioException && e.error is ApiException) {
+      apiErr = e.error as ApiException;
+    }
+    if (apiErr != null) {
+      return apiErr.code.toUpperCase().contains('QUIZ_NO_AVAILABLE') ||
+          apiErr.code.toUpperCase().contains('NO_AVAILABLE');
+    }
+    return false;
   }
 
   Future<void> _submit() async {

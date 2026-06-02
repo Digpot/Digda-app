@@ -360,7 +360,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             // 필터 칩: 전체 / 모찌 관련. 진입 직후엔 전체. 모찌 칩을 누르면 모찌
             // 4종(mochi_levelup/diko_unlocked/quiz_created/quiz_answered)만 필터링.
-            SingleChildScrollView(
+            // 바깥 Column 이 center 정렬이라, 전체 너비를 강제해 칩들이 좌측에 붙도록 한다.
+            SizedBox(
+              width: double.infinity,
+              child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
               child: Row(
@@ -394,6 +397,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 ],
               ),
+            ),
             ),
             Expanded(
               child: _loading

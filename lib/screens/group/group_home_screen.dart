@@ -648,45 +648,49 @@ class _GreetingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = userName.isNotEmpty ? userName : '회원';
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              RichText(
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 24,
-                    height: 1.2,
-                    color: AppColors.gray900,
-                  ),
-                  children: [
-                    const TextSpan(text: '안녕하세요,\n'),
-                    TextSpan(
-                      text: name,
-                      style: const TextStyle(color: AppColors.primary),
-                    ),
-                    const TextSpan(text: '님 👋'),
-                  ],
+        // 상단 아이콘 바 — 인사 문구와 별도 줄. 벨/기어를 동일한 28×28 박스로
+        // 맞춰 서로 수직·수평 정렬이 어긋나지 않게 한다.
+        Row(
+          children: [
+            const Spacer(),
+            const NotificationBellIcon(),
+            const SizedBox(width: 8),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).pushNamed('/my-page'),
+              child: const SizedBox(
+                width: 28,
+                height: 28,
+                child: Center(
+                  child: Icon(Icons.settings_outlined,
+                      size: 24, color: AppColors.gray700),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        const NotificationBellIcon(),
-        const SizedBox(width: 12),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => Navigator.of(context).pushNamed('/my-page'),
-          child: const Padding(
-            padding: EdgeInsets.all(4),
-            child: Icon(Icons.settings_outlined,
-                size: 24, color: AppColors.gray700),
+        const SizedBox(height: 4),
+        // 인사 문구 — 헤더 아이콘과 같은 줄에 두지 않아 화면이 덜 좁아 보이게.
+        RichText(
+          text: TextSpan(
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w800,
+              fontSize: 24,
+              height: 1.2,
+              color: AppColors.gray900,
+            ),
+            children: [
+              const TextSpan(text: '안녕하세요,\n'),
+              TextSpan(
+                text: name,
+                style: const TextStyle(color: AppColors.primary),
+              ),
+              const TextSpan(text: '님 👋'),
+            ],
           ),
         ),
       ],
