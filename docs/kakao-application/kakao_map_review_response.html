@@ -266,10 +266,12 @@
   운영 중인 앱의 정보를 정리한 자료입니다.
 </p>
 <div class="infobox">
-  <strong>운영 정책 준수 선언</strong> — 본 계정은
-  <strong>1앱-1서비스 정책</strong>을 준수하며, 카카오 디벨로퍼스 운영정책 제5조 23항을 위반하는
-  동일 서비스의 다수 계정 운영은 하지 않습니다. 테스트 목적의 별도 키 사용은
-  Test App 으로 운영하며 본 심사 대상에 포함하지 않습니다.
+  <strong>운영 정책 준수 선언</strong> — 본 계정에는 카카오맵/로컬 API 권한을 보유한 앱이
+  <strong>2개</strong>(디그팟 · 붐빔) 있으며, 본 응답서는 가이드 요청에 따라
+  <strong>두 앱 모두</strong>의 정보를 작성합니다. 두 앱은 서로 다른 서비스로
+  <strong>1앱-1서비스 정책</strong>을 준수하며(동일 서비스를 다수 앱/계정에 중복 등록하지 않음),
+  이 중 <strong>붐빔은 현재 서비스를 운영하지 않아 카카오맵/로컬 API 를 호출하지 않습니다.</strong>
+  카카오맵 API 호출 권한 심사 대상은 현재 운영 중인 <strong>디그팟</strong>입니다.
 </div>
 
 <h2>2. 운영 중인 앱 현황</h2>
@@ -279,20 +281,21 @@
     <th>내용</th>
   </tr>
   <tr>
-    <td>총 운영 앱 수</td>
-    <td><strong>1개</strong> — 디그팟(DigPot)</td>
+    <td>카카오맵/로컬 권한 보유 앱</td>
+    <td><strong>2개</strong> — 디그팟(DigPot, 운영 중) · 붐빔(Boombim, 서비스 종료)</td>
   </tr>
   <tr>
-    <td>심사 대상 앱</td>
-    <td>디그팟 — 본 응답서의 [앱 1] 참고</td>
+    <td>카카오맵 API 심사 대상 앱</td>
+    <td>디그팟 — 본 응답서 [앱 1]. 붐빔은 현재 미운영으로 호출 없음([앱 2] 참고)</td>
   </tr>
   <tr>
     <td>동일 서비스 중복 등록 여부</td>
-    <td><strong>없음</strong> — 디그팟 외 동일 도메인/PackageName/BundleID 등록된 앱 없음</td>
+    <td><strong>없음</strong> — 디그팟과 붐빔은 서로 다른 서비스이며,
+        동일 도메인/PackageName/BundleID 를 중복 등록한 앱은 없음</td>
   </tr>
   <tr>
     <td>Test App 사용 여부</td>
-    <td>해당 없음 — 운영(메인) 앱 단일로만 호출</td>
+    <td>해당 없음 — 운영(메인) 앱으로만 호출</td>
   </tr>
 </table>
 
@@ -369,6 +372,40 @@
     <li>장소 검색 호출 화면은 <strong>본 문서 §4 “서비스 적용 화면”</strong> 에 마스킹 처리하여
       직접 첨부 (캡처 절차는 <code>screenshot_guide.md</code>).</li>
   </ul>
+</div>
+
+<div class="app-card" style="border-color:#9aa5b1; background:#fafbfc;">
+  <h3 style="color:#4e5968; border-bottom-color:#e1e5ea;">[앱 2 — 카카오맵 권한 보유 / 현재 미운영]  붐빔 (Boombim)</h3>
+
+  <div class="field"><b>· 서비스명</b> 붐빔 (Boombim)</div>
+  <div class="field"><b>· 운영 상태</b> <strong>서비스 종료 / 현재 미운영</strong> — 카카오맵·로컬 API 현재 호출 없음</div>
+  <div class="field"><b>· 권한 보유 사유</b> 과거 운영 시 부여된 카카오맵/로컬 API 권한이 계정에 잔존</div>
+
+  <h3 style="margin-top:14px;">서비스 상세 설명</h3>
+  <p>
+    붐빔은 과거에 운영했던 별도 서비스로, <strong>현재는 운영을 중단</strong>한 상태입니다.
+    서비스가 종료되어 <strong>카카오맵/로컬 API 를 실제로 호출하지 않으며</strong>, 신규 사용자
+    유입·트래픽이 발생하지 않습니다. 계정에 권한만 남아 있어 가이드 요청에 따라 함께 기재합니다.
+  </p>
+
+  <h3 style="margin-top:14px;">서비스 주소</h3>
+  <table>
+    <tr><th style="width:35%;">Android Package Name</th>
+        <td><code>com.boombim.android</code></td></tr>
+    <tr><th>iOS Bundle ID</th>
+        <td><code>com.yhjo.BoomBim</code></td></tr>
+    <tr><th>웹 도메인</th>
+        <td>해당 없음 — 모바일 앱 서비스</td></tr>
+    <tr><th>플랫폼 구분</th>
+        <td>과거 Android · iOS 운영 / <strong>현재 서비스 종료(미운영)</strong></td></tr>
+  </table>
+
+  <h3 style="margin-top:14px;">카카오맵 API 활용 시나리오 (과거)</h3>
+  <p>
+    과거 운영 시에는 <strong>지도에서 장소를 검색</strong>하는 용도로 카카오맵/로컬 API 를
+    활용했습니다. 현재는 <strong>서비스를 운영하지 않아 API 를 호출하지 않으며</strong>, 트래픽이
+    발생하지 않습니다. 계정에 권한만 잔존하는 상태입니다.
+  </p>
 </div>
 
 <h2 class="page-break">4. 서비스 적용 화면 (카카오 로컬 API 호출 화면)</h2>
@@ -459,8 +496,11 @@
 
 <h2>5. 정책 준수 확인 사항</h2>
 <ul>
-  <li>본 계정에는 디그팟 외의 <strong>동일 서비스 중복 앱 등록 없음</strong>
+  <li>본 계정의 카카오맵/로컬 권한 보유 앱은 <strong>디그팟(운영)·붐빔(종료)</strong> 2개이며,
+      본 응답서에 <strong>두 앱 모두</strong> 기재함.</li>
+  <li>디그팟과 붐빔은 서로 다른 서비스로, <strong>동일 서비스를 중복 등록하지 않음</strong>
       (도메인 · PackageName · BundleID 기준).</li>
+  <li>붐빔은 <strong>현재 미운영</strong>으로 카카오맵/로컬 API 를 호출하지 않음.</li>
   <li>테스트·개발 용도 키는 <strong>Test App</strong> 가이드를 따라 별도 관리하며,
       본 운영 앱과 같은 PackageName 으로 중복 등록하지 않음.</li>
   <li>카카오 디벨로퍼스 운영정책 제5조 23항 — 동일 서비스의 다수 계정 운영 금지 — 준수.</li>

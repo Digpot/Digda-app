@@ -22,9 +22,11 @@
 - 카카오 로컬 API는 `Authorization: KakaoAK <REST_API_KEY>` 헤더만으로 동작하며, 플랫폼 등록(웹/안드로이드)이나 카카오맵 SDK 임베드는 우리 구현에서 필요 없음.
 - 일일 쿼터(기본 약 10만 건)를 초과하거나 상용 배포를 안정화하려면 비즈 앱 전환 또는 활용 사례 신청을 통해 한도 상향.
 
-## 카카오맵 API 심사 반려 대응 (2026-05-28)
-- 반려 사유: 카카오 가이드 ([devtalk 146633](https://devtalk.kakao.com/t/api/146633)) 의 "1앱-1서비스 정책 + 신청 양식" 미준수 안내
+## 카카오맵 API 심사 반려 대응 (2026-05-28 → 2026-06-02 갱신)
+- 1차 반려 사유: 카카오 가이드 ([devtalk 146633](https://devtalk.kakao.com/t/api/146633)) — "심사 신청 앱 외, 계정 내 카카오맵 권한 보유 앱 전부를 동일 양식으로 작성" 미준수
+- **재반려 원인 확정**: 같은 카카오 계정에 카카오맵 권한 보유 앱이 2개(디그팟 + **붐빔**)인데, 1차 응답서가 디그팟만 + "운영 앱 1개"로 단언해 불일치 → 붐빔도 양식에 포함해야 함
 - [kakao_map_review_response.html](./kakao_map_review_response.html) — 응답서 원본 (A4 인쇄 친화)
 - [kakao_map_review_response.pdf](./kakao_map_review_response.pdf) — 재신청 시 첨부할 PDF
-  - 운영 앱 1개(디그팟)임을 명시 + Package Name/Bundle ID + 호출 시나리오 포함
-  - **재제출 전 확인 필요**: iOS Bundle ID 실제 정식 출시값(`com.digda.app` 가정) 검증, 다른 카카오 앱 동시 운영 여부 등은 반드시 본인 확인 후 제출
+  - [앱 1] 디그팟(운영) + [앱 2] 붐빔(서비스 종료/현재 미호출) 둘 다 기재. 현황표·정책 문구를 "2개"로 정정.
+  - 붐빔 정보 반영 완료: Android `com.boombim.android` / iOS `com.yhjo.BoomBim` / 과거 "지도 장소 검색"에 활용 / 현재 미운영·미호출
+  - **디그팟 확인 필요(남은 항목)**: iOS Bundle ID 실제 정식 출시값(`com.digda.app` 가정) 검증
