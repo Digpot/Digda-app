@@ -493,8 +493,13 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       if (lane != null) laneToSchedule[lane] = s;
     }
 
-    // 공휴일도 레인에 함께 배치되므로 슬롯은 항상 3개 고정.
-    const eventSlots = 3;
+    // 표시 가능한 이벤트 슬롯 수는 행 높이에 맞춰 동적으로 계산한다.
+    // (pill 을 키웠으므로 작은 화면에서 3개 고정이면 셀이 넘쳐 오버플로우가 난다)
+    // 헤더(상단 여백4 + 날짜24 + 간격2 = 30) 를 뺀 나머지를 pill 높이(19)로 나눈다.
+    const headerHeight = 30.0;
+    const pillHeight = 19.0;
+    final eventSlots =
+        ((rowHeight - headerHeight) / pillHeight).floor().clamp(1, 3);
     final weekMax = _weekMaxLane[weekSun] ?? -1;
 
     // 이 날 기준 오버플로우 여부 및 숨겨진 일정 수
@@ -550,7 +555,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           for (int lane = 0; lane < visibleLaneCount; lane++)
             laneToSchedule.containsKey(lane)
                 ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
-                : const SizedBox(height: 15),
+                : const SizedBox(height: 19),
           // 오버플로우 pill: 숨겨진 개수를 +N 형태로 표시
           if (hasOverflow) _buildMorePill(hiddenCount),
         ],
@@ -560,7 +565,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
   Widget _buildMorePill(int count) {
     return Container(
-      height: 14,
+      height: 17,
       margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
       decoration: BoxDecoration(
         color: AppColors.gray100,
@@ -572,7 +577,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         style: const TextStyle(
           fontFamily: 'Inter',
           fontWeight: FontWeight.w600,
-          fontSize: 8,
+          fontSize: 10,
           color: AppColors.gray700,
         ),
       ),
@@ -602,8 +607,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     DateTime day,
     _Schedule schedule,
     double cellWidth, {
-    double barHeight = 14,
-    double fontSize = 8,
+    double barHeight = 18,
+    double fontSize = 11,
   }) {
     final color = schedule.color;
     final isStart = schedule.isStartDay(day);
@@ -1324,8 +1329,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                   if (_view == _CalView.week) {
                     return _buildWeekView(constraints);
                   }
+                  // 6주를 세로로 꽉 채워 하단 여백을 최대한 활용한다(상한을 크게).
+                  // daysOfWeekHeight(24) 를 뺀 나머지를 6주로 균등 분배.
                   final rowHeight =
-                      ((constraints.maxHeight - 28) / 6).clamp(64.0, 100.0);
+                      ((constraints.maxHeight - 24) / 6).clamp(72.0, 170.0);
                   final cellWidth = constraints.maxWidth / 7;
                   return TableCalendar(
                     firstDay: DateTime.utc(2020, 1, 1),
