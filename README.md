@@ -75,43 +75,15 @@
 피처 단위로 `data(레포지토리) · models(DTO) · state(세션)` 를 나누고, 화면(`screens/`)은
 DI 컨테이너를 통해 레포지토리에 접근합니다. 네트워크는 `ApiClient`(Dio) 1곳으로 모읍니다.
 
-```mermaid
-flowchart TB
-    subgraph UI["📱 Presentation"]
-        SCREENS["screens/ — 화면"]
-        WIDGETS["widgets/ — 공용 UI"]
-    end
-    subgraph FEAT["🧩 features/* (도메인)"]
-        REPO["Repository"]
-        MODEL["Models · DTO"]
-        STATE["State · Session"]
-    end
-    subgraph CORE["⚙️ core"]
-        DI["DI 컨테이너"]
-        API["ApiClient (Dio)"]
-        TOKEN["TokenStorage"]
-        PUSH["PushService"]
-    end
-    SERVER[("Digda-server REST")]
-    FCM[("Firebase FCM")]
+<div align="center">
+  <img src="docs/architecture.svg" width="100%" alt="디그팟 시스템 아키텍처" />
+</div>
 
-    SCREENS --> WIDGETS
-    SCREENS -->|Di.xxxRepository| DI --> REPO --> MODEL
-    SCREENS -.구독.-> STATE
-    REPO -->|HTTP| API -->|Bearer 토큰| TOKEN
-    API -->|REST| SERVER
-    PUSH --> FCM
-    FCM -.푸시.-> SCREENS
+앱은 다음 3개 레이어로 구성됩니다.
 
-    classDef ui fill:#FFE2E2,stroke:#FF6B6B,stroke-width:1.5px,color:#7A1F1F;
-    classDef feat fill:#E8F0FE,stroke:#4285F4,stroke-width:1.5px,color:#0B3D91;
-    classDef core fill:#E6F4EA,stroke:#34A853,stroke-width:1.5px,color:#114B22;
-    classDef ext fill:#FFF4E5,stroke:#F9A825,stroke-width:1.5px,color:#7A4F00;
-    class SCREENS,WIDGETS ui;
-    class REPO,MODEL,STATE feat;
-    class DI,API,TOKEN,PUSH core;
-    class SERVER,FCM ext;
-```
+- **Presentation** (`screens/`, `widgets/`) — 화면과 공용 UI. DI 컨테이너로 레포지토리에 접근, 세션(State)을 구독.
+- **Features** (`features/*`) — 도메인별 `data(Repository)` · `models(DTO)` · `state(Session)`.
+- **Core** (`core/`) — DI 컨테이너 · `ApiClient`(Dio, 토큰 주입/갱신) · `TokenStorage` · `PushService`(FCM).
 
 ---
 
