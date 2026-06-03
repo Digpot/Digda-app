@@ -1049,6 +1049,42 @@ class _CharacterInfoSheet extends StatelessWidget {
               title: '꾸미기',
               body: '코인을 모아 스킨·모자·안경 같은 아이템을 해금하고 언제든 갈아입혀 줄 수 있어요.',
             ),
+            const SizedBox(height: 24),
+            // 모찌 시스템 첫 진입 때 보여주는 온보딩(소개)을 언제든 다시 볼 수 있는 버튼.
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // 시트의 context 가 pop 후 defunct 가 되므로 Navigator 를 미리 잡아둔다.
+                  final nav = Navigator.of(context);
+                  nav.pop();
+                  nav.push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => const CharacterIntroScreen(),
+                      fullscreenDialog: true,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.auto_stories_outlined,
+                    size: 18, color: AppColors.primary),
+                label: const Text(
+                  '모찌 소개 다시 보기',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.primary,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  side: const BorderSide(color: AppColors.primary, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
