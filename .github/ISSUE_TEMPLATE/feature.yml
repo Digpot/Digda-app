@@ -1,0 +1,37 @@
+name: "✨ 새로운 기능"
+description: "새로운 기능을 제안하거나 개발합니다."
+title: "[✨ Feature] "
+labels: ["✨ Feature"]
+assignees: ["chltmdgh522"]
+body:
+  - type: textarea
+    attributes:
+      label: 🔔 개요
+      description: 어떤 기능인지 설명해 주세요.
+      placeholder: 꼼꼼하게 적을수록 좋습니다!
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 해야 할 일
+      description: 체크리스트로 작성해 주세요.
+      placeholder: |
+        - [ ] 화면 UI 구현
+        - [ ] API 연동
+        - [ ] 예외/로딩 처리
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🙏🏻 요구사항 / 고려사항
+      description: 디자인·정책·엣지케이스 등 유의할 점을 적어 주세요.
+      placeholder: |
+        - [ ] 그림일기는 하루 한 편만 작성 가능
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 🙋🏻 덧붙일 말 (선택)
+      description: 참고 자료·스크린샷 등을 첨부해 주세요.
+    validations:
+      required: false
