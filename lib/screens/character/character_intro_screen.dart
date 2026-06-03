@@ -303,9 +303,11 @@ class _BottomBar extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onNext,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B6B),
-                foregroundColor: Colors.white,
-                elevation: 0,
+                // 흰색 버튼 — 코랄 배경(1p)·연핑크 배경(2p) 모두에서 또렷하게 보이도록.
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFFFF6B6B),
+                elevation: 3,
+                shadowColor: Colors.black.withValues(alpha: 0.2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -316,6 +318,7 @@ class _BottomBar extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w700,
                   fontSize: 17,
+                  color: Color(0xFFFF6B6B),
                 ),
               ),
             ),
