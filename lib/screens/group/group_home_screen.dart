@@ -7,6 +7,7 @@ import '../../features/notification/models/notification_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/feature_card.dart';
 import '../../widgets/invite_code_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
@@ -45,6 +46,8 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   String? _errorMessage;
   /// 활성 그룹이 삭제 예정이어서 홈을 그릴 수 없는 상태. true 면 복구 안내 화면을 보여준다.
   bool _deleteScheduledBlock = false;
+  /// 오늘 날짜 일기가 이미 있는지 — 그룹홈에서 '일기 쓰기' 중복 작성을 막는 데 쓴다.
+  bool _todayHasDiary = false;
 
   @override
   void initState() {
@@ -188,11 +191,12 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       // 현재 그룹 알림만 추려 최근 소식으로 노출 (다른 그룹방 알림 섞임 방지).
       final groupActivity = noti.notifications
           .where((n) => n.groupRoomId == activeId)
-          .take(8)
+          .take(5)
           .toList();
       setState(() {
         _home = home;
         _activity = groupActivity;
+        _todayHasDiary = newDiaryCount > 0;
         _loading = false;
       });
     } catch (e) {
@@ -212,6 +216,20 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     Navigator.of(context)
         .pushNamed(route, arguments: arguments)
         .then((_) => _load());
+  }
+
+  /// 일기 쓰기 — 오늘 일기는 하루 한 번만. 이미 있으면 작성 대신 안내 팝업을 띄운다.
+  /// (그림일기는 '하루에 한 편'만 작성 가능 — 캘린더의 중복 작성 방지와 같은 규칙)
+  void _handleWriteDiary() {
+    if (_todayHasDiary) {
+      showInfoDialog(
+        context,
+        '오늘 일기가 이미 있어요',
+        '그림일기는 하루에 한 편만 작성할 수 있어요.\n오늘 일기는 그림일기 탭에서 확인하거나 수정할 수 있어요.',
+      );
+      return;
+    }
+    _goThenReload('/write-diary');
   }
 
   /// 그룹 전환 시트 — 내 그룹 목록을 띄우고 선택 시 활성 그룹을 바꿔 홈을 갱신.
@@ -383,7 +401,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
               label: '새 일기 쓰기',
               onTap: () {
                 Navigator.of(ctx).pop();
-                _goThenReload('/write-diary');
+                _handleWriteDiary();
               },
             ),
             _SheetAction(
@@ -465,7 +483,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
           _QuickActions(
             // 초대 코드 발급은 방장만 (서버도 NOT_GROUP_ROOM_OWNER 로 막는다).
             isOwner: group.isOwner,
-            onDiary: () => _goThenReload('/write-diary'),
+            onDiary: _handleWriteDiary,
             onSchedule: () => _goThenReload('/add-schedule'),
             onQuiz: () => _go('/character-quiz-play'),
             onInvite: _generateInvite,
@@ -540,7 +558,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
           _ActivitySection(
             items: _activity,
             onItemTap: () => _goThenReload('/notifications'),
-            onEmptyCta: () => _goThenReload('/write-diary'),
+            onEmptyCta: _handleWriteDiary,
           ),
         ],
       ),

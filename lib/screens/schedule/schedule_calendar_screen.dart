@@ -493,26 +493,40 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       if (lane != null) laneToSchedule[lane] = s;
     }
 
-    // 표시 가능한 이벤트 슬롯 수는 행 높이에 맞춰 동적으로 계산한다.
-    // (pill 을 키웠으므로 작은 화면에서 3개 고정이면 셀이 넘쳐 오버플로우가 난다)
-    // 헤더(상단 여백4 + 날짜24 + 간격2 = 30) 를 뺀 나머지를 pill 높이(19)로 나눈다.
-    const headerHeight = 30.0;
-    const pillHeight = 19.0;
-    final eventSlots =
-        ((rowHeight - headerHeight) / pillHeight).floor().clamp(1, 3);
+    // 이벤트는 '최대 3개'까지 보이고, 4개 이상이면 그때만 +N 을 별도 줄로 덧붙인다.
+    // (예전엔 행 높이에 따라 2개부터 +N 으로 접혀, 일정이 3개여도 일찍 +N 이 떴음)
+    // 셀 헤더(상단 여백2 + 날짜24 + 간격2 = 28) 를 뺀 높이로 들어갈 줄 수를 계산한다.
+    const headerHeight = 28.0;
+    const lineHeight = 18.0; // pill(17) + 위 마진(1)
+    const targetEvents = 3; // 보여줄 이벤트 최대 개수
     final weekMax = _weekMaxLane[weekSun] ?? -1;
 
-    // 이 날 기준 오버플로우 여부 및 숨겨진 일정 수
-    final hiddenCount = laneToSchedule.keys.where((l) => l >= eventSlots).length;
+    // 이 셀에 들어갈 수 있는 이벤트 줄 수(최대 3).
+    final fitEventLines =
+        ((rowHeight - headerHeight) / lineHeight).floor().clamp(1, targetEvents);
+    // +N 한 줄까지 더 들어갈 여유가 있는지(이벤트 3줄 + N줄).
+    final hasRoomForMoreLine =
+        rowHeight >= headerHeight + fitEventLines * lineHeight + lineHeight;
+
+    // 일단 fitEventLines 만큼 보여줄 수 있다고 보고, 4개 이상이라 +N 이 필요한데
+    // 여유 줄이 없으면 마지막 이벤트 한 칸을 +N 에 양보한다.
+    final wouldHide = laneToSchedule.keys.where((l) => l >= fitEventLines).length;
+    final eventSlots = (wouldHide > 0 && !hasRoomForMoreLine)
+        ? (fitEventLines - 1).clamp(1, targetEvents)
+        : fitEventLines;
+
+    // 실제로 보이는 레인 수와 숨겨진(=+N) 개수.
+    final visibleLaneCount =
+        weekMax < 0 ? 0 : (weekMax + 1 < eventSlots ? weekMax + 1 : eventSlots);
+    final hiddenCount =
+        laneToSchedule.keys.where((l) => l >= visibleLaneCount).length;
     final hasOverflow = hiddenCount > 0;
-    final displayMax = hasOverflow ? eventSlots - 1 : eventSlots;
-    final visibleLaneCount = weekMax < 0 ? 0 : (weekMax + 1 < displayMax ? weekMax + 1 : displayMax);
 
     return SizedBox(
       height: rowHeight,
       child: Column(
         children: [
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           if (circleBg != null)
             Container(
               width: 24,
@@ -555,7 +569,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           for (int lane = 0; lane < visibleLaneCount; lane++)
             laneToSchedule.containsKey(lane)
                 ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
-                : const SizedBox(height: 19),
+                : const SizedBox(height: 18),
           // 오버플로우 pill: 숨겨진 개수를 +N 형태로 표시
           if (hasOverflow) _buildMorePill(hiddenCount),
         ],
@@ -607,7 +621,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     DateTime day,
     _Schedule schedule,
     double cellWidth, {
-    double barHeight = 18,
+    double barHeight = 17,
     double fontSize = 11,
   }) {
     final color = schedule.color;
@@ -756,7 +770,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: Container(
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
@@ -777,8 +791,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   Widget _buildMemberFilter() {
     if (_members.isEmpty) return const SizedBox.shrink();
     return Container(
-      height: 52,
-      padding: const EdgeInsets.only(bottom: 8),
+      height: 46,
+      padding: const EdgeInsets.only(bottom: 6),
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1253,7 +1267,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             ),
             // 날짜 네비게이션 — 좌측 월 이동 + 우측 '오늘' 칩
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
               child: Row(
                 children: [
                   GestureDetector(

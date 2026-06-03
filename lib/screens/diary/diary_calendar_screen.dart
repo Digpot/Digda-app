@@ -177,6 +177,15 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     );
   }
 
+  /// 헤더 안내(!) — 그림일기는 하루에 한 편만 작성 가능하다는 규칙 안내.
+  void _showDiaryRuleInfo() {
+    showInfoDialog(
+      context,
+      '그림일기 작성 규칙',
+      '그림일기는 하루에 한 편만 작성할 수 있어요.\n그날 한 명이 일기를 남기면 그룹의 그날 일기가 채워져요.\n이미 작성된 날에는 새 일기를 쓸 수 없고, 작성자가 수정할 수 있어요.',
+    );
+  }
+
   // ─── Header + view toggle ──────────────────────────────────────────────────
   Widget _buildHeader() {
     return Padding(
@@ -190,6 +199,17 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
               fontWeight: FontWeight.w700,
               fontSize: 17,
               color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(width: 6),
+          // 모찌 화면처럼 헤더에 안내(!) 아이콘 — '하루 한 편' 규칙을 알려준다.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _showDiaryRuleInfo,
+            child: const Padding(
+              padding: EdgeInsets.all(2),
+              child: Icon(Icons.info_outline,
+                  size: 18, color: AppColors.gray400),
             ),
           ),
           const Spacer(),
