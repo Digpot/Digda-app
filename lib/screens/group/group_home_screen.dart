@@ -42,6 +42,8 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
 
   GroupHomeData? _home;
   List<AppNotification> _activity = const [];
+  /// 최근 소식 노출 개수 — 최초 5개, '더보기' 시 10개씩 증가.
+  int _activityVisible = 5;
   bool _loading = true;
   String? _errorMessage;
   /// 활성 그룹이 삭제 예정이어서 홈을 그릴 수 없는 상태. true 면 복구 안내 화면을 보여준다.
@@ -86,7 +88,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     // 전 그룹을 섞어서 내려준다. 그래서 넉넉히 받아(아래에서 groupRoomId 로 필터) 8건만
     // 추린다.
     final notiFuture = Di.notificationRepository
-        .list(limit: 40, offset: 0)
+        .list(limit: 100, offset: 0)
         .catchError((_) =>
             NotificationListResult(notifications: const [], total: 0, unreadCount: 0));
     final scheduleFuture = Di.scheduleRepository
@@ -189,13 +191,14 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         isOwner: detail.isOwner,
       );
       // 현재 그룹 알림만 추려 최근 소식으로 노출 (다른 그룹방 알림 섞임 방지).
+      // 최초 5개만 보이고 '더보기'로 10개씩 추가 노출한다.
       final groupActivity = noti.notifications
           .where((n) => n.groupRoomId == activeId)
-          .take(5)
           .toList();
       setState(() {
         _home = home;
         _activity = groupActivity;
+        _activityVisible = 5;
         _todayHasDiary = newDiaryCount > 0;
         _loading = false;
       });
@@ -553,13 +556,49 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             ),
           ],
           const SizedBox(height: 28),
-          const _SectionTitle('최근 소식'),
+          Row(
+            children: [
+              const _SectionTitle('최근 소식'),
+              const SizedBox(width: 6),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => showInfoDialog(
+                  context,
+                  '최근 소식',
+                  '최근 소식에서는 그룹별 알림 및 주요 공지사항을 확인할 수 있습니다.',
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(2),
+                  child: Icon(Icons.info_outline,
+                      size: 16, color: AppColors.gray400),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           _ActivitySection(
-            items: _activity,
+            items: _activity.take(_activityVisible).toList(),
             onItemTap: () => _goThenReload('/notifications'),
             onEmptyCta: _handleWriteDiary,
           ),
+          if (_activity.length > _activityVisible) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: () =>
+                    setState(() => _activityVisible += 10),
+                child: Text(
+                  '더보기 (${_activity.length - _activityVisible}개 더)',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

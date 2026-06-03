@@ -264,13 +264,37 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         // national만 (기념일 제외, 법정 공휴일만)
         if (h.type == HolidayType.national) {
           final key = DateTime.utc(h.date.year, h.date.month, h.date.day);
-          _holidays[key] = h.descriptionKo ?? h.name;
+          _holidays[key] =
+              _resolveHolidayName(h.date.month, h.date.day, h.descriptionKo, h.name);
         }
       }
-      // 공휴일도 일반 일정과 함께 레인에 끼워 배치되도록 재계산.
-      _rebuildHolidaySchedules();
       _computeLaneAssignments();
     });
+  }
+
+  static final RegExp _hangul = RegExp(r'[가-힣]');
+
+  /// 고정 양력 공휴일 표기 — world_holidays 가 한글명을 안 주거나 영문/날짜 문자열을
+  /// 주는 경우(예: "2026")를 막기 위해 우리 표기를 우선한다.
+  static const Map<String, String> _solarHolidayNames = {
+    '1-1': '신정',
+    '3-1': '삼일절',
+    '5-5': '어린이날',
+    '6-6': '현충일',
+    '8-15': '광복절',
+    '10-3': '개천절',
+    '10-9': '한글날',
+    '12-25': '성탄절',
+  };
+
+  /// 공휴일명 정제 — 고정 양력은 우리 표기, 그 외에는 한글이 포함된 값만 사용.
+  /// 한글이 없으면(날짜/영문/숫자 등) '공휴일' 로 폴백해 "2026" 같은 이상 텍스트를 차단.
+  String _resolveHolidayName(int month, int day, String? ko, String fallback) {
+    final fixed = _solarHolidayNames['$month-$day'];
+    if (fixed != null) return fixed;
+    if (ko != null && _hangul.hasMatch(ko)) return ko;
+    if (_hangul.hasMatch(fallback)) return fallback;
+    return '공휴일';
   }
 
   /// 공휴일 이름
@@ -325,7 +349,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     _weekLaneMap.clear();
     _weekMaxLane.clear();
 
-    final all = _displaySchedules;
+    // 공휴일은 셀 상단에 이름으로 직접 그리므로 레인(일정 pill)에서는 제외한다.
+    final all = _schedules;
     // 모든 일정이 걸치는 주 일요일 수집
     final Set<DateTime> weekSundays = {};
     for (final s in all) {
@@ -481,10 +506,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final dayTextColor =
         (holidayName != null && circleBg == null) ? AppColors.eventHoliday : textColor;
 
-    // 레인 기반 렌더링
+    // 레인 기반 렌더링 — 사용자 일정만(공휴일은 이름 줄로 따로 그린다).
     final weekSun = _weekSunday(day);
     final laneAssignments = isOutside ? <_Schedule, int>{} : (_weekLaneMap[weekSun] ?? <_Schedule, int>{});
-    final daySchedules = isOutside ? <_Schedule>[] : _getSchedulesForDay(day);
+    final daySchedules = isOutside ? <_Schedule>[] : _getUserSchedulesForDay(day);
 
     // 이 날의 레인 → 일정 맵
     final Map<int, _Schedule> laneToSchedule = {};
@@ -493,31 +518,13 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       if (lane != null) laneToSchedule[lane] = s;
     }
 
-    // 이벤트는 '최대 3개'까지 보이고, 4개 이상이면 그때만 +N 을 별도 줄로 덧붙인다.
-    // (예전엔 행 높이에 따라 2개부터 +N 으로 접혀, 일정이 3개여도 일찍 +N 이 떴음)
-    // 셀 헤더(상단 여백2 + 날짜24 + 간격2 = 28) 를 뺀 높이로 들어갈 줄 수를 계산한다.
-    const headerHeight = 28.0;
-    const lineHeight = 18.0; // pill(17) + 위 마진(1)
-    const targetEvents = 3; // 보여줄 이벤트 최대 개수
+    // 정책: 일정은 항상 1~3개를 노출하고, 4개째부터는 숨긴 뒤 마지막 줄에 회색 "…"로
+    // 남은 개수를 표시한다. (행 높이는 아래 month 뷰에서 3개+"…"가 들어가도록 충분히 확보)
+    // 공휴일 이름 줄이 있으면 이벤트는 2개까지만 노출(높이 보호) — 셋째는 "…"에 포함.
+    final int maxEvents = holidayName != null ? 2 : 3;
     final weekMax = _weekMaxLane[weekSun] ?? -1;
-
-    // 이 셀에 들어갈 수 있는 이벤트 줄 수(최대 3).
-    final fitEventLines =
-        ((rowHeight - headerHeight) / lineHeight).floor().clamp(1, targetEvents);
-    // +N 한 줄까지 더 들어갈 여유가 있는지(이벤트 3줄 + N줄).
-    final hasRoomForMoreLine =
-        rowHeight >= headerHeight + fitEventLines * lineHeight + lineHeight;
-
-    // 일단 fitEventLines 만큼 보여줄 수 있다고 보고, 4개 이상이라 +N 이 필요한데
-    // 여유 줄이 없으면 마지막 이벤트 한 칸을 +N 에 양보한다.
-    final wouldHide = laneToSchedule.keys.where((l) => l >= fitEventLines).length;
-    final eventSlots = (wouldHide > 0 && !hasRoomForMoreLine)
-        ? (fitEventLines - 1).clamp(1, targetEvents)
-        : fitEventLines;
-
-    // 실제로 보이는 레인 수와 숨겨진(=+N) 개수.
     final visibleLaneCount =
-        weekMax < 0 ? 0 : (weekMax + 1 < eventSlots ? weekMax + 1 : eventSlots);
+        weekMax < 0 ? 0 : (weekMax + 1 < maxEvents ? weekMax + 1 : maxEvents);
     final hiddenCount =
         laneToSchedule.keys.where((l) => l >= visibleLaneCount).length;
     final hasOverflow = hiddenCount > 0;
@@ -565,14 +572,41 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               ),
             ),
           const SizedBox(height: 2),
+          // 공휴일 이름 — 레인과 무관하게 항상 노출(빨간 라벨).
+          if (holidayName != null) _buildHolidayLabel(holidayName),
           // 레인별 이벤트 pill (빈 레인은 placeholder로 세로 정렬 유지)
           for (int lane = 0; lane < visibleLaneCount; lane++)
             laneToSchedule.containsKey(lane)
                 ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
                 : const SizedBox(height: 18),
-          // 오버플로우 pill: 숨겨진 개수를 +N 형태로 표시
+          // 오버플로우: 4번째부터 숨기고 "…"로 남은 개수 표시
           if (hasOverflow) _buildMorePill(hiddenCount),
         ],
+      ),
+    );
+  }
+
+  /// 공휴일 이름 라벨 — 셀 상단에 빨간색으로 직접 표시.
+  Widget _buildHolidayLabel(String name) {
+    return Container(
+      height: 17,
+      margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      decoration: BoxDecoration(
+        color: AppColors.eventHoliday.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        name,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          color: AppColors.eventHoliday,
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
       ),
     );
   }
@@ -581,18 +615,14 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return Container(
       height: 17,
       margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
-      decoration: BoxDecoration(
-        color: AppColors.gray100,
-        borderRadius: BorderRadius.circular(4),
-      ),
       alignment: Alignment.center,
       child: Text(
-        '+$count',
+        '⋯ +$count',
         style: const TextStyle(
           fontFamily: 'Inter',
-          fontWeight: FontWeight.w600,
-          fontSize: 10,
-          color: AppColors.gray700,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+          color: AppColors.gray500,
         ),
       ),
     );
@@ -1343,16 +1373,18 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                   if (_view == _CalView.week) {
                     return _buildWeekView(constraints);
                   }
-                  // 6주를 세로로 꽉 채워 하단 여백을 최대한 활용한다(상한을 크게).
-                  // daysOfWeekHeight(24) 를 뺀 나머지를 6주로 균등 분배.
+                  // 셀 높이는 일정 3개 + "…" 가 들어가도록 처음부터 충분히(최소 100) 확보.
+                  // 화면이 커서 더 여유가 있으면 6주가 화면을 꽉 채우도록 늘린다.
                   final rowHeight =
-                      ((constraints.maxHeight - 24) / 6).clamp(72.0, 170.0);
+                      ((constraints.maxHeight - 24) / 6).clamp(100.0, 160.0);
                   final cellWidth = constraints.maxWidth / 7;
-                  return TableCalendar(
+                  final monthCalendar = TableCalendar(
                     firstDay: DateTime.utc(2020, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
                     focusedDay: _focusedDay,
                     startingDayOfWeek: StartingDayOfWeek.sunday,
+                    // 세로 스크롤 래퍼와 충돌하지 않도록 가로 스와이프만 허용.
+                    availableGestures: AvailableGestures.horizontalSwipe,
                     selectedDayPredicate: (day) =>
                         isSameDay(_selectedDay, day),
                     eventLoader: _eventLoader,
@@ -1491,6 +1523,11 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     onPageChanged: (focusedDay) {
                       setState(() => _focusedDay = focusedDay);
                     },
+                  );
+                  // 셀을 키웠을 때 6주가 화면보다 길어지면 세로 스크롤로 처리.
+                  return SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: monthCalendar,
                   );
                 },
               ),

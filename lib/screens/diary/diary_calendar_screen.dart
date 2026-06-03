@@ -201,19 +201,16 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
               color: AppColors.gray900,
             ),
           ),
-          const SizedBox(width: 6),
-          // 모찌 화면처럼 헤더에 안내(!) 아이콘 — '하루 한 편' 규칙을 알려준다.
+          const Spacer(),
+          _buildViewToggle(),
+          const SizedBox(width: 14),
+          // 모찌 시스템과 동일하게 안내(!) 아이콘을 알림 버튼 옆에 배치 — '하루 한 편' 규칙 안내.
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _showDiaryRuleInfo,
-            child: const Padding(
-              padding: EdgeInsets.all(2),
-              child: Icon(Icons.info_outline,
-                  size: 18, color: AppColors.gray400),
-            ),
+            child: const Icon(Icons.info_outline,
+                size: 22, color: AppColors.gray700),
           ),
-          const Spacer(),
-          _buildViewToggle(),
           const SizedBox(width: 14),
           const NotificationBellIcon(),
           const SizedBox(width: 14),
