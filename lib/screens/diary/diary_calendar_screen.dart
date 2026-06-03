@@ -30,6 +30,9 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   DiaryCalendarResult? _calendar;
   List<DiarySummary> _monthDiaries = const [];
   bool _loading = false;
+  /// 썸네일 precache 완료 시 증가. 그리드 썸네일 위젯의 key 에 섞어, 캐시가 데워진
+  /// 뒤 위젯을 새로 생성해 첫 진입에도 사진이 바로 뜨게 한다(상세 왕복 없이).
+  int _thumbVersion = 0;
 
   static const _amber = Color(0xFFFBBF24);
   static const _accentPalette = [
@@ -77,14 +80,21 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   /// 캘린더 썸네일을 미리 디코드해 이미지 캐시에 적재한다. 콜드스타트 첫 진입에서
   /// 그리드가 사진 여러 장을 한꺼번에 요청하다 일부 첫 로드가 실패로 굳어(Flutter 는
   /// 실패를 캐시하고 재시도하지 않음) 상세를 갔다 와야 보이던 문제를 막는다.
-  void _precacheThumbs(DiaryCalendarResult cal) {
+  ///
+  /// precache 가 끝나면 [_thumbVersion] 을 올려 그리드 썸네일 위젯을 새로 생성한다.
+  /// 그리드가 콜드 첫 빌드에서 실패로 굳었더라도, 캐시가 데워진 뒤 위젯이 재생성되며
+  /// 다시 로드해 첫 진입에도 사진이 보이게 된다(예전엔 상세 화면을 왕복해야 떴음).
+  Future<void> _precacheThumbs(DiaryCalendarResult cal) async {
+    final futures = <Future<void>>[];
     for (final e in cal.byDay.values) {
       final url = e.thumbnailUrl;
       if (url != null && url.isNotEmpty) {
-        // 실패해도 RetryingNetworkImage 가 화면에서 다시 시도하므로 여기선 무시.
-        precacheImage(NetworkImage(url), context).catchError((_) {});
+        futures.add(precacheImage(NetworkImage(url), context).catchError((_) {}));
       }
     }
+    if (futures.isEmpty) return;
+    await Future.wait(futures);
+    if (mounted) setState(() => _thumbVersion++);
   }
 
   /// 리스트 뷰용 일기 목록 — 캘린더 뷰에선 불필요하므로 분리해 지연 로드.
@@ -479,8 +489,11 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
               if (entry.thumbnailUrl != null &&
                   entry.thumbnailUrl!.isNotEmpty)
                 // 갓 작성한 일기 사진은 서버 썸네일 생성이 잠깐 늦을 수 있어, 첫 실패에
-                // 고정되지 않도록 자동 재시도하는 이미지로 그린다.
+                // 고정되지 않도록 자동 재시도하는 이미지로 그린다. precache 완료 후
+                // _thumbVersion 이 바뀌면 위젯이 새로 생성돼 데워진 캐시에서 다시 로드된다.
                 RetryingNetworkImage(
+                  key: ValueKey(
+                      '${entry.thumbnailUrl}#v$_thumbVersion'),
                   url: entry.thumbnailUrl!,
                   fit: BoxFit.cover,
                   fallback: _moodTileBg(entry.mood),
