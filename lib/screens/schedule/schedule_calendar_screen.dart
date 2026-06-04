@@ -268,6 +268,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               _resolveHolidayName(h.date.month, h.date.day, h.descriptionKo, h.name);
         }
       }
+      // 공휴일도 일반 일정과 동일하게 레인에 배치되도록 의사 일정으로 만든 뒤 재계산.
+      _rebuildHolidaySchedules();
       _computeLaneAssignments();
     });
   }
@@ -356,8 +358,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     _weekLaneMap.clear();
     _weekMaxLane.clear();
 
-    // 공휴일은 셀 상단에 이름으로 직접 그리므로 레인(일정 pill)에서는 제외한다.
-    final all = _schedules;
+    // 공휴일도 일반 일정과 같은 레인 시스템에 포함시켜, 멀티데이 일정이 공휴일과
+    // 겹쳐도 한 줄로 쭉 이어지고(테트리스), 한 일정은 한 주 내내 같은 레인을 유지한다.
+    final all = _displaySchedules;
     // 모든 일정이 걸치는 주 일요일 수집
     final Set<DateTime> weekSundays = {};
     for (final s in all) {
@@ -379,6 +382,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         return !ed.isBefore(weekSun) && !sd.isAfter(weekSat);
       }).toList()
         ..sort((a, b) {
+          // 공휴일을 항상 최상단(가장 낮은 레인)에 고정 — 다른 일정은 그 아래로.
+          if (a.isHoliday != b.isHoliday) return a.isHoliday ? -1 : 1;
           final aDays = a.end.difference(a.start).inDays;
           final bDays = b.end.difference(b.start).inDays;
           if (aDays != bDays) return bDays.compareTo(aDays);
@@ -434,11 +439,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return _displaySchedules.where((s) => s.coversDay(day)).toList();
   }
 
-  /// 사용자 일정만 (공휴일 제외 — 상세 시트용)
-  List<_Schedule> _getUserSchedulesForDay(DateTime day) {
-    return _getSchedulesForDay(day).where((s) => !s.isHoliday).toList();
-  }
-
   /// eventLoader용 (TableCalendar에 전달)
   List<dynamic> _eventLoader(DateTime day) {
     return _getSchedulesForDay(day);
@@ -470,7 +470,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   }
 
   void _showDayDetail(DateTime day) {
-    final userSchedules = _getUserSchedulesForDay(day);
+    // 공휴일도 상세 시트에 함께 노출(읽기 전용 — 수정/삭제 불가).
+    final userSchedules = _getSchedulesForDay(day);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -513,10 +514,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final dayTextColor =
         (holidayName != null && circleBg == null) ? AppColors.eventHoliday : textColor;
 
-    // 레인 기반 렌더링 — 사용자 일정만(공휴일은 이름 줄로 따로 그린다).
+    // 레인 기반 렌더링 — 공휴일도 일반 일정과 함께 레인 pill 로 그린다.
     final weekSun = _weekSunday(day);
     final laneAssignments = isOutside ? <_Schedule, int>{} : (_weekLaneMap[weekSun] ?? <_Schedule, int>{});
-    final daySchedules = isOutside ? <_Schedule>[] : _getUserSchedulesForDay(day);
+    final daySchedules = isOutside ? <_Schedule>[] : _getSchedulesForDay(day);
 
     // 이 날의 레인 → 일정 맵
     final Map<int, _Schedule> laneToSchedule = {};
@@ -525,10 +526,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       if (lane != null) laneToSchedule[lane] = s;
     }
 
-    // 정책: 일정은 항상 1~3개를 노출하고, 4개째부터는 숨긴 뒤 마지막 줄에 회색 "…"로
-    // 남은 개수를 표시한다. (행 높이는 아래 month 뷰에서 3개+"…"가 들어가도록 충분히 확보)
-    // 공휴일 이름 줄이 있으면 이벤트는 2개까지만 노출(높이 보호) — 셋째는 "…"에 포함.
-    final int maxEvents = holidayName != null ? 2 : 3;
+    // 정책: 일정(공휴일 포함)은 항상 1~3개를 노출하고, 4개째부터는 숨긴 뒤 마지막 줄에
+    // 회색 "…"로 남은 개수를 표시한다. (행 높이는 month 뷰에서 3개+"…"가 들어가도록 확보)
+    const int maxEvents = 3;
     final weekMax = _weekMaxLane[weekSun] ?? -1;
     final visibleLaneCount =
         weekMax < 0 ? 0 : (weekMax + 1 < maxEvents ? weekMax + 1 : maxEvents);
@@ -579,9 +579,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               ),
             ),
           const SizedBox(height: 2),
-          // 공휴일 이름 — 레인과 무관하게 항상 노출(빨간 라벨).
-          if (holidayName != null) _buildHolidayLabel(holidayName),
-          // 레인별 이벤트 pill (빈 레인은 placeholder로 세로 정렬 유지)
+          // 레인별 이벤트 pill (공휴일 포함, 빈 레인은 placeholder로 세로 정렬 유지)
           for (int lane = 0; lane < visibleLaneCount; lane++)
             laneToSchedule.containsKey(lane)
                 ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
@@ -589,31 +587,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           // 오버플로우: 4번째부터 숨기고 "…"로 남은 개수 표시
           if (hasOverflow) _buildMorePill(hiddenCount),
         ],
-      ),
-    );
-  }
-
-  /// 공휴일 이름 라벨 — 셀 상단에 빨간색으로 직접 표시.
-  Widget _buildHolidayLabel(String name) {
-    return Container(
-      height: 17,
-      margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      decoration: BoxDecoration(
-        color: AppColors.eventHoliday.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        name,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w600,
-          fontSize: 11,
-          color: AppColors.eventHoliday,
-        ),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
       ),
     );
   }
@@ -1031,14 +1004,13 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     barHeight: barHeight,
                     fontSize: 11,
                   );
-                  // 공휴일 의사 일정은 상세가 없으므로 탭을 막는다.
-                  return s.isHoliday
-                      ? pill
-                      : GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _openDetail(s.id),
-                          child: pill,
-                        );
+                  // 공휴일은 서버 상세가 없으므로 그 날의 상세 시트(읽기 전용)를 연다.
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () =>
+                        s.isHoliday ? _showDayDetail(d) : _openDetail(s.id),
+                    child: pill,
+                  );
                 }(),
               ),
           ],
@@ -1732,7 +1704,8 @@ class _DayDetailBottomSheet extends StatelessWidget {
           '${schedule.start.month}/${schedule.start.day} - ${schedule.end.month}/${schedule.end.day}';
     }
     return GestureDetector(
-      onTap: () => onScheduleTap(schedule.id),
+      // 공휴일은 읽기 전용 — 상세/수정 화면으로 넘어가지 않는다.
+      onTap: schedule.isHoliday ? null : () => onScheduleTap(schedule.id),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -1776,7 +1749,27 @@ class _DayDetailBottomSheet extends StatelessWidget {
                 ],
               ),
             ),
-            _buildAvatarStack(schedule),
+            // 공휴일은 참석자 대신 '공휴일' 배지를 보여준다(수정 불가 표시).
+            if (schedule.isHoliday)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '공휴일',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    color: color,
+                  ),
+                ),
+              )
+            else
+              _buildAvatarStack(schedule),
           ],
         ),
       ),
