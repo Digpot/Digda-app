@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
+import 'group_default_avatar.dart';
 
 class GroupListTile extends StatelessWidget {
   final String name;
@@ -69,24 +70,14 @@ class GroupListTile extends StatelessWidget {
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: groupIconBg,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(groupIcon, size: 24, color: groupIconColor),
+                      errorBuilder: (_, __, ___) => const GroupDefaultAvatar(
+                        size: 56,
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
                       ),
                     )
-                  : Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: groupIconBg,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(groupIcon, size: 24, color: groupIconColor),
+                  : const GroupDefaultAvatar(
+                      size: 56,
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
                     ),
             ),
             const SizedBox(width: 14),
