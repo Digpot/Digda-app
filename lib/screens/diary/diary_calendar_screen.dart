@@ -437,7 +437,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                     labels[idx],
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w700,
                       fontSize: 11,
                       color: color,
                     ),
@@ -1169,7 +1169,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                                 labels[idx],
                                 style: TextStyle(
                                   fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w400,
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 11,
                                   color: color,
                                 ),

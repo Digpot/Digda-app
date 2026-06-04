@@ -62,22 +62,59 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
             Column(
               children: [
                 const Spacer(flex: 2),
+                // 스플래시 화면과 동일한 로고·문구 블록.
                 SvgPicture.asset(
                   'assets/svg/logo.svg',
-                  width: 80,
-                  height: 82,
+                  width: 96,
+                  height: 99,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 const Text(
                   '디그팟',
-                  style: AppTextStyles.heading2,
-                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 32,
+                    height: 1.1,
+                    letterSpacing: -0.5,
+                    color: AppColors.gray900,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+                const Text(
+                  '디지털 그룹 포켓',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    height: 1.2,
+                    color: AppColors.gray700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'DIGITAL  GROUP  POCKET',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 10,
+                    letterSpacing: 3.2,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 26),
+                Container(
+                  width: 28,
+                  height: 1.2,
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                ),
+                const SizedBox(height: 18),
                 Text(
                   '디그팟, 우리만의 일정을 담는 공간',
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.gray500,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gray700,
+                    height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
