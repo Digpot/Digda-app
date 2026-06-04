@@ -3,6 +3,9 @@ import '../../theme/colors.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 
+/// 페이지별 일러스트 종류.
+enum _Illo { welcome, invite, diary, calendar, mochi }
+
 class AppGuideScreen extends StatefulWidget {
   /// true면 마이페이지에서 다시 보기로 진입 (뒤로가기만)
   /// false면 최초 로그인 후 진입 (/home으로 이동)
@@ -18,72 +21,53 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  // 읽는 가이드 → 보는 가이드: 페이지마다 일러스트 1개 + 한 문장 가치.
+  // 환영 → 그룹·초대 → 그림일기 → 일정 → 퀴즈·모찌 (5단계 흐름).
   final List<_GuidePageData> _pages = const [
     _GuidePageData(
-      gradient: [Color(0xFFFFB3B8), Color(0xFFFF6B6B)],
-      skinHex: '#FF6B6B',
-      stage: CharacterStage.sprout,
-      speech: '안녕! 난 모찌야 🌸\n디그팟을 같이 둘러볼까?',
-      title: '우리만의 그룹 다이어리',
-      subtitle: '친구·가족·연인과 함께\n하루를 기록하고 나누는 비공개 공간이에요',
-      features: [
-        _FeatureItem(Icons.group_add_outlined, '초대 코드로 간편하게 모여요'),
-        _FeatureItem(Icons.lock_outline, '우리 그룹만 보는 비공개 기록'),
-        _FeatureItem(Icons.favorite_outline, '서로의 일상을 한눈에'),
-      ],
+      illo: _Illo.welcome,
+      accent: Color(0xFFFF6B6B),
+      accentBg: Color(0xFFFFF1F1),
+      eyebrow: 'WELCOME 🌷',
+      title: '함께 쓰는 그림일기,\n디그팟',
+      body: '친구·연인·가족과 일정과 추억을\n한 권에 모아두는 우리만의 공간이에요',
+      mochiSkinHex: '#FF6B6B',
+      mochiStage: CharacterStage.bloom,
     ),
     _GuidePageData(
-      gradient: [Color(0xFF93C5FD), Color(0xFF60A5FA)],
-      skinHex: '#60A5FA',
-      stage: CharacterStage.bloom,
-      speech: '약속은 캘린더에서\n한눈에 챙겨!',
-      title: '캘린더 · 일정 관리',
-      subtitle: '모임 약속을 한 캘린더에 모아\n색깔별로 정리하고 함께 챙겨요',
-      features: [
-        _FeatureItem(Icons.event_outlined, '그룹 일정 등록 & 공유'),
-        _FeatureItem(Icons.palette_outlined, '카테고리별 색상으로 구분'),
-        _FeatureItem(
-            Icons.notifications_active_outlined, '하루 전·당일 자동 리마인더'),
-      ],
+      illo: _Illo.invite,
+      accent: Color(0xFF60A5FA),
+      accentBg: Color(0xFFEFF6FF),
+      eyebrow: 'STEP 1',
+      title: '그룹을 만들고 초대해요',
+      body: '초대코드 하나면 친구를\n손쉽게 우리 그룹으로 부를 수 있어요',
     ),
     _GuidePageData(
-      gradient: [Color(0xFFF9A8D4), Color(0xFFF472B6)],
-      skinHex: '#F472B6',
-      stage: CharacterStage.blossom,
-      speech: '오늘의 추억,\n그림일기로 남겨봐!',
-      title: '그림일기로 추억 기록',
-      subtitle: '사진과 글, 그날의 날씨·기분까지\n그림일기처럼 따뜻하게 남겨요',
-      features: [
-        _FeatureItem(Icons.photo_camera_outlined, '사진과 함께 일기 작성'),
-        _FeatureItem(Icons.wb_sunny_outlined, '날씨·기분 이모지로 감정 기록'),
-        _FeatureItem(Icons.favorite_border, '좋아요·댓글로 함께 공감'),
-      ],
+      illo: _Illo.diary,
+      accent: Color(0xFF34D399),
+      accentBg: Color(0xFFECFDF5),
+      eyebrow: 'STEP 2',
+      title: '그림일기를 함께 남겨요',
+      body: '사진과 글로 하루를 기록하고\n댓글로 서로의 마음을 나눠요',
     ),
     _GuidePageData(
-      gradient: [Color(0xFF86EFAC), Color(0xFF34D399)],
-      skinHex: '#34D399',
-      stage: CharacterStage.glow,
-      speech: '할 일은 같이 하면\n더 든든해!',
-      title: '목표 관리 · 진행률',
-      subtitle: '함께 정한 할 일을 체크하고\n진행률 통계로 우리 모임의 성취를 확인해요',
-      features: [
-        _FeatureItem(Icons.add_task_outlined, '할 일 추가 & 완료 체크'),
-        _FeatureItem(Icons.insights_outlined, '진행률 통계를 한눈에'),
-        _FeatureItem(Icons.notifications_outlined, '놓치지 않게 알림 리마인드'),
-      ],
+      illo: _Illo.calendar,
+      accent: Color(0xFFF59E0B),
+      accentBg: Color(0xFFFFFBEB),
+      eyebrow: 'STEP 3',
+      title: '일정을 함께 관리해요',
+      body: '모임·기념일을 하나의 캘린더에 모아\n다 같이 챙길 수 있어요',
     ),
     _GuidePageData(
-      gradient: [Color(0xFFC4B5FD), Color(0xFFA78BFA)],
-      skinHex: '#A78BFA',
-      stage: CharacterStage.master,
-      speech: '그리고 내가 바로\n디그팟의 마스코트! 🎉',
-      title: '함께 키우는 모찌 🌟',
-      subtitle: '활동할수록 함께 자라는 우리만의 모찌!\n경험치를 모아 진화시키고 마음껏 꾸며줘요',
-      features: [
-        _FeatureItem(Icons.bolt_outlined, '일기·퀴즈로 경험치 획득'),
-        _FeatureItem(Icons.auto_awesome, '단계별 진화 (알 → 마스터)'),
-        _FeatureItem(Icons.storefront_outlined, '코인 모아 스킨·아이템 꾸미기'),
-      ],
+      illo: _Illo.mochi,
+      accent: Color(0xFFA78BFA),
+      accentBg: Color(0xFFF5F3FF),
+      eyebrow: 'STEP 4',
+      title: '퀴즈 풀고 모찌를 키워요',
+      body: '함께 퀴즈를 풀수록\n우리 그룹 모찌가 무럭무럭 자라요',
+      cta: '디그팟 시작하기',
+      mochiSkinHex: '#A78BFA',
+      mochiStage: CharacterStage.master,
     ),
   ];
 
@@ -95,6 +79,17 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
       );
     } else {
       _finish();
+    }
+  }
+
+  void _onBack() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      Navigator.of(context).maybePop();
     }
   }
 
@@ -115,42 +110,58 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final data = _pages[_currentPage];
     final isLastPage = _currentPage == _pages.length - 1;
+    final canGoBack = _currentPage > 0 || widget.isFromMyPage;
 
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 상단 건너뛰기
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (!isLastPage)
-                    GestureDetector(
-                      onTap: _finish,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.gray50,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          '건너뛰기',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                            color: AppColors.gray500,
+            // 상단 바: 뒤로 + 건너뛰기 (마지막 페이지는 건너뛰기 없음)
+            SizedBox(
+              height: 48,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    if (canGoBack)
+                      _TopIconButton(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: _onBack,
+                      )
+                    else
+                      const SizedBox(width: 44),
+                    const Spacer(),
+                    if (!isLastPage)
+                      Semantics(
+                        button: true,
+                        label: '건너뛰기',
+                        child: GestureDetector(
+                          onTap: _finish,
+                          child: Container(
+                            height: 36,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: AppColors.gray50,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              '건너뛰기',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                                color: AppColors.gray500,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (isLastPage) const SizedBox(height: 36),
-                ],
+                  ],
+                ),
               ),
             ),
             // 페이지 콘텐츠
@@ -166,12 +177,11 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
                 },
               ),
             ),
-            // 인디케이터 + 버튼
+            // 인디케이터 + CTA
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
               child: Column(
                 children: [
-                  // 도트 인디케이터
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(_pages.length, (index) {
@@ -182,23 +192,20 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
                         width: isActive ? 24 : 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: isActive
-                              ? _pages[_currentPage].gradient[1]
-                              : AppColors.gray200,
+                          color: isActive ? data.accent : AppColors.gray200,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
                     }),
                   ),
-                  const SizedBox(height: 28),
-                  // 버튼
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     height: 54,
                     child: ElevatedButton(
                       onPressed: _onNext,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _pages[_currentPage].gradient[1],
+                        backgroundColor: data.accent,
                         elevation: 0,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
@@ -206,7 +213,7 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
                         ),
                       ),
                       child: Text(
-                        isLastPage ? '시작하기' : '다음',
+                        isLastPage ? (data.cta ?? '시작하기') : '다음',
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w700,
@@ -226,121 +233,180 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
   }
 
   Widget _buildGuidePage(_GuidePageData data) {
-    final accent = data.gradient[1];
-    return Stack(
-      children: [
-        // 부드러운 테마색 장식 원 (배경)
-        Positioned(
-          top: -70,
-          left: -50,
-          child: _blurCircle(accent.withValues(alpha: 0.16), 240),
-        ),
-        Positioned(
-          top: 30,
-          right: -60,
-          child: _blurCircle(data.gradient[0].withValues(alpha: 0.18), 180),
-        ),
-        SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
-          child: Column(
-            children: [
-              // 모찌 + 말풍선 (마스코트가 직접 설명)
-              _buildMochiStage(data),
-              const SizedBox(height: 22),
-              Text(
-                data.title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 25,
-                  height: 1.3,
-                  color: AppColors.gray900,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                data.subtitle,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
-                  fontSize: 15,
-                  height: 1.6,
-                  color: AppColors.gray500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-              ...data.features.map((f) => _buildFeatureRow(f, accent)),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 페이지 마스코트 — 모찌(페이지 테마색 배경) + 머리 위 말풍선. 페이지가 넘어갈수록 성장.
-  Widget _buildMochiStage(_GuidePageData data) {
-    final accent = data.gradient[1];
-    return SizedBox(
-      height: 248,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.bottomCenter,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
+      child: Column(
         children: [
-          // 모찌 뒤 halo
-          Positioned(
-            bottom: 10,
-            child: Container(
-              width: 210,
-              height: 210,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    accent.withValues(alpha: 0.22),
-                    accent.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
+          // 일러스트 (페이지별 소프트 배경)
+          _IllustrationCard(data: data),
+          const SizedBox(height: 28),
+          // eyebrow (STEP n)
+          Text(
+            data.eyebrow,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 1.5,
+              color: data.accent,
             ),
           ),
-          // 모찌 본체
-          Positioned(
-            bottom: 0,
-            child: MochiCharacterView(
-              appearance:
-                  MochiAppearance(skinHex: data.skinHex, skinAssetKey: 'skin/coral'),
-              stage: data.stage,
-              size: 172,
-              expression: MochiEmotion.happy,
+          const SizedBox(height: 10),
+          Text(
+            data.title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w800,
+              fontSize: 26,
+              height: 1.3,
+              color: AppColors.gray900,
             ),
+            textAlign: TextAlign.center,
           ),
-          // 말풍선 (모찌 우상단)
-          Positioned(
-            top: 0,
-            right: 6,
-            child: _speechBubble(data.speech, accent),
+          const SizedBox(height: 12),
+          Text(
+            data.body,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              height: 1.6,
+              color: AppColors.gray500,
+            ),
+            textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
+}
 
-  Widget _speechBubble(String text, Color accent) {
+/// 페이지별 일러스트를 담는 소프트 배경 카드.
+class _IllustrationCard extends StatelessWidget {
+  final _GuidePageData data;
+  const _IllustrationCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      excludeSemantics: true, // 장식 — 의미는 제목/본문으로 전달
+      child: Container(
+        height: 300,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: data.accentBg,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // 은은한 장식 원
+            Positioned(
+              top: -40,
+              right: -30,
+              child: _softCircle(data.accent.withValues(alpha: 0.10), 160),
+            ),
+            Positioned(
+              bottom: -50,
+              left: -30,
+              child: _softCircle(data.accent.withValues(alpha: 0.08), 150),
+            ),
+            _buildIllo(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIllo() {
+    switch (data.illo) {
+      case _Illo.welcome:
+        return _WelcomeIllo(data: data);
+      case _Illo.invite:
+        return _InviteIllo(accent: data.accent);
+      case _Illo.diary:
+        return _DiaryIllo(accent: data.accent);
+      case _Illo.calendar:
+        return _CalendarIllo(accent: data.accent);
+      case _Illo.mochi:
+        return _MochiLevelUpIllo(data: data);
+    }
+  }
+
+  Widget _softCircle(Color color, double size) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 210),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withValues(alpha: 0.0)],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 01 · 환영 — 모찌 + 일기/하트/캘린더 버블
+// ─────────────────────────────────────────────────────────────
+class _WelcomeIllo extends StatelessWidget {
+  final _GuidePageData data;
+  const _WelcomeIllo({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.bottomCenter,
+      children: [
+        // halo
+        Positioned(
+          bottom: 4,
+          child: Container(
+            width: 210,
+            height: 210,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  data.accent.withValues(alpha: 0.20),
+                  data.accent.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -8,
+          child: MochiCharacterView(
+            appearance: MochiAppearance(
+                skinHex: data.mochiSkinHex!, skinAssetKey: 'skin/coral'),
+            stage: data.mochiStage!,
+            size: 184,
+            expression: MochiEmotion.happy,
+          ),
+        ),
+        Positioned(top: 30, left: 14, child: _bubble('✏️ 오늘 일기', data.accent)),
+        Positioned(top: 18, right: 16, child: _bubble('❤️ 좋아요', data.accent)),
+        Positioned(bottom: 28, right: 6, child: _bubble('📅 약속', data.accent)),
+      ],
+    );
+  }
+
+  Widget _bubble(String text, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accent.withValues(alpha: 0.28), width: 1.4),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.14),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+            color: accent.withValues(alpha: 0.16),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -349,93 +415,512 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
         style: const TextStyle(
           fontFamily: 'Inter',
           fontWeight: FontWeight.w700,
-          fontSize: 14,
-          height: 1.35,
+          fontSize: 13,
           color: AppColors.gray800,
         ),
       ),
     );
   }
+}
 
-  Widget _blurCircle(Color color, double size) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0.0)],
+// ─────────────────────────────────────────────────────────────
+// 02 · 그룹·초대 — 초대코드 카드 + 멤버/추가 버블
+// ─────────────────────────────────────────────────────────────
+class _InviteIllo extends StatelessWidget {
+  final Color accent;
+  const _InviteIllo({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 초대코드 카드
+        Container(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.18),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
+          child: Column(
+            children: [
+              const Text(
+                '초대코드',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppColors.gray500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'A8K-2F9',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 26,
+                      letterSpacing: 3,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.copy_rounded, size: 16, color: accent),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        // 멤버 아바타 + 추가
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _avatar(const Color(0xFFFF8FA3), 'J'),
+            _avatar(const Color(0xFFFFD166), 'M'),
+            _avatar(const Color(0xFF6EE7B7), 'Y'),
+            const SizedBox(width: 6),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.5),
+                  width: 1.6,
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Icon(Icons.add_rounded, color: accent, size: 22),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _avatar(Color color, String letter) {
+    return Container(
+      width: 40,
+      height: 40,
+      margin: const EdgeInsets.only(right: 6),
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.white, width: 2),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        letter,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+          color: AppColors.white,
         ),
       ),
     );
   }
+}
 
-  Widget _buildFeatureRow(_FeatureItem feature, Color accentColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(11),
+// ─────────────────────────────────────────────────────────────
+// 03 · 그림일기 — 일기 카드(사진 placeholder) + 펜/댓글
+// ─────────────────────────────────────────────────────────────
+class _DiaryIllo extends StatelessWidget {
+  final Color accent;
+  const _DiaryIllo({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 230,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.16),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
               ),
-              child: Icon(
-                feature.icon,
-                size: 20,
-                color: accentColor,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 사진 placeholder
+              Container(
+                height: 96,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.image_outlined,
+                  color: accent.withValues(alpha: 0.7),
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _line(140, accent.withValues(alpha: 0.55)),
+              const SizedBox(height: 8),
+              _line(180, AppColors.gray200),
+              const SizedBox(height: 6),
+              _line(120, AppColors.gray200),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Icon(Icons.favorite_rounded, size: 16, color: accent),
+                  const SizedBox(width: 4),
+                  const Text('3',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.gray500)),
+                  const SizedBox(width: 14),
+                  Icon(Icons.chat_bubble_outline_rounded,
+                      size: 15, color: AppColors.gray400),
+                  const SizedBox(width: 4),
+                  const Text('2',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.gray500)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // 펜 버블
+        Positioned(
+          top: -14,
+          right: -10,
+          child: Container(
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: accent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.4),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.edit_rounded,
+                size: 18, color: AppColors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _line(double width, Color color) {
+    return Container(
+      width: width,
+      height: 9,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(5),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 04 · 일정 — 미니 캘린더(날짜 강조 + 일정 칩)
+// ─────────────────────────────────────────────────────────────
+class _CalendarIllo extends StatelessWidget {
+  final Color accent;
+  const _CalendarIllo({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 232,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.16),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '6월',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 날짜 그리드 (강조 1칸)
+          ...List.generate(2, (row) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(5, (col) {
+                  final isHighlight = row == 0 && col == 2;
+                  return Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: isHighlight ? accent : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isHighlight
+                            ? AppColors.white
+                            : AppColors.gray200,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            );
+          }),
+          const SizedBox(height: 6),
+          _eventChip(accent, '모임 · 오후 7시'),
+          const SizedBox(height: 8),
+          _eventChip(const Color(0xFFF472B6), '기념일'),
+        ],
+      ),
+    );
+  }
+
+  Widget _eventChip(Color color, String label) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: AppColors.gray700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 05 · 퀴즈·모찌 — 모찌(레벨업 ✨) + 퀴즈/Lv 카드
+// ─────────────────────────────────────────────────────────────
+class _MochiLevelUpIllo extends StatelessWidget {
+  final _GuidePageData data;
+  const _MochiLevelUpIllo({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.bottomCenter,
+      children: [
+        Positioned(
+          bottom: 4,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  data.accent.withValues(alpha: 0.22),
+                  data.accent.withValues(alpha: 0.0),
+                ],
               ),
             ),
-            const SizedBox(width: 14),
-            Text(
-              feature.label,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                color: AppColors.gray800,
-              ),
-            ),
-          ],
+          ),
         ),
+        Positioned(
+          bottom: -8,
+          child: MochiCharacterView(
+            appearance: MochiAppearance(
+                skinHex: data.mochiSkinHex!, skinAssetKey: 'skin/coral'),
+            stage: data.mochiStage!,
+            size: 176,
+            expression: MochiEmotion.happy,
+          ),
+        ),
+        // Lv 배지
+        Positioned(
+          top: 22,
+          left: 18,
+          child: _card(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome, size: 15, color: data.accent),
+                const SizedBox(width: 5),
+                Text('Lv.5',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: data.accent)),
+              ],
+            ),
+            data.accent,
+          ),
+        ),
+        // 퀴즈 카드
+        Positioned(
+          top: 14,
+          right: 14,
+          child: _card(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text('Q',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: AppColors.gray900)),
+                SizedBox(width: 6),
+                Text('오늘의 퀴즈',
+                    style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: AppColors.gray700)),
+              ],
+            ),
+            data.accent,
+          ),
+        ),
+        const Positioned(
+          bottom: 96,
+          right: 30,
+          child: Text('✨', style: TextStyle(fontSize: 22)),
+        ),
+        const Positioned(
+          top: 70,
+          left: 44,
+          child: Text('✨', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    );
+  }
+
+  Widget _card(Widget child, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(13),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.16),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+class _TopIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _TopIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Icon(icon, size: 20, color: AppColors.gray700),
       ),
     );
   }
 }
 
 class _GuidePageData {
-  final List<Color> gradient;
-  final String skinHex; // 모찌 배경 squircle 색 (페이지 테마색)
-  final CharacterStage stage; // 페이지가 넘어갈수록 모찌가 성장
-  final String speech; // 모찌 말풍선 대사
+  final _Illo illo;
+  final Color accent; // 페이지 테마색
+  final Color accentBg; // 일러스트 소프트 배경
+  final String eyebrow; // STEP n / WELCOME
   final String title;
-  final String subtitle;
-  final List<_FeatureItem> features;
+  final String body;
+  final String? cta; // 마지막 페이지만 커스텀
+  final String? mochiSkinHex; // 모찌 일러스트 페이지용
+  final CharacterStage? mochiStage;
 
   const _GuidePageData({
-    required this.gradient,
-    required this.skinHex,
-    required this.stage,
-    required this.speech,
+    required this.illo,
+    required this.accent,
+    required this.accentBg,
+    required this.eyebrow,
     required this.title,
-    required this.subtitle,
-    required this.features,
+    required this.body,
+    this.cta,
+    this.mochiSkinHex,
+    this.mochiStage,
   });
-}
-
-class _FeatureItem {
-  final IconData icon;
-  final String label;
-
-  const _FeatureItem(this.icon, this.label);
 }

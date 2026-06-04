@@ -9,6 +9,7 @@ import '../../theme/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/feature_card.dart';
+import '../../widgets/group_default_avatar.dart';
 import '../../widgets/invite_code_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
 
@@ -295,19 +296,14 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                   return ListTile(
                     leading: Opacity(
                       opacity: scheduled ? 0.45 : 1,
-                      child: CircleAvatar(
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.12),
-                        backgroundImage: (g.thumbnailImage != null &&
-                                g.thumbnailImage!.isNotEmpty)
-                            ? NetworkImage(g.thumbnailImage!)
-                            : null,
-                        child: (g.thumbnailImage == null ||
-                                g.thumbnailImage!.isEmpty)
-                            ? const Icon(Icons.group_rounded,
-                                color: AppColors.primary, size: 20)
-                            : null,
-                      ),
+                      child: (g.thumbnailImage != null &&
+                              g.thumbnailImage!.isNotEmpty)
+                          ? CircleAvatar(
+                              backgroundColor:
+                                  AppColors.primary.withValues(alpha: 0.12),
+                              backgroundImage: NetworkImage(g.thumbnailImage!),
+                            )
+                          : const GroupDefaultAvatar(size: 40),
                     ),
                     title: Text(
                       g.name,

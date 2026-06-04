@@ -2,14 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
+import 'group_default_avatar.dart';
 
 class GroupListTile extends StatelessWidget {
   final String name;
   final String memberCount;
   final String? thumbnailImageUrl;
-  final IconData groupIcon;
-  final Color groupIconBg;
-  final Color groupIconColor;
   /// 초대코드 공유 아이콘 노출 여부 — 보통 방장에게만 켠다.
   final bool showShare;
   /// 톱니바퀴 아이콘 노출 여부 — 일반 멤버에게도 탈퇴 진입점으로 사용.
@@ -30,9 +28,6 @@ class GroupListTile extends StatelessWidget {
     required this.name,
     required this.memberCount,
     this.thumbnailImageUrl,
-    this.groupIcon = Icons.group,
-    this.groupIconBg = AppColors.gray50,
-    this.groupIconColor = AppColors.gray500,
     this.showShare = false,
     this.showSettings = false,
     this.isDeleteScheduled = false,
@@ -69,24 +64,14 @@ class GroupListTile extends StatelessWidget {
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: groupIconBg,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(groupIcon, size: 24, color: groupIconColor),
+                      errorBuilder: (_, __, ___) => const GroupDefaultAvatar(
+                        size: 56,
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
                       ),
                     )
-                  : Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: groupIconBg,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(groupIcon, size: 24, color: groupIconColor),
+                  : const GroupDefaultAvatar(
+                      size: 56,
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
                     ),
             ),
             const SizedBox(width: 14),
