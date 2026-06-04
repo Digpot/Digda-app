@@ -288,12 +288,19 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   };
 
   /// 공휴일명 정제 — 고정 양력은 우리 표기, 그 외에는 한글이 포함된 값만 사용.
-  /// 한글이 없으면(날짜/영문/숫자 등) '공휴일' 로 폴백해 "2026" 같은 이상 텍스트를 차단.
+  /// name(고유 명칭)을 descriptionKo 보다 우선한다: descriptionKo 는 "2026 지방선거"처럼
+  /// 연도가 붙어 있어 좁은 캘린더 칸에서 "2026"만 잘려 보였다. 또 앞쪽 연도/숫자/공백 등
+  /// 비한글 접두어를 떼어내 "2026 지방선거" → "지방선거" 로 정리하고, 한글이 전혀 없으면
+  /// '공휴일' 로 폴백해 날짜/영문/숫자 같은 이상 텍스트를 차단한다.
   String _resolveHolidayName(int month, int day, String? ko, String fallback) {
     final fixed = _solarHolidayNames['$month-$day'];
     if (fixed != null) return fixed;
-    if (ko != null && _hangul.hasMatch(ko)) return ko;
-    if (_hangul.hasMatch(fallback)) return fallback;
+    for (final cand in [fallback, ko]) {
+      if (cand != null && _hangul.hasMatch(cand)) {
+        final cleaned = cand.replaceFirst(RegExp(r'^[^가-힣]+'), '').trim();
+        if (cleaned.isNotEmpty) return cleaned;
+      }
+    }
     return '공휴일';
   }
 
