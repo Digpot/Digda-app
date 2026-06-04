@@ -114,7 +114,8 @@ class _NicknameExhibitScreenState extends State<NicknameExhibitScreen> {
           childAspectRatio: 0.7,
         ),
         itemCount: items.length,
-        itemBuilder: (_, i) => _FlipCard(exhibit: items[i]),
+        itemBuilder: (_, i) =>
+            _FlipCard(key: ValueKey(items[i].id), exhibit: items[i]),
       ),
     );
   }
@@ -122,7 +123,7 @@ class _NicknameExhibitScreenState extends State<NicknameExhibitScreen> {
 
 /// 탭하면 Y축으로 뒤집히는 카드. 앞면=이미지+별명, 뒷면=별명 역사.
 class _FlipCard extends StatefulWidget {
-  const _FlipCard({required this.exhibit});
+  const _FlipCard({super.key, required this.exhibit});
   final NicknameExhibit exhibit;
 
   @override
@@ -325,7 +326,7 @@ class _EmptyState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: const [
         SizedBox(height: 120),
-        Icon(Icons.collections_outlined, size: 44, color: AppColors.gray300),
+        Center(child: Icon(Icons.collections_outlined, size: 44, color: AppColors.gray300)),
         SizedBox(height: 12),
         Text(
           '아직 등록된 별명이 없어요.',
