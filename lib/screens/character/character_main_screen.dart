@@ -26,6 +26,7 @@ import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
 import 'quiz/character_quiz_list_screen.dart';
+import '../exhibit/nickname_exhibit_screen.dart';
 
 /// 모찌 키우기 탭의 메인 화면.
 /// - 캐릭터 시각화 + 레벨/EXP 진행도 + 코인
@@ -45,6 +46,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   bool _hasLoadedOnce = false;
   // 풀 수 있는 남은 퀴즈 수 — '퀴즈 풀기' 버튼 위 말풍선용 (best-effort, null=미조회).
   int? _remainingQuiz;
+  // 역대 별명 전시관 접근 허용 여부 — 어드민이 허용한 사용자만 버튼 노출 (best-effort).
+  bool _exhibitAllowed = false;
   bool _petInProgress = false;
   bool _savingImage = false;
   final _mochiCtrl = MochiAnimationController();
@@ -111,6 +114,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         _hasLoadedOnce = true;
       });
       _loadRemainingQuiz(groupId); // 버튼 위 말풍선용 카운트 (best-effort, 비동기)
+      _checkExhibitAccess(); // 전시관 버튼 노출 여부 (best-effort, 비동기)
       if (isFirst) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _mochiCtrl.triggerHappy();
@@ -154,6 +158,25 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     }
     if (!mounted) return;
     setState(() => _remainingQuiz = count);
+  }
+
+  /// 역대 별명 전시관 접근 권한을 best-effort 로 조회해 버튼 노출을 결정한다.
+  /// 실패 시(네트워크/미허용) 버튼은 노출하지 않는다.
+  Future<void> _checkExhibitAccess() async {
+    bool allowed;
+    try {
+      allowed = await Di.exhibitRepository.checkAccess();
+    } catch (_) {
+      allowed = false;
+    }
+    if (!mounted || allowed == _exhibitAllowed) return;
+    setState(() => _exhibitAllowed = allowed);
+  }
+
+  Future<void> _openExhibit() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const NicknameExhibitScreen()),
+    );
   }
 
   void _openInfoSheet() {
@@ -540,7 +563,66 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               ),
             ],
           ),
+          // 어드민이 허용한 사용자만 노출되는 역대 별명 전시관 진입 버튼.
+          if (_exhibitAllowed) ...[
+            const SizedBox(height: 12),
+            _ExhibitCta(onTap: _openExhibit),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// 모찌 화면 하단의 '디그다 역대 별명 전시관' 진입 버튼.
+class _ExhibitCta extends StatelessWidget {
+  const _ExhibitCta({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF8B7CF6), Color(0xFFB794F6)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF8B7CF6).withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Text('🏛️', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  '디그다 역대 별명 전시관',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
       ),
     );
   }
