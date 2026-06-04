@@ -22,15 +22,6 @@ class _GroupListScreenState extends State<GroupListScreen> {
   /// 서버 스케줄러(최대 5분 주기) 가 실제 삭제하기 전에도 UX 상 자연스럽게 사라지게 한다.
   final Set<String> _expiredIds = <String>{};
 
-  // 그룹마다 일관된 아이콘/색을 부여하기 위한 팔레트.
-  static const _palette = [
-    _Skin(Icons.image_outlined, Color(0xFFFFEAEA), AppColors.primary),
-    _Skin(Icons.diamond_outlined, Color(0xFFEAEEFF), Color(0xFF6B82F0)),
-    _Skin(Icons.coffee_outlined, Color(0xFFFFF3E0), Color(0xFFF0A050)),
-    _Skin(Icons.travel_explore_outlined, Color(0xFFE7F8EE), AppColors.green),
-    _Skin(Icons.favorite_border, Color(0xFFFFF0F4), AppColors.primary),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -234,16 +225,12 @@ class _GroupListScreenState extends State<GroupListScreen> {
                               else
                                 ...List.generate(groups.length, (i) {
                                   final g = groups[i];
-                                  final skin = _palette[i % _palette.length];
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: GroupListTile(
                                       name: g.name,
                                       memberCount: '${g.memberCount}명 참여 중',
                                       thumbnailImageUrl: g.thumbnailImage,
-                                      groupIcon: skin.icon,
-                                      groupIconBg: skin.bg,
-                                      groupIconColor: skin.fg,
                                       // 공유는 방장만, 톱니바퀴(설정/탈퇴 진입점)는 모든 멤버에게.
                                       showShare: g.isOwner && !g.isDeleteScheduled,
                                       showSettings: !g.isDeleteScheduled,
@@ -335,13 +322,6 @@ class _GroupListScreenState extends State<GroupListScreen> {
       ),
     );
   }
-}
-
-class _Skin {
-  final IconData icon;
-  final Color bg;
-  final Color fg;
-  const _Skin(this.icon, this.bg, this.fg);
 }
 
 class _EmptyState extends StatelessWidget {

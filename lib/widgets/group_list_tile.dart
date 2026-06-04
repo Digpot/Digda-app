@@ -8,9 +8,6 @@ class GroupListTile extends StatelessWidget {
   final String name;
   final String memberCount;
   final String? thumbnailImageUrl;
-  final IconData groupIcon;
-  final Color groupIconBg;
-  final Color groupIconColor;
   /// 초대코드 공유 아이콘 노출 여부 — 보통 방장에게만 켠다.
   final bool showShare;
   /// 톱니바퀴 아이콘 노출 여부 — 일반 멤버에게도 탈퇴 진입점으로 사용.
@@ -31,9 +28,6 @@ class GroupListTile extends StatelessWidget {
     required this.name,
     required this.memberCount,
     this.thumbnailImageUrl,
-    this.groupIcon = Icons.group,
-    this.groupIconBg = AppColors.gray50,
-    this.groupIconColor = AppColors.gray500,
     this.showShare = false,
     this.showSettings = false,
     this.isDeleteScheduled = false,
