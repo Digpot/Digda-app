@@ -936,7 +936,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 labels[d.weekday % 7],
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w700,
                   fontSize: 11,
                   color: dayColor(d).withValues(alpha: 0.7),
                 ),
@@ -1439,7 +1439,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                             labels[day.weekday - 1],
                             style: TextStyle(
                               fontFamily: 'Inter',
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w700,
                               fontSize: 11,
                               color: color,
                             ),
@@ -1500,7 +1500,14 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                       _showDayDetail(selectedDay);
                     },
                     onPageChanged: (focusedDay) {
+                      // 가로 스와이프로 달이 바뀌면 해당 월 일정을 다시 불러온다.
+                      // (예전엔 _focusedDay 만 갱신하고 재조회를 안 해, 스와이프로 이동한
+                      //  달엔 일정이 안 뜨다가 다른 화면을 갔다 와야 보이던 버그가 있었다.)
+                      final monthChanged =
+                          focusedDay.year != _focusedDay.year ||
+                              focusedDay.month != _focusedDay.month;
                       setState(() => _focusedDay = focusedDay);
+                      if (monthChanged) _loadSchedules();
                     },
                   );
                   // 셀을 키웠을 때 6주가 화면보다 길어지면 세로 스크롤로 처리.
