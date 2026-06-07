@@ -68,6 +68,31 @@ class DiaryRepository {
     return result;
   }
 
+  /// 시그니처 지도 — 그룹의 지역별 일기 수 집계.
+  Future<DiaryRegionMapResult> regionMap(String groupRoomId) async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/diaries/region-map',
+    );
+    return DiaryRegionMapResult.fromJson(res.data!);
+  }
+
+  /// 시그니처 지도 — 특정 지역(regionKey)의 일기 목록.
+  Future<DiaryListResult> listByRegion(
+    String groupRoomId,
+    String regionKey, {
+    int? limit,
+    int? offset,
+  }) async {
+    final query = <String, dynamic>{'regionKey': regionKey};
+    if (limit != null) query['limit'] = limit;
+    if (offset != null) query['offset'] = offset;
+    final res = await _api.get<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/diaries/by-region',
+      query: query,
+    );
+    return DiaryListResult.fromJson(res.data!);
+  }
+
   /// 7-3. 일기 상세.
   Future<DiaryDetail> detail(String groupRoomId, String diaryId) async {
     final res = await _api.get<Map<String, dynamic>>(

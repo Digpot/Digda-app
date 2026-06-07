@@ -57,3 +57,6 @@ ios/Runner/GoogleService-Info.plist
 # Claw Empire 작업 아티팩트 (CI 체크아웃 깨짐 방지)
 .climpire/
 .climpire-worktrees/
+
+# 지도 변환 원본(재다운로드 가능)
+tool/mapgen/sigungu-topo.json

@@ -16,6 +16,7 @@ dependencies:
   intl: ^0.20.2
   table_calendar: ^3.1.0
   flutter_svg: ^2.0.10+1
+  path_drawing: ^1.0.1
   image_picker: ^1.1.2
   world_holidays: ^2.0.1
   share_plus: ^10.1.4
@@ -62,4 +63,5 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/svg/
+    - assets/map/
     - .env
