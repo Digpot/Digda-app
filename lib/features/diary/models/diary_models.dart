@@ -61,6 +61,9 @@ class DiarySummary {
     required this.weather,
     required this.mood,
     this.location,
+    this.regionKey,
+    this.regionSido,
+    this.regionSigungu,
     this.thumbnailUrl,
     required this.imageCount,
     required this.createdBy,
@@ -76,6 +79,9 @@ class DiarySummary {
   final int weather; // 0 맑음 / 1 구름 / 2 비 / 3 눈
   final int mood; // 0 행복 / 1 평온 / 2 슬픔 / 3 화남 / 4 피곤
   final String? location;
+  final String? regionKey;
+  final String? regionSido;
+  final String? regionSigungu;
   final String? thumbnailUrl;
   final int imageCount;
   final UserSummary createdBy;
@@ -92,6 +98,9 @@ class DiarySummary {
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
       location: json['location'] as String?,
+      regionKey: json['regionKey'] as String?,
+      regionSido: json['regionSido'] as String?,
+      regionSigungu: json['regionSigungu'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
       imageCount: (json['imageCount'] as num? ?? 0).toInt(),
       createdBy:
@@ -193,6 +202,39 @@ class DiaryCalendarResult {
   }
 }
 
+/// 시그니처 지도 — 지역별 일기 수 집계.
+class DiaryRegionCount {
+  DiaryRegionCount({required this.regionKey, required this.count});
+
+  final String regionKey;
+  final int count;
+
+  factory DiaryRegionCount.fromJson(Map<String, dynamic> json) =>
+      DiaryRegionCount(
+        regionKey: json['regionKey'] as String,
+        count: (json['count'] as num? ?? 0).toInt(),
+      );
+}
+
+class DiaryRegionMapResult {
+  DiaryRegionMapResult({required this.regions, required this.total});
+
+  final List<DiaryRegionCount> regions;
+  final int total;
+
+  /// region_key → 일기 수.
+  Map<String, int> get countByKey =>
+      {for (final r in regions) r.regionKey: r.count};
+
+  factory DiaryRegionMapResult.fromJson(Map<String, dynamic> json) =>
+      DiaryRegionMapResult(
+        regions: ((json['regions'] as List?) ?? const [])
+            .map((e) => DiaryRegionCount.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        total: (json['total'] as num? ?? 0).toInt(),
+      );
+}
+
 class DiaryListResult {
   DiaryListResult({required this.diaries, required this.total});
 
@@ -218,6 +260,9 @@ class Diary {
     required this.weather,
     required this.mood,
     this.location,
+    this.regionKey,
+    this.regionSido,
+    this.regionSigungu,
     required this.imageUrls,
     required this.createdBy,
     required this.createdAt,
@@ -234,6 +279,9 @@ class Diary {
   final int weather;
   final int mood;
   final String? location;
+  final String? regionKey;
+  final String? regionSido;
+  final String? regionSigungu;
   final List<String> imageUrls;
   final UserSummary createdBy;
   final DateTime createdAt;
@@ -251,6 +299,9 @@ class Diary {
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
       location: json['location'] as String?,
+      regionKey: json['regionKey'] as String?,
+      regionSido: json['regionSido'] as String?,
+      regionSigungu: json['regionSigungu'] as String?,
       imageUrls: ((json['imageUrls'] as List?) ?? const [])
           .map((e) => e as String)
           .toList(),
@@ -322,6 +373,9 @@ class DiaryWriteRequest {
     this.weather,
     this.mood,
     this.location = unset,
+    this.regionKey = unset,
+    this.regionSido = unset,
+    this.regionSigungu = unset,
     this.imageIds = unset,
   });
 
@@ -332,6 +386,9 @@ class DiaryWriteRequest {
     required int weather,
     required int mood,
     String? location,
+    String? regionKey,
+    String? regionSido,
+    String? regionSigungu,
     required List<String> imageIds,
   }) {
     return DiaryWriteRequest(
@@ -341,6 +398,9 @@ class DiaryWriteRequest {
       weather: weather,
       mood: mood,
       location: location,
+      regionKey: regionKey,
+      regionSido: regionSido,
+      regionSigungu: regionSigungu,
       imageIds: imageIds,
     );
   }
@@ -351,6 +411,10 @@ class DiaryWriteRequest {
   final int? weather;
   final int? mood;
   final Object? location; // unset=변경없음, null/빈문자열=제거, String=설정
+  // 지역은 항상 location 과 함께 송신(수정 시 서버가 region 도 덮어쓰므로 기존값 재전송).
+  final Object? regionKey;
+  final Object? regionSido;
+  final Object? regionSigungu;
   final Object? imageIds; // unset=변경없음, List<String>(빈배열=제거, 값=교체)
 
   static const Object unset = Object();
@@ -365,6 +429,9 @@ class DiaryWriteRequest {
     if (weather != null) body['weather'] = weather;
     if (mood != null) body['mood'] = mood;
     if (!identical(location, unset)) body['location'] = location;
+    if (!identical(regionKey, unset)) body['regionKey'] = regionKey;
+    if (!identical(regionSido, unset)) body['regionSido'] = regionSido;
+    if (!identical(regionSigungu, unset)) body['regionSigungu'] = regionSigungu;
     if (!identical(imageIds, unset)) body['imageIds'] = imageIds;
     return body;
   }

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/diary/models/diary_models.dart';
+import '../../features/map/data/region_resolver.dart';
 import '../../features/place/data/kakao_place_search.dart';
 import '../../features/place/models/place_models.dart';
 import '../../features/upload/models/upload_models.dart';
@@ -65,6 +66,12 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
   DateTime _date = DateTime.now();
   int _weather = 0;
   int _mood = 0;
+
+  /// 시그니처 지도 색칠용 — 장소 선택 시 좌표→행정구역에서 산출. location 과 함께 송신.
+  String? _regionKey;
+  String? _regionSido;
+  String? _regionSigungu;
+  final KakaoRegionResolver _regionResolver = KakaoRegionResolver();
 
   /// 이미 업로드되어 있는 원본 URL (수정 모드 초기값).
   /// new로 추가된 이미지는 [_newFiles] 에서 별도 관리.
@@ -125,6 +132,9 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
         _titleController.text = d.title;
         _contentController.text = d.content;
         _locationController.text = d.location ?? '';
+        _regionKey = d.regionKey;
+        _regionSido = d.regionSido;
+        _regionSigungu = d.regionSigungu;
         _date = d.date;
         _weather = d.weather;
         _mood = d.mood;
@@ -286,9 +296,12 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
         imageIdsField = combined;
       }
 
-      // location
+      // location + 지역(지도 색칠). 위치가 비면 지역도 함께 제거.
       final loc = _locationController.text.trim();
       final Object? locField = loc.isEmpty ? null : loc;
+      final String? regionKey = loc.isEmpty ? null : _regionKey;
+      final String? regionSido = loc.isEmpty ? null : _regionSido;
+      final String? regionSigungu = loc.isEmpty ? null : _regionSigungu;
 
       if (isEdit) {
         await Di.diaryRepository.update(
@@ -301,6 +314,9 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             weather: _weather,
             mood: _mood,
             location: locField,
+            regionKey: regionKey,
+            regionSido: regionSido,
+            regionSigungu: regionSigungu,
             imageIds: imageIdsField,
           ),
         );
@@ -316,6 +332,9 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             weather: _weather,
             mood: _mood,
             location: loc.isEmpty ? null : loc,
+            regionKey: regionKey,
+            regionSido: regionSido,
+            regionSigungu: regionSigungu,
             imageIds: combined,
           ),
         );
@@ -1076,7 +1095,7 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
   }
 
   Future<void> _openLocationSheet() async {
-    final picked = await showModalBottomSheet<String?>(
+    final picked = await showModalBottomSheet<LocationPick?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1086,9 +1105,27 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
     );
     if (picked == null || !mounted) return;
     setState(() {
-      _locationController.text = picked;
+      _locationController.text = picked.name;
+      // 직접 입력(좌표 없음)은 지역 매핑 불가 → 지도 미반영.
+      _regionKey = null;
+      _regionSido = null;
+      _regionSigungu = null;
       _dirty = true;
     });
+    // 좌표가 있으면 행정구역을 산출해 지도 색칠키로 사용.
+    final lat = picked.lat;
+    final lng = picked.lng;
+    if (lat != null && lng != null) {
+      final region = await _regionResolver.resolve(lat, lng);
+      if (!mounted || region == null) return;
+      // 사용자가 그새 위치를 또 바꿨으면 덮어쓰지 않음.
+      if (_locationController.text != picked.name) return;
+      setState(() {
+        _regionKey = region.regionKey;
+        _regionSido = region.sido;
+        _regionSigungu = region.sigungu;
+      });
+    }
   }
 
   static String _formatDate(DateTime d) {
@@ -1165,6 +1202,15 @@ class _DottedPainter extends CustomPainter {
 // 장소 검색 시트 — 카카오 로컬 키워드 검색
 // ──────────────────────────────────────────────────────────────────────
 
+/// 위치 검색 시트 결과. 직접 입력(좌표 없음) 또는 카카오 장소(좌표 포함).
+class LocationPick {
+  LocationPick({required this.name, this.lat, this.lng});
+
+  final String name;
+  final double? lat;
+  final double? lng;
+}
+
 class _LocationSearchSheet extends StatefulWidget {
   const _LocationSearchSheet({required this.initialQuery});
   final String initialQuery;
@@ -1231,11 +1277,13 @@ class _LocationSearchSheetState extends State<_LocationSearchSheet> {
       Navigator.of(context).pop();
       return;
     }
-    Navigator.of(context).pop(q);
+    Navigator.of(context).pop(LocationPick(name: q));
   }
 
   void _pickPlace(PlaceSummary p) {
-    Navigator.of(context).pop(p.name);
+    Navigator.of(context).pop(
+      LocationPick(name: p.name, lat: p.latitude, lng: p.longitude),
+    );
   }
 
   @override

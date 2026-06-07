@@ -6,6 +6,7 @@ import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
+import '../map/korea_map_screen.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
@@ -157,6 +158,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                       _buildStatStrip(),
                       _buildPhotoGrid(),
                       _buildTodayPrompt(),
+                      _buildMapButton(),
                     ] else
                       _buildListView(),
                     const SizedBox(height: 88),
@@ -802,6 +804,70 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                 ),
               ),
               const Icon(Icons.chevron_right, color: AppColors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── 시그니처 지도 진입 버튼 ────────────────────────────────────────────────
+  Widget _buildMapButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const KoreaMapScreen()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFD2C8)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1EE),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.map_outlined,
+                    color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '대한민국 지도를 채워봐요',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.gray900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '일기에 다녀온 곳을 남기면 그 지역이 색칠돼요',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: AppColors.gray500.withValues(alpha: 1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.gray400),
             ],
           ),
         ),
