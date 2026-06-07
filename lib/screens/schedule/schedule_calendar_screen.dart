@@ -346,6 +346,48 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   final Map<DateTime, Map<_Schedule, int>> _weekLaneMap = {};
   final Map<DateTime, int> _weekMaxLane = {};
 
+  /// 월 뷰 전용 — 날짜별 컴팩션 배치. day(utc) → (일정 → 그 날의 행 index).
+  /// 주 단위 고정 레인(_weekLaneMap, 주 뷰용)과 달리, 각 날의 일정만 위에서부터
+  /// 빈틈없이 채운다. 그래서 한산한 날엔 멀티데이 일정도 낮은 행으로 내려와,
+  /// "그 날 일정이 2개뿐인데 +1" 같은 허위 오버플로가 생기지 않는다(테트리스).
+  final Map<DateTime, Map<_Schedule, int>> _dayRowMap = {};
+
+  /// 행 정렬 기준(공휴일 최상단 → 긴 일정 → 시작 빠른 순 → 생성 순).
+  /// 인접한 날들에서 동일 순서를 보장해 멀티데이 막대가 가급적 같은 행을 유지한다.
+  int _rowCompare(_Schedule a, _Schedule b) {
+    if (a.isHoliday != b.isHoliday) return a.isHoliday ? -1 : 1;
+    final ad = a.end.difference(a.start).inDays;
+    final bd = b.end.difference(b.start).inDays;
+    if (ad != bd) return bd.compareTo(ad);
+    final sc = a.start.compareTo(b.start);
+    if (sc != 0) return sc;
+    return a.createdAt.compareTo(b.createdAt);
+  }
+
+  /// 날짜별 컴팩션 행을 계산. 일정이 걸치는 모든 날에 대해, 그 날을 덮는 일정을
+  /// [_rowCompare] 로 정렬해 0..n-1 행을 부여한다.
+  void _computeDayRows() {
+    _dayRowMap.clear();
+    final Set<DateTime> days = {};
+    for (final s in _displaySchedules) {
+      var d = DateTime.utc(s.start.year, s.start.month, s.start.day);
+      final e = DateTime.utc(s.end.year, s.end.month, s.end.day);
+      while (!d.isAfter(e)) {
+        days.add(d);
+        d = d.add(const Duration(days: 1));
+      }
+    }
+    for (final day in days) {
+      final covering = _displaySchedules.where((s) => s.coversDay(day)).toList()
+        ..sort(_rowCompare);
+      final map = <_Schedule, int>{};
+      for (var i = 0; i < covering.length; i++) {
+        map[covering[i]] = i;
+      }
+      _dayRowMap[day] = map;
+    }
+  }
+
   /// 해당 날의 주(row) 시작 일요일 반환
   DateTime _weekSunday(DateTime day) {
     final d = DateTime.utc(day.year, day.month, day.day);
@@ -432,6 +474,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           ? -1
           : assignments.values.fold(-1, (a, b) => a > b ? a : b);
     }
+
+    // 월 뷰용 날짜별 컴팩션도 함께 갱신.
+    _computeDayRows();
   }
 
   /// 해당 날짜에 걸치는 모든 일정 (공휴일 포함)
@@ -514,27 +559,24 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final dayTextColor =
         (holidayName != null && circleBg == null) ? AppColors.eventHoliday : textColor;
 
-    // 레인 기반 렌더링 — 공휴일도 일반 일정과 함께 레인 pill 로 그린다.
-    final weekSun = _weekSunday(day);
-    final laneAssignments = isOutside ? <_Schedule, int>{} : (_weekLaneMap[weekSun] ?? <_Schedule, int>{});
-    final daySchedules = isOutside ? <_Schedule>[] : _getSchedulesForDay(day);
+    // 날짜별 컴팩션 렌더 — 그 날을 덮는 일정을 위에서부터 빈틈없이 쌓는다(테트리스).
+    // 멀티데이 일정도 한산한 날엔 낮은 행으로 내려오므로, "그 날 일정 수"가 곧 행 수다.
+    final dayUtc = DateTime.utc(day.year, day.month, day.day);
+    final rowMap =
+        isOutside ? <_Schedule, int>{} : (_dayRowMap[dayUtc] ?? <_Schedule, int>{});
 
-    // 이 날의 레인 → 일정 맵
-    final Map<int, _Schedule> laneToSchedule = {};
-    for (final s in daySchedules) {
-      final lane = laneAssignments[s];
-      if (lane != null) laneToSchedule[lane] = s;
-    }
+    // 행 → 일정 (컴팩션이라 0..count-1 빈틈없음)
+    final Map<int, _Schedule> rowToSchedule = {
+      for (final e in rowMap.entries) e.value: e.key,
+    };
 
-    // 정책: 일정(공휴일 포함)은 항상 1~3개를 노출하고, 4개째부터는 숨긴 뒤 마지막 줄에
-    // 회색 "…"로 남은 개수를 표시한다. (행 높이는 month 뷰에서 3개+"…"가 들어가도록 확보)
+    // 정책: 일정(공휴일 포함)은 1~3개를 노출하고, 4개째부터는 숨긴 뒤 마지막 줄에
+    // 회색 "…"로 남은 개수를 표시한다. 오버플로는 '그 날 실제 일정 수'로만 판정한다.
     const int maxEvents = 3;
-    final weekMax = _weekMaxLane[weekSun] ?? -1;
-    final visibleLaneCount =
-        weekMax < 0 ? 0 : (weekMax + 1 < maxEvents ? weekMax + 1 : maxEvents);
-    final hiddenCount =
-        laneToSchedule.keys.where((l) => l >= visibleLaneCount).length;
-    final hasOverflow = hiddenCount > 0;
+    final int count = rowToSchedule.length;
+    final int visibleRows = count < maxEvents ? count : maxEvents;
+    final int hiddenCount = count - visibleRows;
+    final bool hasOverflow = hiddenCount > 0;
 
     return SizedBox(
       height: rowHeight,
@@ -579,10 +621,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               ),
             ),
           const SizedBox(height: 2),
-          // 레인별 이벤트 pill (공휴일 포함, 빈 레인은 placeholder로 세로 정렬 유지)
-          for (int lane = 0; lane < visibleLaneCount; lane++)
-            laneToSchedule.containsKey(lane)
-                ? _buildEventPill(day, laneToSchedule[lane]!, cellWidth)
+          // 행별 이벤트 pill (컴팩션이라 위에서부터 빈틈없이 채워짐)
+          for (int row = 0; row < visibleRows; row++)
+            rowToSchedule[row] != null
+                ? _buildMonthEventPill(day, rowToSchedule[row]!, cellWidth)
                 : const SizedBox(height: 18),
           // 오버플로우: 4번째부터 숨기고 "…"로 남은 개수 표시
           if (hasOverflow) _buildMorePill(hiddenCount),
@@ -727,6 +769,89 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         right: roundRight ? 2 : 0,
       ),
       decoration: barDecoration,
+    );
+  }
+
+  /// 월 뷰 전용 pill — 날짜별 컴팩션 행에 맞춰 '셀 단위'로 그린다.
+  /// 멀티데이는 셀마다 자기 세그먼트를 그리며, 인접한 날과 같은 행이면 이어진 막대처럼 보인다.
+  Widget _buildMonthEventPill(
+    DateTime day,
+    _Schedule schedule,
+    double cellWidth, {
+    double barHeight = 17,
+    double fontSize = 11,
+  }) {
+    final color = schedule.color;
+
+    if (!schedule.isMultiDay) {
+      return Container(
+        height: barHeight,
+        margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          schedule.title,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: fontSize,
+            color: color,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+      );
+    }
+
+    // 멀티데이 — 이 날의 행과 인접 날의 행을 비교해 '연속 구간(run)'의 끝을 둥글게.
+    final dayUtc = DateTime.utc(day.year, day.month, day.day);
+    final prevDay = dayUtc.subtract(const Duration(days: 1));
+    final nextDay = dayUtc.add(const Duration(days: 1));
+    // 그 날 schedule 이 덮지 않으면 map 에 없어 null 이므로 별도 coversDay 가드 불필요.
+    final thisRow = _dayRowMap[dayUtc]?[schedule];
+    final prevRow = _dayRowMap[prevDay]?[schedule];
+    final nextRow = _dayRowMap[nextDay]?[schedule];
+
+    final bool isSunday = day.weekday == DateTime.sunday;
+    final bool isSaturday = day.weekday == DateTime.saturday;
+    // 같은 행으로 이어지지 않으면(또는 주 경계) 구간이 끊긴다.
+    final bool runStart = prevRow != thisRow || isSunday;
+    final bool runEnd = nextRow != thisRow || isSaturday;
+
+    return Container(
+      height: barHeight,
+      margin: EdgeInsets.only(
+        top: 1,
+        left: runStart ? 2 : 0,
+        right: runEnd ? 2 : 0,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.horizontal(
+          left: runStart ? const Radius.circular(4) : Radius.zero,
+          right: runEnd ? const Radius.circular(4) : Radius.zero,
+        ),
+      ),
+      alignment: Alignment.centerLeft,
+      // 제목은 구간 시작 셀에서만 표시(셀 폭에 맞춰 줄임).
+      child: runStart
+          ? Text(
+              schedule.title,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: fontSize,
+                color: color,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            )
+          : null,
     );
   }
 
