@@ -104,6 +104,23 @@ class KoreaMapData {
     for (final e in byKey.entries) e.key: e.value.first.metro,
   };
 
+  /// 색칠 키 → 지도 위 짧은 표시명. 시·군 조각은 끝의 "시/군/구"를 떼어
+  /// (남원시→남원, 양평군→양평) 지도를 깔끔하게. 광역시(대구·대전 등)는
+  /// 끝 글자가 '구/전'이라도 떼면 안 되므로 단축명을 그대로 둔다.
+  late final Map<String, String> keyShortLabel = {
+    for (final e in keyLabel.entries)
+      e.key: (keyMetro[e.key] == true) ? e.value : _stripSiGunGu(e.value),
+  };
+
+  static String _stripSiGunGu(String s) {
+    if (s.length < 2) return s;
+    final last = s[s.length - 1];
+    if (last == '시' || last == '군' || last == '구') {
+      return s.substring(0, s.length - 1);
+    }
+    return s;
+  }
+
   /// 색칠 키 → 권역.
   late final Map<String, String> keyGroup = {
     for (final e in byKey.entries) e.key: e.value.first.group,
@@ -144,6 +161,74 @@ class KoreaMapData {
     }
     return m;
   }();
+
+  /// 권역(수도권/충청/…)의 모든 조각을 합친 외곽선 path(캐시).
+  /// 탭 선택 시 해당 권역 경계를 권역 색으로 또렷이 그리는 데 쓴다.
+  /// union 은 비용이 있어 권역당 1회만 계산하고 보관한다.
+  final Map<String, Path> _groupOutlineCache = {};
+  Path groupOutline(String group) {
+    final cached = _groupOutlineCache[group];
+    if (cached != null) return cached;
+    Path acc = Path();
+    var first = true;
+    for (final r in regions) {
+      if (r.group != group) continue;
+      if (first) {
+        acc = Path.from(r.path);
+        first = false;
+      } else {
+        try {
+          acc = Path.combine(PathOperation.union, acc, r.path);
+        } catch (_) {
+          // union 실패 시(희귀) 단순 합치기로 폴백 — 내부선이 보일 수 있으나 안전.
+          acc.addPath(r.path, Offset.zero);
+        }
+      }
+    }
+    _groupOutlineCache[group] = acc;
+    return acc;
+  }
+
+  /// 색칠 키(광역시 등)의 조각들을 합친 외곽선 path(캐시).
+  /// 광역시 탭 포커스 시 그 시의 경계를 색으로 그리는 데 쓴다.
+  final Map<String, Path> _keyOutlineCache = {};
+  Path keyOutline(String key) {
+    final cached = _keyOutlineCache[key];
+    if (cached != null) return cached;
+    final list = byKey[key] ?? const [];
+    Path acc = Path();
+    var first = true;
+    for (final r in list) {
+      if (first) {
+        acc = Path.from(r.path);
+        first = false;
+      } else {
+        try {
+          acc = Path.combine(PathOperation.union, acc, r.path);
+        } catch (_) {
+          acc.addPath(r.path, Offset.zero);
+        }
+      }
+    }
+    _keyOutlineCache[key] = acc;
+    return acc;
+  }
+
+  /// 색칠 키의 조각 전체를 감싸는 viewBox bounds(캐시) — 광역시 탭 줌에 사용.
+  final Map<String, Rect> _keyBoundsCache = {};
+  Rect? keyBounds(String key) {
+    final cached = _keyBoundsCache[key];
+    if (cached != null) return cached;
+    final list = byKey[key];
+    if (list == null || list.isEmpty) return null;
+    Rect? acc;
+    for (final r in list) {
+      final b = r.path.getBounds();
+      acc = acc == null ? b : acc.expandToInclude(b);
+    }
+    if (acc != null) _keyBoundsCache[key] = acc;
+    return acc;
+  }
 
   /// 색칠 키 → 대표 메타(metro/group/표시명).
   KoreaKeyMeta? metaOf(String key) {
@@ -193,12 +278,16 @@ class KoreaMapTokens {
   static const Color sideWall = Color(0xFFE6D8C4);
   static const Color grooveLo = Color(0xFFCBB89B); // shadow groove
   static const Color grooveHi = Color(0xCCFFFFFF); // highlight groove
-  static const Color ambientShadow = Color(0x61B89274);
+  // 흰 무대 위에서 점토가 떠 보이도록 ambient 그림자를 한층 가볍게(머디 방지).
+  static const Color ambientShadow = Color(0x3DA89A86);
+  // 무대 배경(흰색 계열) — 모찌 시스템처럼 깨끗한 흰 바탕.
   static const List<Color> stageRadial = [
-    Color(0xFFFAF5EC),
-    Color(0xFFF1EADF),
-    Color(0xFFE9E0D2),
+    Color(0xFFFFFFFF),
+    Color(0xFFFFFFFF),
+    Color(0xFFFBFBFC),
   ];
+  // 비포커스 권역을 흰 바탕으로 가라앉히는 베일.
+  static const Color dimVeil = Color(0xD9FFFFFF);
   static const Color labelInk = Color(0xFF9C8C78);
 
   // 채색(코랄) — 임계 달성 시

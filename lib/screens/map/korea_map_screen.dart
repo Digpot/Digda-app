@@ -22,7 +22,7 @@ class KoreaMapScreen extends StatefulWidget {
 }
 
 class _KoreaMapScreenState extends State<KoreaMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// 권역 탭 표준 순서(데이터에 존재하는 것만 노출).
   static const List<String> _groupOrder = [
     '수도권',
@@ -49,7 +49,21 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   bool _loadingCounts = false;
   String? _error;
   String? _selectedKey;
-  String? _focusGroup; // null = 전체
+  String? _focusGroup; // null = 전체 (권역 포커스)
+  String? _focusKey; // null = 권역/전체 (광역시 포커스 시 그 시 색칠 키)
+  bool _interacting = false; // 패닝/줌 제스처 중 — 라벨 경량화
+
+  /// 광역시 탭 표준 순서(데이터에 존재하는 것만 노출).
+  static const List<String> _metroOrder = [
+    '서울',
+    '인천',
+    '부산',
+    '대구',
+    '광주',
+    '대전',
+    '울산',
+    '세종',
+  ];
 
   // 현재 화면에 적용된 fit 변환(탭 포커스 시 좌표 계산에 사용).
   double _scale = 1, _dx = 0, _dy = 0;
@@ -81,6 +95,12 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     _anim.addListener(() {
       final m = _matrixAnim?.value;
       if (m != null) _tc.value = m;
+    });
+    // 탭 줌 애니메이션이 끝나면 라벨을 전체(상세) 표시로 복귀.
+    _anim.addStatusListener((status) {
+      if (status == AnimationStatus.completed && _interacting) {
+        setState(() => _interacting = false);
+      }
     });
     _load();
   }
@@ -120,6 +140,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       _introStarted = true;
       _introCtrl.forward(from: 0);
     }
+    // 권역 경계선(union) 캐시를 인트로 이후 미리 데워, 탭 선택 순간의 끊김 방지.
+    _warmGroupOutlines(data);
 
     // 2) 그룹 색칠 데이터는 백그라운드로 — 도착하면 색만 입힌다.
     final groupId = Di.activeGroup.groupRoomId;
@@ -134,6 +156,20 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       });
     } catch (_) {
       if (mounted) setState(() => _loadingCounts = false);
+    }
+  }
+
+  /// 권역별 경계선 union 을 인트로가 끝난 뒤 한 권역씩 미리 계산해 캐시에 채운다.
+  /// 탭을 눌러 줌하는 순간 무거운 union 이 돌지 않도록 비상호작용 시점에 분산 처리.
+  void _warmGroupOutlines(KoreaMapData data) {
+    final groups = _groupOrder.where(data.keyGroup.values.contains).toList();
+    var delay = 750; // 인트로(650ms) 직후부터
+    for (final g in groups) {
+      Future.delayed(Duration(milliseconds: delay), () {
+        if (!mounted) return;
+        data.groupOutline(g); // 결과는 data 내부 캐시에 저장됨
+      });
+      delay += 60;
     }
   }
 
@@ -181,42 +217,72 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     return acc;
   }
 
-  void _selectGroup(String? group) {
+  /// 전체 보기로(포커스 해제).
+  void _selectAll() {
     setState(() {
-      _focusGroup = group;
+      _focusGroup = null;
+      _focusKey = null;
       _selectedKey = null;
     });
+    if (_viewport != Size.zero) _animateTo(Matrix4.identity());
+  }
+
+  /// 권역(도) 탭 포커스.
+  void _selectGroup(String group) {
+    setState(() {
+      _focusGroup = group;
+      _focusKey = null;
+      _selectedKey = null;
+    });
+    final vb = _groupBounds(group);
+    if (vb != null) _zoomToViewBounds(vb);
+  }
+
+  /// 광역시 탭 포커스 — 그 시 1곳만 또렷하게, 깊게 줌.
+  void _selectMetro(String key) {
+    setState(() {
+      _focusKey = key;
+      _focusGroup = null;
+      _selectedKey = null;
+    });
+    final vb = _data?.keyBounds(key);
+    if (vb != null) _zoomToViewBounds(vb);
+  }
+
+  /// viewBox 좌표 bounds 로 부드럽게 줌(밀집 지역도 글자가 보이도록 상한 14배).
+  void _zoomToViewBounds(Rect vb) {
     if (_viewport == Size.zero) return;
-    Matrix4 target;
-    if (group == null) {
-      target = Matrix4.identity();
-    } else {
-      final vb = _groupBounds(group);
-      if (vb == null) return;
-      // view 좌표 bounds → 현재 fit 적용된 화면 좌표 rect.
-      final screenRect = Rect.fromLTWH(
-        _dx + vb.left * _scale,
-        _dy + vb.top * _scale,
-        vb.width * _scale,
-        vb.height * _scale,
-      ).inflate(16);
-      final z = (_viewport.width / screenRect.width)
-          .clamp(1.0, 5.0)
-          .toDouble();
-      final zy = (_viewport.height / screenRect.height)
-          .clamp(1.0, 5.0)
-          .toDouble();
-      final zoom = z < zy ? z : zy;
-      final tx = _viewport.width / 2 - zoom * screenRect.center.dx;
-      final ty = _viewport.height / 2 - zoom * screenRect.center.dy;
-      target = Matrix4.identity()
-        ..translate(tx, ty)
-        ..scale(zoom);
+    final screenRect = Rect.fromLTWH(
+      _dx + vb.left * _scale,
+      _dy + vb.top * _scale,
+      vb.width * _scale,
+      vb.height * _scale,
+    ).inflate(16);
+    final z = (_viewport.width / screenRect.width).clamp(1.0, 14.0).toDouble();
+    final zy =
+        (_viewport.height / screenRect.height).clamp(1.0, 14.0).toDouble();
+    final zoom = z < zy ? z : zy;
+    final tx = _viewport.width / 2 - zoom * screenRect.center.dx;
+    final ty = _viewport.height / 2 - zoom * screenRect.center.dy;
+    _animateTo(Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(zoom));
+  }
+
+  /// 현재 포커스(권역/광역시)의 시그니처 색 — 경계선 색으로 쓴다.
+  Color? _focusAccent(KoreaMapData data) {
+    if (_focusKey != null) {
+      return _groupColors[data.keyGroup[_focusKey!]] ?? AppColors.primary;
     }
-    _animateTo(target);
+    if (_focusGroup != null) {
+      return _groupColors[_focusGroup!] ?? AppColors.primary;
+    }
+    return null;
   }
 
   void _animateTo(Matrix4 target) {
+    // 프로그램 줌(탭) 동안에도 라벨을 가볍게 유지.
+    if (!_interacting) setState(() => _interacting = true);
     _matrixAnim = Matrix4Tween(begin: _tc.value, end: target).animate(
       CurvedAnimation(parent: _anim, curve: Curves.easeInOutCubic),
     );
@@ -225,13 +291,13 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       ..forward();
   }
 
-  // 따뜻한 점토 지도와 어울리는 아이보리 화면 배경.
-  static const Color _warmBg = Color(0xFFFCF8F1);
+  // 모찌 시스템과 맞춘 깨끗한 흰색 화면 배경.
+  static const Color _screenBg = Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _warmBg,
+      backgroundColor: _screenBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -283,13 +349,16 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             child: Container(
             margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             decoration: BoxDecoration(
+              color: AppColors.white,
               borderRadius: BorderRadius.circular(28),
-              gradient: const RadialGradient(
-                center: Alignment(0, -0.1),
-                radius: 0.95,
-                colors: KoreaMapTokens.stageRadial,
-              ),
-              border: Border.all(color: const Color(0xFFEFE6D6)),
+              border: Border.all(color: AppColors.gray100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             clipBehavior: Clip.antiAlias,
             child: LayoutBuilder(
@@ -305,34 +374,52 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                 _dx = dx;
                 _dy = dy;
                 _viewport = Size(w, h);
-                return InteractiveViewer(
-                  transformationController: _tc,
-                  minScale: 1.0,
-                  maxScale: 6.0,
-                  boundaryMargin: const EdgeInsets.all(120),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (d) => _handleTap(d.localPosition),
-                    child: Stack(
-                      children: [
-                        // 무거운 지형은 RepaintBoundary 로 캐시 — 패닝/줌·선택 땐 재래스터 안 됨.
-                        RepaintBoundary(
+                // 지형(무거움)은 InteractiveViewer 안에서 GPU 변환만 → 줌/패닝 매끄럽게.
+                // 라벨은 변환 밖 화면 좌표 레이어로 분리해 상수 크기 + 경량 컬링.
+                return Stack(
+                  children: [
+                    InteractiveViewer(
+                      transformationController: _tc,
+                      minScale: 1.0,
+                      // 밀집 지역(수도권·광역시)도 글자가 분리돼 보이도록 깊게 확대.
+                      maxScale: 20.0,
+                      boundaryMargin: const EdgeInsets.all(120),
+                      onInteractionStart: (_) {
+                        if (!_interacting) setState(() => _interacting = true);
+                      },
+                      onInteractionEnd: (_) {
+                        if (_interacting) setState(() => _interacting = false);
+                      },
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapUp: (d) => _handleTap(d.localPosition),
+                        child: RepaintBoundary(
                           child: CustomPaint(
                             size: Size(w, h),
+                            isComplex: true,
+                            willChange: false,
                             painter: KoreaBasePainter(
                               data: data,
                               counts: _counts,
                               scale: scale,
                               dx: dx,
                               dy: dy,
+                              selectedKey: _selectedKey,
                               focusGroup: _focusGroup,
+                              focusKey: _focusKey,
+                              focusColor: _focusAccent(data),
                             ),
                           ),
                         ),
-                        // 가벼운 라벨/선택 오버레이 — 변환에 맞춰 다시 그리고 화면 밖 라벨은 컬링.
-                        CustomPaint(
+                      ),
+                    ),
+                    // 라벨 레이어 — 변환을 읽어 화면 좌표로 직접 배치(상수 크기). 탭 통과.
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
                           size: Size(w, h),
-                          painter: KoreaOverlayPainter(
+                          willChange: true,
+                          painter: KoreaLabelPainter(
                             data: data,
                             counts: _counts,
                             scale: scale,
@@ -341,11 +428,13 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                             transform: _tc,
                             selectedKey: _selectedKey,
                             focusGroup: _focusGroup,
+                            focusKey: _focusKey,
+                            interacting: _interacting,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
@@ -358,54 +447,111 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     );
   }
 
+  /// 탭/칩 표시명 — 내부 권역명(수도권/강원/…)을 친숙한 도 이름으로.
+  /// 수도권은 "경기도"로, 나머지는 "도"를 붙인다.
+  static const Map<String, String> _groupTabLabels = {
+    '수도권': '경기도',
+    '강원': '강원도',
+    '충청': '충청도',
+    '전라': '전라도',
+    '경상': '경상도',
+    '제주': '제주도',
+  };
+
+  String _tabLabel(String? group) =>
+      group == null ? '전체' : (_groupTabLabels[group] ?? group);
+
+  /// 단일 탭 알약. 활성은 액센트색, 비활성은 흰 배경에서 보이도록 연회색.
+  Widget _tabPill({
+    required String label,
+    required bool active,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        decoration: BoxDecoration(
+          color: active ? accent : AppColors.gray50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: active ? accent : AppColors.gray100),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: active ? AppColors.white : AppColors.gray700,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabs(KoreaMapData data) {
-    final present = _groupOrder.where(data.keyGroup.values.contains).toList();
-    final tabs = <String?>[null, ...present];
+    final groups = _groupOrder.where(data.keyGroup.values.contains).toList();
+    final metros = _metroOrder
+        .where((k) => data.keyMetro[k] == true && data.byKey.containsKey(k))
+        .toList();
+
+    final children = <Widget>[
+      // 전체
+      _tabPill(
+        label: '전체',
+        active: _focusGroup == null && _focusKey == null,
+        accent: AppColors.primary,
+        onTap: _selectAll,
+      ),
+      // 권역(도)
+      for (final g in groups) ...[
+        const SizedBox(width: 8),
+        _tabPill(
+          label: _tabLabel(g),
+          active: _focusGroup == g,
+          accent: _groupColors[g] ?? AppColors.primary,
+          onTap: () => _selectGroup(g),
+        ),
+      ],
+      // 구분선 + 광역시
+      if (metros.isNotEmpty) ...[
+        Container(
+          width: 1,
+          height: 20,
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          color: AppColors.gray100,
+        ),
+        for (final k in metros) ...[
+          _tabPill(
+            label: data.keyLabel[k] ?? k,
+            active: _focusKey == k,
+            accent: _groupColors[data.keyGroup[k]] ?? AppColors.primary,
+            onTap: () => _selectMetro(k),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ],
+    ];
+
     return SizedBox(
       height: 44,
-      child: ListView.separated(
+      child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final g = tabs[i];
-          final active = _focusGroup == g;
-          return GestureDetector(
-            onTap: () => _selectGroup(g),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(
-                color: active ? AppColors.primary : AppColors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: active ? AppColors.primary : const Color(0xFFEFE6D6),
-                ),
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.28),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Text(
-                g ?? '전체',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: active ? AppColors.white : AppColors.gray700,
-                ),
-              ),
-            ),
-          );
-        },
+        children: children,
       ),
     );
   }
@@ -586,7 +732,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              group,
+                              _tabLabel(group),
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w700,
