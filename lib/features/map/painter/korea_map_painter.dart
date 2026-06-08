@@ -13,6 +13,7 @@ class KoreaMapPainter extends CustomPainter {
     required this.scale,
     required this.dx,
     required this.dy,
+    this.zoom = 1.0,
     this.selectedKey,
     this.focusGroup,
   });
@@ -25,6 +26,10 @@ class KoreaMapPainter extends CustomPainter {
   final double scale;
   final double dx;
   final double dy;
+
+  /// InteractiveViewer 의 현재 확대 배율. 라벨 밀도 조절(줌 인할수록 작은 지역명 노출)에 사용.
+  final double zoom;
+
   final String? selectedKey;
 
   /// 선택된 권역(수도권/강원/…). 지정 시 그 권역만 또렷하고 나머지는 디밍.
@@ -112,40 +117,75 @@ class KoreaMapPainter extends CustomPainter {
       canvas.drawPath(r.path, grooveHi);
     }
 
-    // 5) 선택 강조 — 선택 key 조각 외곽선 + 살짝 lift.
+    // 5) 선택 강조 — 선택 조각을 살짝 띄워(lift) 입체적으로 강조(handoff §5).
+    const double lift = 5.0;
     final sel = selectedKey;
     if (sel != null) {
       final selPaths = data.byKey[sel] ?? const [];
-      final stroke = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.2
-        ..color = KoreaMapTokens.selectedStroke;
-      final selFill = Paint()..shader = coralShader;
+      // a) 떠오른 블록 아래 드롭 섀도.
+      final dropShadow = Paint()
+        ..color = const Color(0x4D7A4A2E)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.save();
+      canvas.translate(0, 7);
       for (final r in selPaths) {
-        canvas.drawPath(r.path, selFill);
-        canvas.drawPath(r.path, stroke);
+        canvas.drawPath(r.path, dropShadow);
       }
+      canvas.restore();
+      // b) 측벽(원위치, 진한 코랄) — 띄운 윗면 아래로 두께가 보이게.
+      final selSide = Paint()..color = const Color(0xFFE07A63);
+      for (final r in selPaths) {
+        canvas.drawPath(r.path, selSide);
+      }
+      // c) 윗면(코랄) + 외곽선을 lift 만큼 위로.
+      final selTop = Paint()..shader = coralShader;
+      final selStroke = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..color = KoreaMapTokens.selectedStroke;
+      canvas.save();
+      canvas.translate(0, -lift);
+      for (final r in selPaths) {
+        canvas.drawPath(r.path, selTop);
+        canvas.drawPath(r.path, selStroke);
+      }
+      canvas.restore();
     }
 
-    // 6) Labels — 모든 지역명을 항상 표시(적응형 크기). 채색/선택은 흰 글씨로 강조.
+    // 6) Labels — 줌 레벨에 따라 노출(축소 시 큰/외딴 지역만, 확대하면 작은 지역도).
+    //    채색/선택/광역시는 항상 표시. 선택 지역 라벨은 lift 만큼 함께 위로.
+    final double minFont = _minLabelFontForZoom(zoom);
     for (final entry in data.keyCenter.entries) {
       final key = entry.key;
       final count = counts[key] ?? 0;
       final meta = data.metaOf(key);
       final colored = meta != null && meta.isColored(count);
       final isSel = key == sel;
+      final size = data.keyLabelSize[key] ?? 8.0;
+      final alwaysShow = colored || isSel || data.keyMetro[key] == true;
+      if (!alwaysShow && size < minFont) continue;
       final dimmed = focusGroup != null && data.keyGroup[key] != focusGroup;
+      final center = isSel ? entry.value - const Offset(0, lift) : entry.value;
       _drawLabel(
         canvas,
         data.keyLabel[key] ?? key,
-        entry.value,
+        center,
         colored || isSel,
-        data.keyLabelSize[key] ?? 8.0,
+        size,
         dimmed,
       );
     }
 
     canvas.restore();
+  }
+
+  /// 현재 줌에서 표시할 라벨의 최소 적응형 폰트 크기. 0 이면 전부 표시.
+  double _minLabelFontForZoom(double z) {
+    if (z >= 3.0) return 0;
+    if (z >= 2.2) return 6.5;
+    if (z >= 1.6) return 7.5;
+    if (z >= 1.25) return 9.0;
+    return 10.0;
   }
 
   void _drawLabel(
@@ -181,6 +221,7 @@ class KoreaMapPainter extends CustomPainter {
   bool shouldRepaint(covariant KoreaMapPainter old) =>
       old.selectedKey != selectedKey ||
       old.focusGroup != focusGroup ||
+      old.zoom != zoom ||
       !identical(old.counts, counts) ||
       old.scale != scale ||
       old.dx != dx ||

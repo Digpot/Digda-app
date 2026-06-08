@@ -55,6 +55,9 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   double _scale = 1, _dx = 0, _dy = 0;
   Size _viewport = Size.zero;
 
+  // InteractiveViewer 의 현재 줌 — 라벨 밀도 조절용.
+  double _zoom = 1.0;
+
   final TransformationController _tc = TransformationController();
   late final AnimationController _anim = AnimationController(
     vsync: this,
@@ -82,7 +85,25 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       final m = _matrixAnim?.value;
       if (m != null) _tc.value = m;
     });
+    _tc.addListener(_onTransform);
     _load();
+  }
+
+  /// 줌이 라벨 티어 경계를 넘을 때만 리페인트(매 프레임 250개 path 리페인트 방지).
+  void _onTransform() {
+    final z = _tc.value.getMaxScaleOnAxis();
+    final crossed = _labelTier(z) != _labelTier(_zoom);
+    _zoom = z;
+    if (crossed && mounted) setState(() {});
+  }
+
+  /// 라벨 노출 티어(페인터 _minLabelFontForZoom 임계와 동일).
+  int _labelTier(double z) {
+    if (z >= 3.0) return 4;
+    if (z >= 2.2) return 3;
+    if (z >= 1.6) return 2;
+    if (z >= 1.25) return 1;
+    return 0;
   }
 
   @override
@@ -321,6 +342,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                         scale: scale,
                         dx: dx,
                         dy: dy,
+                        zoom: _zoom,
                         selectedKey: _selectedKey,
                         focusGroup: _focusGroup,
                       ),
@@ -391,48 +413,86 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   }
 
   Widget _buildSummary() {
+    final total = _data?.byKey.length ?? 0;
+    final done = _coloredCount;
+    final frac = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 4),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFFFD9CF)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.10),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFFFFD9CF)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.place, size: 16, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Text(
-                '전국 $_coloredCount곳을 채웠어요',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.gray900,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.place, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    '전국 $done곳을 채웠어요',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                  if (_loadingCounts) ...[
+                    const SizedBox(width: 8),
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.primary),
+                    ),
+                  ],
+                ],
               ),
-              if (_loadingCounts) ...[
-                const SizedBox(width: 8),
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.primary),
-                ),
-              ],
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: 200,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: frac,
+                        minHeight: 6,
+                        backgroundColor: const Color(0xFFEFE6D6),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$done/$total',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
