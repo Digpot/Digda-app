@@ -65,6 +65,15 @@ class KoreaMapData {
     return m;
   }();
 
+  /// 전 조각을 합친 단일 path — ambient 그림자/측벽을 250회가 아니라 1회로 그려 성능 확보.
+  late final Path combinedPath = () {
+    final p = Path();
+    for (final r in regions) {
+      p.addPath(r.path, Offset.zero);
+    }
+    return p;
+  }();
+
   /// 색칠 키 → 라벨 표시 위치(그 키의 최대 면적 조각 중심).
   late final Map<String, Offset> keyCenter = () {
     final m = <String, Offset>{};

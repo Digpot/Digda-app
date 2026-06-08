@@ -60,24 +60,20 @@ class KoreaMapPainter extends CustomPainter {
       KoreaMapTokens.coral,
     );
 
-    // 1) Ambient shadow — 전체를 아래로 깔고 블러.
+    // 1) Ambient shadow — 합친 실루엣 1회 블러(250회 개별 블러 대비 대폭 절감).
     final ambient = Paint()
       ..color = KoreaMapTokens.ambientShadow
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
     canvas.save();
     canvas.translate(0, 14);
-    for (final r in data.regions) {
-      canvas.drawPath(r.path, ambient);
-    }
+    canvas.drawPath(data.combinedPath, ambient);
     canvas.restore();
 
-    // 2) Side wall — 두께.
+    // 2) Side wall — 두께도 합친 실루엣 1회.
     final side = Paint()..color = KoreaMapTokens.sideWall;
     canvas.save();
     canvas.translate(0, 7);
-    for (final r in data.regions) {
-      canvas.drawPath(r.path, side);
-    }
+    canvas.drawPath(data.combinedPath, side);
     canvas.restore();
 
     // 3) Top faces — 채색 여부에 따라 코랄/소프트/웜.
@@ -196,25 +192,51 @@ class KoreaMapPainter extends CustomPainter {
     double fontSize,
     bool dimmed,
   ) {
-    final Color ink = onCoral ? Colors.white : KoreaMapTokens.labelInk;
-    final tp = TextPainter(
+    final double op = dimmed ? 0.34 : 1.0;
+    // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
+    final Color fill =
+        (onCoral ? Colors.white : const Color(0xFF453A2C)).withValues(alpha: op);
+    final Color outline =
+        (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFFBF6EC))
+            .withValues(alpha: op);
+    final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
+
+    final strokePainter = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: fontSize,
-          fontWeight: FontWeight.w700,
-          color: dimmed ? ink.withValues(alpha: 0.28) : ink,
-          // paint-order:stroke 효과 — 반투명 아이보리 외곽으로 가독성 확보.
-          shadows: onCoral
-              ? const [Shadow(color: Color(0x55C2412F), blurRadius: 1.5)]
-              : const [Shadow(color: Color(0xCCFFFDFA), blurRadius: 1.5)],
+          fontWeight: FontWeight.w800,
+          height: 1.0,
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = strokeW
+            ..strokeJoin = StrokeJoin.round
+            ..color = outline,
         ),
       ),
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
     )..layout();
-    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
+    final pos = center - Offset(strokePainter.width / 2, strokePainter.height / 2);
+    strokePainter.paint(canvas, pos);
+
+    final fillPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: fontSize,
+          fontWeight: FontWeight.w800,
+          height: 1.0,
+          color: fill,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    )..layout();
+    fillPainter.paint(canvas, pos);
   }
 
   @override
