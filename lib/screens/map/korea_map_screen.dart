@@ -33,6 +33,16 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     '제주',
   ];
 
+  /// 권역별 시그니처 색(handoff §3 groupColors). 선택 패널 액센트에 사용.
+  static const Map<String, Color> _groupColors = {
+    '수도권': Color(0xFFFF6B6B),
+    '강원': Color(0xFF5B9BF0),
+    '충청': Color(0xFFF4B53C),
+    '전라': Color(0xFF33C08A),
+    '경상': Color(0xFFA98BF0),
+    '제주': Color(0xFFF47BB4),
+  };
+
   KoreaMapData? _data;
   Map<String, int> _counts = const {};
   bool _loadingMap = true;
@@ -52,6 +62,17 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   );
   Animation<Matrix4>? _matrixAnim;
 
+  // 첫 진입 인트로 — 지도 프레임이 살짝 줌인+페이드인 하며 등장.
+  late final AnimationController _introCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+  late final Animation<double> _intro =
+      CurvedAnimation(parent: _introCtrl, curve: Curves.easeOutCubic);
+  late final Animation<double> _introScale =
+      Tween<double>(begin: 0.92, end: 1.0).animate(_intro);
+  bool _introStarted = false;
+
   final Map<String, Rect> _groupBoundsCache = {};
 
   @override
@@ -67,6 +88,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   @override
   void dispose() {
     _anim.dispose();
+    _introCtrl.dispose();
     _tc.dispose();
     super.dispose();
   }
@@ -93,6 +115,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       _data = data;
       _loadingMap = false;
     });
+    // 지도가 처음 그려진 직후 한 번만 인트로 재생.
+    if (!_introStarted) {
+      _introStarted = true;
+      _introCtrl.forward(from: 0);
+    }
 
     // 2) 그룹 색칠 데이터는 백그라운드로 — 도착하면 색만 입힌다.
     final groupId = Di.activeGroup.groupRoomId;
@@ -247,8 +274,13 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
         _buildSummary(),
         // 점토 지도가 따뜻한 무대 위에 놓인 듯 보이도록 방사형 배경 + 라운드 프레임.
         // (LayoutBuilder 는 프레임 안쪽이라 constraints 가 margin 적용 후 크기 → fit/히트테스트 일치)
+        // 첫 진입 시 살짝 줌인+페이드인 인트로(_intro).
         Expanded(
-          child: Container(
+          child: FadeTransition(
+            opacity: _intro,
+            child: ScaleTransition(
+            scale: _introScale,
+            child: Container(
             margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
@@ -298,6 +330,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
               },
             ),
           ),
+          ),
+        ),
         ),
         _buildSelectedPanel(),
       ],
@@ -427,6 +461,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     final threshold = meta?.threshold ?? 1;
     final colored = meta?.isColored(count) ?? false;
     final remaining = (threshold - count).clamp(0, threshold);
+    final group = data.keyGroup[key];
+    final accent = _groupColors[group] ?? AppColors.primary;
 
     final String statusText;
     if (colored) {
@@ -440,41 +476,83 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(0, 0, 16, 0),
       decoration: BoxDecoration(
-        color: colored ? const Color(0xFFFFF1EE) : AppColors.gray50,
+        color: colored ? const Color(0xFFFFF1EE) : AppColors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: colored ? const Color(0xFFFFD2C8) : AppColors.gray100,
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.gray900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    color: colored ? AppColors.primary : AppColors.gray500,
-                  ),
-                ),
-              ],
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // 권역 색 액센트 바
+            Container(width: 5, color: accent),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            label,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: AppColors.gray900,
+                            ),
+                          ),
+                        ),
+                        if (group != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              group,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: colored ? accent : AppColors.gray500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (count > 0)
             GestureDetector(
               onTap: () {
@@ -509,6 +587,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
               ),
             ),
         ],
+        ),
       ),
     );
   }
