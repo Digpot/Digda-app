@@ -1277,7 +1277,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           ),
         );
       },
-    );
+    ).whenComplete(controller.dispose);
   }
 
   Widget _searchResultRow(_Schedule s) {

@@ -81,17 +81,20 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     final scheduleId = _scheduleId;
     final text = _commentController.text.trim();
     if (groupId == null || scheduleId == null || text.isEmpty) return;
+    // 전송 중 더블탭으로 같은 댓글이 두 번 등록되지 않도록, await 전에 비운다.
+    // (두 번째 탭은 빈 텍스트로 즉시 반환) 실패 시 입력값을 복원한다.
+    _commentController.clear();
     try {
       await Di.commentRepository.writeOnSchedule(
         groupRoomId: groupId,
         scheduleId: scheduleId,
         text: text,
       );
-      _commentController.clear();
       if (!mounted) return;
       await _load();
     } catch (e) {
       if (!mounted) return;
+      _commentController.text = text;
       showErrorDialog(context, errorMessageOf(e));
     }
   }
