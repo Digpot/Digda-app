@@ -237,9 +237,11 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
     // 날짜별 그룹화(최신순 유지). 각 섹션은 노션식 토글로 접을 수 있다.
     final sections = _groupByDate(filtered);
     final flat = <_ListEntry>[];
+    final searching = _query.trim().isNotEmpty;
     for (final section in sections) {
       flat.add(_ListEntry.header(section.label, section.items.length));
-      if (!_collapsed.contains(section.label)) {
+      // 검색 중에는 접힘을 무시하고 모든 매칭 결과를 펼쳐 보여준다.
+      if (searching || !_collapsed.contains(section.label)) {
         for (final q in section.items) {
           flat.add(_ListEntry.quiz(q));
         }
@@ -264,7 +266,8 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
             return _SectionToggle(
               label: label,
               count: entry.count,
-              collapsed: _collapsed.contains(label),
+              // 검색 중엔 항상 펼쳐 보이므로 셰브론도 펼침 상태로.
+              collapsed: !searching && _collapsed.contains(label),
               onTap: () => setState(() {
                 if (_collapsed.contains(label)) {
                   _collapsed.remove(label);
