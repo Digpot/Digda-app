@@ -39,7 +39,20 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   ];
 
   bool get _canSave =>
-      _titleController.text.trim().isNotEmpty && !_saving;
+      _titleController.text.trim().isNotEmpty && !_saving && _timeOrderValid;
+
+  /// 같은 날 시간 지정 일정에서 종료 시간이 시작 시간보다 빠르면 false.
+  /// (종일이거나 종료일이 시작일보다 뒤면 시간 순서를 따지지 않는다)
+  bool get _timeOrderValid {
+    if (_allDay) return true;
+    final sameDay = _startDate.year == _endDate.year &&
+        _startDate.month == _endDate.month &&
+        _startDate.day == _endDate.day;
+    if (!sameDay) return true;
+    final start = _startTime.hour * 60 + _startTime.minute;
+    final end = _endTime.hour * 60 + _endTime.minute;
+    return end >= start;
+  }
 
   bool get _isEdit => _editingScheduleId != null;
 
@@ -339,6 +352,22 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      if (!_allDay && !_timeOrderValid)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8, left: 4),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '종료 시간이 시작 시간보다 빠를 수 없어요',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
                         ),
                       const SizedBox(height: 24),
                       _buildSectionLabel('참가자'),
