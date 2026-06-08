@@ -12,8 +12,13 @@ import '../../../widgets/app_dialog.dart';
 import 'character_quiz_result_screen.dart';
 
 /// 퀴즈 풀기 화면 — 진입 시 서버에서 랜덤 1건 fetch → 4지선다 → 응시.
+/// [practiceQuiz] 가 주어지면 랜덤 대신 그 문제를 '연습(재풀이)' 모드로 푼다(경험치 없음).
 class CharacterQuizPlayScreen extends StatefulWidget {
-  const CharacterQuizPlayScreen({super.key});
+  const CharacterQuizPlayScreen({super.key, this.practiceQuiz});
+
+  final CharacterQuiz? practiceQuiz;
+
+  bool get isPractice => practiceQuiz != null;
 
   @override
   State<CharacterQuizPlayScreen> createState() =>
@@ -66,7 +71,8 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       } catch (_) {
         character = null;
       }
-      final quiz = await Di.characterRepository.pickRandomQuiz(groupRoomId);
+      final quiz = widget.practiceQuiz ??
+          await Di.characterRepository.pickRandomQuiz(groupRoomId);
       if (!mounted) return;
       setState(() {
         _character = character;
@@ -115,6 +121,7 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
       final result = await Di.characterRepository.attemptQuiz(
         quizId: _quiz!.id,
         selectedIndex: _selected!,
+        practice: widget.isPractice,
       );
       if (!mounted) return;
       // 결과 화면으로 대체 push — 풀기 화면이 백스택에 남지 않게 (재진입 시 새 퀴즈 fetch).
@@ -123,6 +130,7 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
           builder: (_) => CharacterQuizResultScreen(
             quiz: _quiz!,
             result: result,
+            practice: widget.isPractice,
           ),
         ),
       );
@@ -207,9 +215,9 @@ class _CharacterQuizPlayScreenState extends State<CharacterQuizPlayScreen> {
           icon: const Icon(Icons.close, color: AppColors.gray900),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          '퀴즈 풀기',
-          style: TextStyle(
+        title: Text(
+          widget.isPractice ? '다시 풀기' : '퀴즈 풀기',
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w700,
             fontSize: 17,

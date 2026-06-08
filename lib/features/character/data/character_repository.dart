@@ -175,13 +175,15 @@ class CharacterRepository {
   }
 
   /// 퀴즈 응시. 보상 + 갱신된 그룹 캐릭터 상태가 함께 옴.
+  /// [practice] 가 true 면 재풀이(연습) — 이미 푼 문제·본인 출제도 가능하고 보상 없음.
   Future<QuizAttemptResult> attemptQuiz({
     required int quizId,
     required int selectedIndex,
+    bool practice = false,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/character-quizzes/$quizId/attempt',
-      body: {'selectedIndex': selectedIndex},
+      body: {'selectedIndex': selectedIndex, 'practice': practice},
     );
     return QuizAttemptResult.fromJson(res.data!);
   }

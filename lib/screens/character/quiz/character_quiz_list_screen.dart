@@ -6,6 +6,7 @@ import '../../../features/character/models/character_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import 'character_quiz_create_screen.dart';
+import 'character_quiz_play_screen.dart';
 
 /// 그룹 퀴즈 목록. 무한 스크롤 페이지네이션 + FAB으로 만들기 진입.
 class CharacterQuizListScreen extends StatefulWidget {
@@ -19,6 +20,11 @@ class CharacterQuizListScreen extends StatefulWidget {
 class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
   final List<CharacterQuiz> _items = [];
   final ScrollController _scroll = ScrollController();
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  /// 접힌 날짜 섹션 라벨(노션식 토글). 비어있으면 전부 펼침.
+  final Set<String> _collapsed = {};
+  String _query = '';
 
   int _page = 0;
   int _totalPages = 0;
@@ -39,7 +45,30 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
   @override
   void dispose() {
     _scroll.dispose();
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  /// 검색어로 로드된 퀴즈를 필터(질문/선택지/출제자/카테고리).
+  List<CharacterQuiz> _applyQuery(List<CharacterQuiz> items) {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return items;
+    return items.where((quiz) {
+      return quiz.question.toLowerCase().contains(q) ||
+          quiz.authorName.toLowerCase().contains(q) ||
+          quiz.categoryDisplayName.toLowerCase().contains(q) ||
+          quiz.options.any((o) => o.toLowerCase().contains(q));
+    }).toList();
+  }
+
+  /// 목록에서 특정 퀴즈를 '연습(재풀이)' 모드로 푼다(경험치 없음).
+  Future<void> _openPractice(CharacterQuiz quiz) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CharacterQuizPlayScreen(practiceQuiz: quiz),
+      ),
+    );
+    // 연습은 목록·기록에 영향이 없어 새로고침 불필요.
   }
 
   void _onScroll() {
@@ -185,15 +214,35 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
     if (_items.isEmpty) {
       return const _EmptyState();
     }
-    // 날짜별 그룹화. 서버가 최신순으로 내려준다는 전제에서 순서를 유지하며
-    // 같은 날짜끼리 연속된 카드 묶음으로 보여준다. createdAt 이 없으면 '날짜 없음'
-    // 섹션으로 묶여 분리되지 않도록 fallback. (구버전 서버 호환)
-    final sections = _groupByDate(_items);
+    return Column(
+      children: [
+        _SearchField(
+          controller: _searchCtrl,
+          onChanged: (v) => setState(() => _query = v),
+          onClear: () => setState(() {
+            _searchCtrl.clear();
+            _query = '';
+          }),
+        ),
+        Expanded(child: _buildList()),
+      ],
+    );
+  }
+
+  Widget _buildList() {
+    final filtered = _applyQuery(_items);
+    if (filtered.isEmpty) {
+      return _NoSearchResult(query: _query);
+    }
+    // 날짜별 그룹화(최신순 유지). 각 섹션은 노션식 토글로 접을 수 있다.
+    final sections = _groupByDate(filtered);
     final flat = <_ListEntry>[];
     for (final section in sections) {
-      flat.add(_ListEntry.header(section.label));
-      for (final q in section.items) {
-        flat.add(_ListEntry.quiz(q));
+      flat.add(_ListEntry.header(section.label, section.items.length));
+      if (!_collapsed.contains(section.label)) {
+        for (final q in section.items) {
+          flat.add(_ListEntry.quiz(q));
+        }
       }
     }
     return RefreshIndicator(
@@ -210,12 +259,28 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
             );
           }
           final entry = flat[i];
-          return entry.header != null
-              ? _DateHeader(label: entry.header!)
-              : Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _QuizCard(quiz: entry.quiz!),
-                );
+          if (entry.header != null) {
+            final label = entry.header!;
+            return _SectionToggle(
+              label: label,
+              count: entry.count,
+              collapsed: _collapsed.contains(label),
+              onTap: () => setState(() {
+                if (_collapsed.contains(label)) {
+                  _collapsed.remove(label);
+                } else {
+                  _collapsed.add(label);
+                }
+              }),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _QuizCard(
+              quiz: entry.quiz!,
+              onTap: () => _openPractice(entry.quiz!),
+            ),
+          );
         },
       ),
     );
@@ -258,63 +323,193 @@ class _DateSection {
 }
 
 class _ListEntry {
-  _ListEntry.header(String text)
-      : header = text,
-        quiz = null;
-  _ListEntry.quiz(CharacterQuiz q)
+  _ListEntry.header(this.header, this.count) : quiz = null;
+  _ListEntry.quiz(this.quiz)
       : header = null,
-        quiz = q;
+        count = 0;
   final String? header;
+  final int count;
   final CharacterQuiz? quiz;
 }
 
-class _DateHeader extends StatelessWidget {
-  const _DateHeader({required this.label});
+/// 노션식 날짜 토글 헤더 — 탭하면 그 날짜 섹션을 접고/펼친다.
+class _SectionToggle extends StatelessWidget {
+  const _SectionToggle({
+    required this.label,
+    required this.count,
+    required this.collapsed,
+    required this.onTap,
+  });
   final String label;
+  final int count;
+  final bool collapsed;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                AnimatedRotation(
+                  // 펼침=아래(▼), 접힘=오른쪽(▶).
+                  turns: collapsed ? -0.25 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 22, color: AppColors.gray700),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray100,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Container(height: 1, color: AppColors.gray100)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 퀴즈 검색창.
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 6, 24, 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: TextField(
+          controller: controller,
+          onChanged: onChanged,
+          textInputAction: TextInputAction.search,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            color: AppColors.gray900,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: '질문·선택지·출제자 검색',
+            hintStyle: const TextStyle(
               fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: AppColors.gray700,
+              fontSize: 14,
+              color: AppColors.gray400,
             ),
+            prefixIcon:
+                const Icon(Icons.search, size: 20, color: AppColors.gray400),
+            suffixIcon: controller.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.close,
+                        size: 18, color: AppColors.gray400),
+                    onPressed: onClear,
+                  ),
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 1,
-              color: AppColors.gray100,
+        ),
+      ),
+    );
+  }
+}
+
+/// 검색 결과 없음.
+class _NoSearchResult extends StatelessWidget {
+  const _NoSearchResult({required this.query});
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search_off, size: 44, color: AppColors.gray300),
+            const SizedBox(height: 12),
+            Text(
+              '\'$query\' 검색 결과가 없어요',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _QuizCard extends StatelessWidget {
-  const _QuizCard({required this.quiz});
+  const _QuizCard({required this.quiz, this.onTap});
   final CharacterQuiz quiz;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
+    return Material(
+      color: AppColors.gray50,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             children: [
               _CategoryChip(quiz.categoryDisplayName),
@@ -391,7 +586,30 @@ class _QuizCard extends StatelessWidget {
               );
             }),
           ),
-        ],
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  '다시 풀기',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.primary,
+                  ),
+                ),
+                SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded,
+                    size: 16, color: AppColors.primary),
+              ],
+            ),
+          ),
+            ],
+          ),
+        ),
       ),
     );
   }
