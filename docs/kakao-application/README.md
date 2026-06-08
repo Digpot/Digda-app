@@ -22,11 +22,11 @@
 - 카카오 로컬 API는 `Authorization: KakaoAK <REST_API_KEY>` 헤더만으로 동작하며, 플랫폼 등록(웹/안드로이드)이나 카카오맵 SDK 임베드는 우리 구현에서 필요 없음.
 - 일일 쿼터(기본 약 10만 건)를 초과하거나 상용 배포를 안정화하려면 비즈 앱 전환 또는 활용 사례 신청을 통해 한도 상향.
 
-## 카카오맵 API 심사 반려 대응 (2026-05-28 → 2026-06-02 갱신)
+## 카카오맵 API 심사 반려 대응 (2026-05-28 → 2026-06-08 갱신)
 - 1차 반려 사유: 카카오 가이드 ([devtalk 146633](https://devtalk.kakao.com/t/api/146633)) — "심사 신청 앱 외, 계정 내 카카오맵 권한 보유 앱 전부를 동일 양식으로 작성" 미준수
-- **재반려 원인 확정**: 같은 카카오 계정에 카카오맵 권한 보유 앱이 2개(디그팟 + **붐빔**)인데, 1차 응답서가 디그팟만 + "운영 앱 1개"로 단언해 불일치 → 붐빔도 양식에 포함해야 함
-- [kakao_map_review_response.html](./kakao_map_review_response.html) — 응답서 원본 (A4 인쇄 친화)
-- [kakao_map_review_response.pdf](./kakao_map_review_response.pdf) — 재신청 시 첨부할 PDF
-  - [앱 1] 디그팟(운영) + [앱 2] 붐빔(서비스 종료/현재 미호출) 둘 다 기재. 현황표·정책 문구를 "2개"로 정정.
-  - 붐빔 정보 반영 완료: Android `com.boombim.android` / iOS `com.yhjo.BoomBim` / 과거 "지도 장소 검색"에 활용 / 현재 미운영·미호출
-  - **디그팟 확인 필요(남은 항목)**: iOS Bundle ID 실제 정식 출시값(`com.digda.app` 가정) 검증
+- **재반려 원인 확정(2026-06-08)**: 같은 카카오 계정의 권한 보유 앱은 **붐빔 + 디그팟 2개**. 직전 응답서가 붐빔을 "서비스 종료/미운영"으로 단언했으나, 붐빔은 Google Play/App Store/웹에서 **실제 운영 중**이라 사실과 불일치 → 반려. 붐빔을 운영 중 앱으로, 디그팟을 신규 심사 대상으로 **올바르게** 재작성.
+- **앱 역할 정리**:
+  - **[앱 1] 붐빔(Boombim)** = 계정 첫 앱, 카카오맵 API 권한 자동 보유, **운영 중**. 실시간 장소 혼잡도 지도 서비스. 도메인 `boombim.co.kr` / Android `com.boombim.android` / iOS `com.yhjo.BoomBim`(App Store 6751637320). 카카오맵 SDK 지도 렌더링 + 혼잡도 마커 + 좌표→행정구역(coord2regioncode). (정보 출처: GitHub org `swyp-app-team-4`)
+  - **[앱 2] 디그팟(DigPot)** = 신규 생성, 이번 심사 요청 대상. 카카오 로컬 키워드 검색. Android `com.digda.app` / iOS 정식 출시 시 등록 예정(현재 `com.example.digdaapp` 플레이스홀더, 미배포).
+- [kakao_map_review_response.html](./kakao_map_review_response.html) — 응답서 원본 (A4 인쇄 친화, 붐빔 지도 목업 + 디그팟 검색 목업 포함)
+- [kakao_map_review_response.pdf](./kakao_map_review_response.pdf) — 재신청 시 첨부할 PDF (Chrome 헤드리스로 생성, 8p)
