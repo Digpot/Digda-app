@@ -55,9 +55,6 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   double _scale = 1, _dx = 0, _dy = 0;
   Size _viewport = Size.zero;
 
-  // InteractiveViewer 의 현재 줌 — 라벨 밀도 조절용.
-  double _zoom = 1.0;
-
   final TransformationController _tc = TransformationController();
   late final AnimationController _anim = AnimationController(
     vsync: this,
@@ -85,25 +82,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       final m = _matrixAnim?.value;
       if (m != null) _tc.value = m;
     });
-    _tc.addListener(_onTransform);
     _load();
-  }
-
-  /// 줌이 라벨 티어 경계를 넘을 때만 리페인트(매 프레임 250개 path 리페인트 방지).
-  void _onTransform() {
-    final z = _tc.value.getMaxScaleOnAxis();
-    final crossed = _labelTier(z) != _labelTier(_zoom);
-    _zoom = z;
-    if (crossed && mounted) setState(() {});
-  }
-
-  /// 라벨 노출 티어(페인터 _minLabelFontForZoom 임계와 동일).
-  int _labelTier(double z) {
-    if (z >= 3.0) return 4;
-    if (z >= 2.2) return 3;
-    if (z >= 1.6) return 2;
-    if (z >= 1.25) return 1;
-    return 0;
   }
 
   @override
@@ -334,18 +313,37 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (d) => _handleTap(d.localPosition),
-                    child: CustomPaint(
-                      size: Size(w, h),
-                      painter: KoreaMapPainter(
-                        data: data,
-                        counts: _counts,
-                        scale: scale,
-                        dx: dx,
-                        dy: dy,
-                        zoom: _zoom,
-                        selectedKey: _selectedKey,
-                        focusGroup: _focusGroup,
-                      ),
+                    child: Stack(
+                      children: [
+                        // 무거운 지형은 RepaintBoundary 로 캐시 — 패닝/줌·선택 땐 재래스터 안 됨.
+                        RepaintBoundary(
+                          child: CustomPaint(
+                            size: Size(w, h),
+                            painter: KoreaBasePainter(
+                              data: data,
+                              counts: _counts,
+                              scale: scale,
+                              dx: dx,
+                              dy: dy,
+                              focusGroup: _focusGroup,
+                            ),
+                          ),
+                        ),
+                        // 가벼운 라벨/선택 오버레이 — 변환에 맞춰 다시 그리고 화면 밖 라벨은 컬링.
+                        CustomPaint(
+                          size: Size(w, h),
+                          painter: KoreaOverlayPainter(
+                            data: data,
+                            counts: _counts,
+                            scale: scale,
+                            dx: dx,
+                            dy: dy,
+                            transform: _tc,
+                            selectedKey: _selectedKey,
+                            focusGroup: _focusGroup,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -632,8 +630,15 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: accent,
                   borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.32),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: const Text(
                   '일기 보기',

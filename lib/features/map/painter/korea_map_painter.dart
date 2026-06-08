@@ -4,17 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../data/korea_map_models.dart';
 
-/// 시그니처 지도 CustomPainter. viewBox(data.width×height) 좌표를 [scale]/[dx],[dy] 로
-/// 화면에 맞춰 그린다. 레이어(handoff §2): ambient → side → top → groove → label → 선택.
-class KoreaMapPainter extends CustomPainter {
-  KoreaMapPainter({
+/// 지형 베이스 레이어 — ambient/측벽/윗면/홈선. 색칠(counts)·권역 포커스·fit 이 바뀔
+/// 때만 다시 그리며, RepaintBoundary 로 캐시돼 패닝/줌·선택 시엔 재래스터되지 않는다.
+class KoreaBasePainter extends CustomPainter {
+  KoreaBasePainter({
     required this.data,
     required this.counts,
     required this.scale,
     required this.dx,
     required this.dy,
-    this.zoom = 1.0,
-    this.selectedKey,
     this.focusGroup,
   });
 
@@ -26,11 +24,6 @@ class KoreaMapPainter extends CustomPainter {
   final double scale;
   final double dx;
   final double dy;
-
-  /// InteractiveViewer 의 현재 확대 배율. 라벨 밀도 조절(줌 인할수록 작은 지역명 노출)에 사용.
-  final double zoom;
-
-  final String? selectedKey;
 
   /// 선택된 권역(수도권/강원/…). 지정 시 그 권역만 또렷하고 나머지는 디밍.
   final String? focusGroup;
@@ -113,7 +106,64 @@ class KoreaMapPainter extends CustomPainter {
       canvas.drawPath(r.path, grooveHi);
     }
 
-    // 5) 선택 강조 — 선택 조각을 살짝 띄워(lift) 입체적으로 강조(handoff §5).
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant KoreaBasePainter old) =>
+      old.focusGroup != focusGroup ||
+      !identical(old.counts, counts) ||
+      old.scale != scale ||
+      old.dx != dx ||
+      old.dy != dy;
+}
+
+/// 선택 강조(lift) + 라벨 오버레이. InteractiveViewer 변환([transform])에 맞춰 다시 그리되,
+/// 화면 밖 라벨은 컬링하고 줌 레벨로 노출을 조절해 가볍게 유지한다.
+/// 베이스(지형)는 별도 RepaintBoundary 라 이 오버레이만 패닝/줌 때 재그려진다.
+class KoreaOverlayPainter extends CustomPainter {
+  KoreaOverlayPainter({
+    required this.data,
+    required this.counts,
+    required this.scale,
+    required this.dx,
+    required this.dy,
+    required this.transform,
+    this.selectedKey,
+    this.focusGroup,
+  }) : super(repaint: transform);
+
+  final KoreaMapData data;
+  final Map<String, int> counts;
+  final double scale;
+  final double dx;
+  final double dy;
+
+  /// InteractiveViewer 의 현재 변환(child→screen). 줌/가시영역 계산에 사용.
+  final ValueListenable<Matrix4> transform;
+
+  final String? selectedKey;
+  final String? focusGroup;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(dx, dy);
+    canvas.scale(scale);
+
+    final w = data.width;
+    final h = data.height;
+    final coralShader = ui.Gradient.linear(
+      Offset(w * 0.3, h * 0.15),
+      Offset(w * 0.7, h * 0.9),
+      KoreaMapTokens.coral,
+    );
+
+    final m = transform.value;
+    final zoom = m.getMaxScaleOnAxis();
+    final Rect? visible = _visibleViewBox(m, size);
+
+    // 선택 강조 — 선택 조각을 살짝 띄워(lift) 입체적으로 강조(handoff §5).
     const double lift = 5.0;
     final sel = selectedKey;
     if (sel != null) {
@@ -128,7 +178,7 @@ class KoreaMapPainter extends CustomPainter {
         canvas.drawPath(r.path, dropShadow);
       }
       canvas.restore();
-      // b) 측벽(원위치, 진한 코랄) — 띄운 윗면 아래로 두께가 보이게.
+      // b) 측벽(원위치, 진한 코랄).
       final selSide = Paint()..color = const Color(0xFFE07A63);
       for (final r in selPaths) {
         canvas.drawPath(r.path, selSide);
@@ -148,31 +198,67 @@ class KoreaMapPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // 6) Labels — 줌 레벨에 따라 노출(축소 시 큰/외딴 지역만, 확대하면 작은 지역도).
-    //    채색/선택/광역시는 항상 표시. 선택 지역 라벨은 lift 만큼 함께 위로.
+    // 라벨 — 줌 레벨별 노출 + 화면 밖 컬링. 채색/선택/광역시는 항상(보일 때).
     final double minFont = _minLabelFontForZoom(zoom);
     for (final entry in data.keyCenter.entries) {
+      final center0 = entry.value;
+      // 화면 밖이면 건너뜀(고배율에서 라벨 레이아웃 비용 절감).
+      if (visible != null && !visible.contains(center0)) continue;
       final key = entry.key;
       final count = counts[key] ?? 0;
       final meta = data.metaOf(key);
       final colored = meta != null && meta.isColored(count);
       final isSel = key == sel;
-      final size = data.keyLabelSize[key] ?? 8.0;
+      final sizeF = data.keyLabelSize[key] ?? 8.0;
       final alwaysShow = colored || isSel || data.keyMetro[key] == true;
-      if (!alwaysShow && size < minFont) continue;
+      if (!alwaysShow && sizeF < minFont) continue;
       final dimmed = focusGroup != null && data.keyGroup[key] != focusGroup;
-      final center = isSel ? entry.value - const Offset(0, lift) : entry.value;
+      final center = isSel ? center0 - const Offset(0, lift) : center0;
       _drawLabel(
         canvas,
         data.keyLabel[key] ?? key,
         center,
         colored || isSel,
-        size,
+        sizeF,
         dimmed,
       );
     }
 
     canvas.restore();
+  }
+
+  /// 현재 변환에서 화면에 보이는 viewBox 영역(컬링용). 역행렬 실패 시 null(=전체 표시).
+  Rect? _visibleViewBox(Matrix4 m, Size size) {
+    final inv = Matrix4.tryInvert(m);
+    if (inv == null) return null;
+    // 화면 4모서리 → child 좌표 → viewBox 좌표 바운딩박스.
+    final corners = [
+      _apply(inv, 0, 0),
+      _apply(inv, size.width, 0),
+      _apply(inv, 0, size.height),
+      _apply(inv, size.width, size.height),
+    ];
+    double minX = double.infinity, minY = double.infinity;
+    double maxX = -double.infinity, maxY = -double.infinity;
+    for (final c in corners) {
+      final vx = (c.dx - dx) / scale;
+      final vy = (c.dy - dy) / scale;
+      if (vx < minX) minX = vx;
+      if (vy < minY) minY = vy;
+      if (vx > maxX) maxX = vx;
+      if (vy > maxY) maxY = vy;
+    }
+    // 라벨 텍스트가 중심 밖으로 번지므로 약간의 여유.
+    return Rect.fromLTRB(minX, minY, maxX, maxY).inflate(24);
+  }
+
+  Offset _apply(Matrix4 m, double x, double y) {
+    final s = m.storage;
+    final nx = s[0] * x + s[4] * y + s[12];
+    final ny = s[1] * x + s[5] * y + s[13];
+    final nw = s[3] * x + s[7] * y + s[15];
+    if (nw == 0) return Offset(nx, ny);
+    return Offset(nx / nw, ny / nw);
   }
 
   /// 현재 줌에서 표시할 라벨의 최소 적응형 폰트 크기. 0 이면 전부 표시.
@@ -219,7 +305,8 @@ class KoreaMapPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
     )..layout();
-    final pos = center - Offset(strokePainter.width / 2, strokePainter.height / 2);
+    final pos =
+        center - Offset(strokePainter.width / 2, strokePainter.height / 2);
     strokePainter.paint(canvas, pos);
 
     final fillPainter = TextPainter(
@@ -240,10 +327,9 @@ class KoreaMapPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant KoreaMapPainter old) =>
+  bool shouldRepaint(covariant KoreaOverlayPainter old) =>
       old.selectedKey != selectedKey ||
       old.focusGroup != focusGroup ||
-      old.zoom != zoom ||
       !identical(old.counts, counts) ||
       old.scale != scale ||
       old.dx != dx ||
