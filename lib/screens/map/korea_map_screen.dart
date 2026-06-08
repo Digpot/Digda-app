@@ -10,6 +10,10 @@ import 'region_diary_list_screen.dart';
 
 /// 디그팟 시그니처 지도 — 그룹이 일기를 남긴 지역을 코랄로 채운다.
 /// 군·시는 일기 1개, 광역시는 10개로 색칠.
+///
+/// 진입 즉시 지도(+전 지역명)를 그려 두고, 그룹별 색칠 데이터(region-map)는
+/// 백그라운드로 받아 도착하면 색만 입힌다 — 느린 조회로 화면이 멈추지 않는다.
+/// 상단 권역 탭으로 포커스 이동, 손가락으로 패닝/확대(InteractiveViewer).
 class KoreaMapScreen extends StatefulWidget {
   const KoreaMapScreen({super.key});
 
@@ -17,44 +21,92 @@ class KoreaMapScreen extends StatefulWidget {
   State<KoreaMapScreen> createState() => _KoreaMapScreenState();
 }
 
-class _KoreaMapScreenState extends State<KoreaMapScreen> {
+class _KoreaMapScreenState extends State<KoreaMapScreen>
+    with SingleTickerProviderStateMixin {
+  /// 권역 탭 표준 순서(데이터에 존재하는 것만 노출).
+  static const List<String> _groupOrder = [
+    '수도권',
+    '강원',
+    '충청',
+    '전라',
+    '경상',
+    '제주',
+  ];
+
   KoreaMapData? _data;
   Map<String, int> _counts = const {};
-  bool _loading = true;
+  bool _loadingMap = true;
+  bool _loadingCounts = false;
   String? _error;
   String? _selectedKey;
+  String? _focusGroup; // null = 전체
+
+  // 현재 화면에 적용된 fit 변환(탭 포커스 시 좌표 계산에 사용).
+  double _scale = 1, _dx = 0, _dy = 0;
+  Size _viewport = Size.zero;
+
+  final TransformationController _tc = TransformationController();
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+  Animation<Matrix4>? _matrixAnim;
+
+  final Map<String, Rect> _groupBoundsCache = {};
 
   @override
   void initState() {
     super.initState();
+    _anim.addListener(() {
+      final m = _matrixAnim?.value;
+      if (m != null) _tc.value = m;
+    });
     _load();
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    _tc.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      _loadingMap = true;
       _error = null;
     });
+    // 1) 지도 에셋 먼저(캐시 우선, 빠름) — 즉시 표시.
+    KoreaMapData data;
     try {
-      final groupId = Di.activeGroup.groupRoomId;
-      final data = await KoreaMapLoader.load();
-      Map<String, int> counts = const {};
-      if (groupId != null) {
-        final res = await Di.diaryRepository.regionMap(groupId);
-        counts = res.countByKey;
-      }
-      if (!mounted) return;
-      setState(() {
-        _data = data;
-        _counts = counts;
-        _loading = false;
-      });
+      data = await KoreaMapLoader.load();
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _error = '지도를 불러오지 못했어요';
-        _loading = false;
+        _loadingMap = false;
       });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _data = data;
+      _loadingMap = false;
+    });
+
+    // 2) 그룹 색칠 데이터는 백그라운드로 — 도착하면 색만 입힌다.
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    setState(() => _loadingCounts = true);
+    try {
+      final res = await Di.diaryRepository.regionMap(groupId);
+      if (!mounted) return;
+      setState(() {
+        _counts = res.countByKey;
+        _loadingCounts = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCounts = false);
     }
   }
 
@@ -70,11 +122,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
     return n;
   }
 
-  void _handleTap(Offset local, double scale, double dx, double dy) {
+  void _handleTap(Offset local) {
     final data = _data;
     if (data == null) return;
-    final vx = (local.dx - dx) / scale;
-    final vy = (local.dy - dy) / scale;
+    final vx = (local.dx - _dx) / _scale;
+    final vy = (local.dy - _dy) / _scale;
     final p = Offset(vx, vy);
     String? hit;
     for (final r in data.regions) {
@@ -84,6 +136,66 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
       }
     }
     setState(() => _selectedKey = hit);
+  }
+
+  /// 권역의 모든 조각을 감싸는 view 좌표 bounds(캐시).
+  Rect? _groupBounds(String group) {
+    final data = _data;
+    if (data == null) return null;
+    final cached = _groupBoundsCache[group];
+    if (cached != null) return cached;
+    Rect? acc;
+    for (final r in data.regions) {
+      if (r.group != group) continue;
+      final b = r.path.getBounds();
+      acc = acc == null ? b : acc.expandToInclude(b);
+    }
+    if (acc != null) _groupBoundsCache[group] = acc;
+    return acc;
+  }
+
+  void _selectGroup(String? group) {
+    setState(() {
+      _focusGroup = group;
+      _selectedKey = null;
+    });
+    if (_viewport == Size.zero) return;
+    Matrix4 target;
+    if (group == null) {
+      target = Matrix4.identity();
+    } else {
+      final vb = _groupBounds(group);
+      if (vb == null) return;
+      // view 좌표 bounds → 현재 fit 적용된 화면 좌표 rect.
+      final screenRect = Rect.fromLTWH(
+        _dx + vb.left * _scale,
+        _dy + vb.top * _scale,
+        vb.width * _scale,
+        vb.height * _scale,
+      ).inflate(16);
+      final z = (_viewport.width / screenRect.width)
+          .clamp(1.0, 5.0)
+          .toDouble();
+      final zy = (_viewport.height / screenRect.height)
+          .clamp(1.0, 5.0)
+          .toDouble();
+      final zoom = z < zy ? z : zy;
+      final tx = _viewport.width / 2 - zoom * screenRect.center.dx;
+      final ty = _viewport.height / 2 - zoom * screenRect.center.dy;
+      target = Matrix4.identity()
+        ..translate(tx, ty)
+        ..scale(zoom);
+    }
+    _animateTo(target);
+  }
+
+  void _animateTo(Matrix4 target) {
+    _matrixAnim = Matrix4Tween(begin: _tc.value, end: target).animate(
+      CurvedAnimation(parent: _anim, curve: Curves.easeInOutCubic),
+    );
+    _anim
+      ..reset()
+      ..forward();
   }
 
   @override
@@ -102,7 +214,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
+    if (_loadingMap) {
       return const Center(
           child: CircularProgressIndicator(color: AppColors.primary));
     }
@@ -120,10 +232,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextButton(
-              onPressed: _load,
-              child: const Text('다시 시도'),
-            ),
+            TextButton(onPressed: _load, child: const Text('다시 시도')),
           ],
         ),
       );
@@ -131,6 +240,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
     final data = _data!;
     return Column(
       children: [
+        _buildTabs(data),
         _buildSummary(),
         Expanded(
           child: LayoutBuilder(
@@ -142,18 +252,31 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
                   : h / data.height;
               final dx = (w - data.width * scale) / 2;
               final dy = (h - data.height * scale) / 2;
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapUp: (d) => _handleTap(d.localPosition, scale, dx, dy),
-                child: CustomPaint(
-                  size: Size(w, h),
-                  painter: KoreaMapPainter(
-                    data: data,
-                    counts: _counts,
-                    scale: scale,
-                    dx: dx,
-                    dy: dy,
-                    selectedKey: _selectedKey,
+              _scale = scale;
+              _dx = dx;
+              _dy = dy;
+              _viewport = Size(w, h);
+              return ClipRect(
+                child: InteractiveViewer(
+                  transformationController: _tc,
+                  minScale: 1.0,
+                  maxScale: 6.0,
+                  boundaryMargin: const EdgeInsets.all(120),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (d) => _handleTap(d.localPosition),
+                    child: CustomPaint(
+                      size: Size(w, h),
+                      painter: KoreaMapPainter(
+                        data: data,
+                        counts: _counts,
+                        scale: scale,
+                        dx: dx,
+                        dy: dy,
+                        selectedKey: _selectedKey,
+                        focusGroup: _focusGroup,
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -165,9 +288,50 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
     );
   }
 
+  Widget _buildTabs(KoreaMapData data) {
+    final present = _groupOrder.where(data.keyGroup.values.contains).toList();
+    final tabs = <String?>[null, ...present];
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        itemCount: tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final g = tabs[i];
+          final active = _focusGroup == g;
+          return GestureDetector(
+            onTap: () => _selectGroup(g),
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: active ? AppColors.primary : AppColors.gray50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: active ? AppColors.primary : AppColors.gray100,
+                ),
+              ),
+              child: Text(
+                g ?? '전체',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: active ? AppColors.white : AppColors.gray700,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildSummary() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -182,6 +346,15 @@ class _KoreaMapScreenState extends State<KoreaMapScreen> {
               color: AppColors.gray900,
             ),
           ),
+          if (_loadingCounts) ...[
+            const SizedBox(width: 8),
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary),
+            ),
+          ],
         ],
       ),
     );

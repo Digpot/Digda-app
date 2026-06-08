@@ -14,6 +14,7 @@ class KoreaMapPainter extends CustomPainter {
     required this.dx,
     required this.dy,
     this.selectedKey,
+    this.focusGroup,
   });
 
   final KoreaMapData data;
@@ -25,6 +26,12 @@ class KoreaMapPainter extends CustomPainter {
   final double dx;
   final double dy;
   final String? selectedKey;
+
+  /// 선택된 권역(수도권/강원/…). 지정 시 그 권역만 또렷하고 나머지는 디밍.
+  final String? focusGroup;
+
+  /// 비포커스 권역을 가라앉히는 아이보리 베일.
+  final Paint _dimVeil = Paint()..color = const Color(0xCCFBF7EF);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -85,6 +92,10 @@ class KoreaMapPainter extends CustomPainter {
         p = warmPaint;
       }
       canvas.drawPath(r.path, p);
+      // 권역 포커스 시 다른 권역은 아이보리 베일로 덮어 가라앉힌다.
+      if (focusGroup != null && r.group != focusGroup) {
+        canvas.drawPath(r.path, _dimVeil);
+      }
     }
 
     // 4) Grooves — 경계선(하이라이트 + 섀도).
@@ -116,55 +127,45 @@ class KoreaMapPainter extends CustomPainter {
       }
     }
 
-    // 6) Labels — 채색된 지역 + 선택 지역만(빈 지역은 깔끔하게 비움).
-    final seenKeys = <String>{};
-    for (final r in data.regions) {
-      final count = counts[r.key] ?? 0;
-      final meta = data.metaOf(r.key);
+    // 6) Labels — 모든 지역명을 항상 표시(적응형 크기). 채색/선택은 흰 글씨로 강조.
+    for (final entry in data.keyCenter.entries) {
+      final key = entry.key;
+      final count = counts[key] ?? 0;
+      final meta = data.metaOf(key);
       final colored = meta != null && meta.isColored(count);
-      final isSel = r.key == sel;
-      if (!colored && !isSel) continue;
-      // 같은 key(통합시/광역시 여러 조각)는 대표 1회만 라벨.
-      if (!seenKeys.add(r.key)) continue;
+      final isSel = key == sel;
+      final dimmed = focusGroup != null && data.keyGroup[key] != focusGroup;
       _drawLabel(
         canvas,
-        meta?.label ?? r.name,
-        // 대표 라벨 위치: 그 key 의 최대 조각 중심.
-        _largestCenter(r.key),
+        data.keyLabel[key] ?? key,
+        entry.value,
         colored || isSel,
+        data.keyLabelSize[key] ?? 8.0,
+        dimmed,
       );
     }
 
     canvas.restore();
   }
 
-  Offset _largestCenter(String key) {
-    final list = data.byKey[key] ?? const [];
-    if (list.isEmpty) return Offset.zero;
-    // labelCenter 는 각 조각 최대 링 중심 — 그중 첫(=가장 먼저 등장) 사용.
-    // 통합시/광역시는 면적이 가장 큰 조각이 대표가 되도록 path bounds 면적 비교.
-    MapRegion best = list.first;
-    double bestArea = -1;
-    for (final r in list) {
-      final b = r.path.getBounds();
-      final area = b.width * b.height;
-      if (area > bestArea) {
-        bestArea = area;
-        best = r;
-      }
-    }
-    return best.labelCenter;
-  }
-
-  void _drawLabel(Canvas canvas, String text, Offset center, bool onCoral) {
+  void _drawLabel(
+    Canvas canvas,
+    String text,
+    Offset center,
+    bool onCoral,
+    double fontSize,
+    bool dimmed,
+  ) {
+    final Color ink = onCoral ? Colors.white : KoreaMapTokens.labelInk;
     final tp = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontFamily: 'Inter',
-          fontSize: 10,
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
-          color: onCoral ? Colors.white : KoreaMapTokens.labelInk,
+          color: dimmed ? ink.withValues(alpha: 0.28) : ink,
+          // paint-order:stroke 효과 — 반투명 아이보리 외곽으로 가독성 확보.
           shadows: onCoral
               ? const [Shadow(color: Color(0x55C2412F), blurRadius: 1.5)]
               : const [Shadow(color: Color(0xCCFFFDFA), blurRadius: 1.5)],
@@ -179,6 +180,7 @@ class KoreaMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant KoreaMapPainter old) =>
       old.selectedKey != selectedKey ||
+      old.focusGroup != focusGroup ||
       !identical(old.counts, counts) ||
       old.scale != scale ||
       old.dx != dx ||

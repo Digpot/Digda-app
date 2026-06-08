@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// 디그팟 시그니처 지도 — 시군구 한 조각.
@@ -59,6 +61,77 @@ class KoreaMapData {
     final m = <String, List<MapRegion>>{};
     for (final r in regions) {
       (m[r.key] ??= []).add(r);
+    }
+    return m;
+  }();
+
+  /// 색칠 키 → 라벨 표시 위치(그 키의 최대 면적 조각 중심).
+  late final Map<String, Offset> keyCenter = () {
+    final m = <String, Offset>{};
+    byKey.forEach((key, list) {
+      MapRegion best = list.first;
+      double bestArea = -1;
+      for (final r in list) {
+        final b = r.path.getBounds();
+        final a = b.width * b.height;
+        if (a > bestArea) {
+          bestArea = a;
+          best = r;
+        }
+      }
+      m[key] = best.labelCenter;
+    });
+    return m;
+  }();
+
+  /// 색칠 키 → 표시명.
+  late final Map<String, String> keyLabel = {
+    for (final e in byKey.entries)
+      e.key: (e.value.first.metro ? e.value.first.sido : e.key),
+  };
+
+  /// 색칠 키 → 광역시 여부.
+  late final Map<String, bool> keyMetro = {
+    for (final e in byKey.entries) e.key: e.value.first.metro,
+  };
+
+  /// 색칠 키 → 권역.
+  late final Map<String, String> keyGroup = {
+    for (final e in byKey.entries) e.key: e.value.first.group,
+  };
+
+  /// 색칠 키 → 라벨 폰트 크기. 이웃 라벨과의 최단 거리로 적응형 산출(handoff §4).
+  /// 밀집 지역은 작게, 한산한 지역은 크게. 광역시는 최소 8.5 보장.
+  late final Map<String, double> keyLabelSize = () {
+    final keys = keyCenter.keys.toList();
+    final m = <String, double>{};
+    for (final k in keys) {
+      final c = keyCenter[k]!;
+      double minSq = double.infinity;
+      for (final o in keys) {
+        if (o == k) continue;
+        final oc = keyCenter[o]!;
+        final dx = c.dx - oc.dx, dy = c.dy - oc.dy;
+        final d = dx * dx + dy * dy;
+        if (d < minSq) minSq = d;
+      }
+      final minD = minSq == double.infinity ? 1e9 : math.sqrt(minSq);
+      double fs;
+      if (minD < 9) {
+        fs = 6.0;
+      } else if (minD < 13) {
+        fs = 6.5;
+      } else if (minD < 17) {
+        fs = 7.5;
+      } else if (minD < 23) {
+        fs = 8.5;
+      } else if (minD < 32) {
+        fs = 9.5;
+      } else {
+        fs = 10.5;
+      }
+      if (keyMetro[k] == true && fs < 8.5) fs = 8.5;
+      m[k] = fs;
     }
     return m;
   }();
