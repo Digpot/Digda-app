@@ -380,7 +380,8 @@ class _WelcomeIllo extends StatelessWidget {
           ),
         ),
         Positioned(
-          bottom: -8,
+          // 모찌 squircle 배경이 카드(Clip.antiAlias) 아래로 잘리지 않도록 양수 오프셋.
+          bottom: 8,
           child: MochiCharacterView(
             appearance: MochiAppearance(
                 skinHex: data.mochiSkinHex!, skinAssetKey: 'skin/coral'),
@@ -792,7 +793,8 @@ class _MochiLevelUpIllo extends StatelessWidget {
           ),
         ),
         Positioned(
-          bottom: -8,
+          // 모찌 squircle 배경이 카드(Clip.antiAlias) 아래로 잘리지 않도록 양수 오프셋.
+          bottom: 8,
           child: MochiCharacterView(
             appearance: MochiAppearance(
                 skinHex: data.mochiSkinHex!, skinAssetKey: 'skin/coral'),
