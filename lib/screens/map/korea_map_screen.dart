@@ -5,7 +5,7 @@ import '../../features/map/data/korea_map_loader.dart';
 import '../../features/map/data/korea_map_models.dart';
 import '../../features/map/painter/korea_map_painter.dart';
 import '../../theme/colors.dart';
-import '../../widgets/center_title_header.dart';
+import '../../widgets/back_header.dart';
 import 'region_diary_list_screen.dart';
 
 /// 디그팟 시그니처 지도 — 그룹이 일기를 남긴 지역을 코랄로 채운다.
@@ -235,7 +235,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const CenterTitleHeader(title: '우리가 채운 지도'),
+            const BackHeader(title: '우리 발자취'),
             Expanded(child: _buildBody()),
           ],
         ),
