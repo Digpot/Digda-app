@@ -198,10 +198,13 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       ..forward();
   }
 
+  // 따뜻한 점토 지도와 어울리는 아이보리 화면 배경.
+  static const Color _warmBg = Color(0xFFFCF8F1);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: _warmBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -242,22 +245,35 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       children: [
         _buildTabs(data),
         _buildSummary(),
+        // 점토 지도가 따뜻한 무대 위에 놓인 듯 보이도록 방사형 배경 + 라운드 프레임.
+        // (LayoutBuilder 는 프레임 안쪽이라 constraints 가 margin 적용 후 크기 → fit/히트테스트 일치)
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final h = constraints.maxHeight;
-              final scale = (w / data.width) < (h / data.height)
-                  ? w / data.width
-                  : h / data.height;
-              final dx = (w - data.width * scale) / 2;
-              final dy = (h - data.height * scale) / 2;
-              _scale = scale;
-              _dx = dx;
-              _dy = dy;
-              _viewport = Size(w, h);
-              return ClipRect(
-                child: InteractiveViewer(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: const RadialGradient(
+                center: Alignment(0, -0.1),
+                radius: 0.95,
+                colors: KoreaMapTokens.stageRadial,
+              ),
+              border: Border.all(color: const Color(0xFFEFE6D6)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                final h = constraints.maxHeight;
+                final scale = (w / data.width) < (h / data.height)
+                    ? w / data.width
+                    : h / data.height;
+                final dx = (w - data.width * scale) / 2;
+                final dy = (h - data.height * scale) / 2;
+                _scale = scale;
+                _dx = dx;
+                _dy = dy;
+                _viewport = Size(w, h);
+                return InteractiveViewer(
                   transformationController: _tc,
                   minScale: 1.0,
                   maxScale: 6.0,
@@ -278,9 +294,9 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         _buildSelectedPanel(),
@@ -303,15 +319,26 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
           final active = _focusGroup == g;
           return GestureDetector(
             onTap: () => _selectGroup(g),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
               alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               decoration: BoxDecoration(
-                color: active ? AppColors.primary : AppColors.gray50,
-                borderRadius: BorderRadius.circular(16),
+                color: active ? AppColors.primary : AppColors.white,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: active ? AppColors.primary : AppColors.gray100,
+                  color: active ? AppColors.primary : const Color(0xFFEFE6D6),
                 ),
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.28),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
               child: Text(
                 g ?? '전체',
@@ -331,31 +358,48 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
 
   Widget _buildSummary() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.place, size: 16, color: AppColors.primary),
-          const SizedBox(width: 6),
-          Text(
-            '전국 $_coloredCount곳을 채웠어요',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              color: AppColors.gray900,
-            ),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 4),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFFFD9CF)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          if (_loadingCounts) ...[
-            const SizedBox(width: 8),
-            const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.primary),
-            ),
-          ],
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.place, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                '전국 $_coloredCount곳을 채웠어요',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.gray900,
+                ),
+              ),
+              if (_loadingCounts) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.primary),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
