@@ -66,7 +66,16 @@ class _TransferOwnerScreenState extends State<TransferOwnerScreen> {
     if (_selectedUserId == null) return;
     final groupId = Di.activeGroup.groupRoomId;
     if (groupId == null) return;
-    final target = _members.firstWhere((m) => m.userId == _selectedUserId);
+    // 선택 후 멤버 목록이 갱신돼 대상이 사라졌을 수 있으므로 안전 조회(없으면 중단).
+    Membership? found;
+    for (final m in _members) {
+      if (m.userId == _selectedUserId) {
+        found = m;
+        break;
+      }
+    }
+    if (found == null) return;
+    final target = found;
 
     final confirmed = await showDialog<bool>(
       context: context,

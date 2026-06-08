@@ -107,7 +107,16 @@ class ApiClient {
     );
   }
 
-  Future<bool> _refreshTokens() async {
+  /// 진행 중인 토큰 갱신(있으면 공유). 동시 401 이 각자 refresh 를 쏘면 회전형
+  /// refresh 토큰이 첫 호출에서 무효화돼 나머지가 실패→강제 로그아웃되는 레이스를 막는다.
+  Future<bool>? _refreshInFlight;
+
+  Future<bool> _refreshTokens() {
+    return _refreshInFlight ??=
+        _doRefreshTokens().whenComplete(() => _refreshInFlight = null);
+  }
+
+  Future<bool> _doRefreshTokens() async {
     final refresh = await _tokenStorage.readRefreshToken();
     if (refresh == null) return false;
     try {

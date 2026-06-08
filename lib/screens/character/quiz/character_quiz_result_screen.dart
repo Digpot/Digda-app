@@ -14,10 +14,14 @@ class CharacterQuizResultScreen extends StatefulWidget {
     super.key,
     required this.quiz,
     required this.result,
+    this.practice = false,
   });
 
   final CharacterQuiz quiz;
   final QuizAttemptResult result;
+
+  /// 연습(재풀이) 모드 — 보상 없이 정답 확인만. 보상판 대신 안내를 띄운다.
+  final bool practice;
 
   @override
   State<CharacterQuizResultScreen> createState() =>
@@ -147,7 +151,10 @@ class _CharacterQuizResultScreenState extends State<CharacterQuizResultScreen>
                     const SizedBox(height: 24),
                     _Question(quiz: widget.quiz, result: widget.result),
                     const SizedBox(height: 20),
-                    _RewardBoard(result: widget.result),
+                    if (widget.practice)
+                      const _PracticeNotice()
+                    else
+                      _RewardBoard(result: widget.result),
                     if (!correct) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -310,6 +317,40 @@ class _Question extends StatelessWidget {
               fontWeight: FontWeight.w500,
               fontSize: 13,
               color: AppColors.gray700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 연습(재풀이) 모드 안내 — 보상판 자리에 표시.
+class _PracticeNotice extends StatelessWidget {
+  const _PracticeNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.refresh_rounded, size: 18, color: AppColors.gray500),
+          SizedBox(width: 8),
+          Text(
+            '연습 모드 · 경험치는 오르지 않아요',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: AppColors.gray500,
             ),
           ),
         ],

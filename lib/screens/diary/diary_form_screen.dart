@@ -245,10 +245,13 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
 
     setState(() => _saving = true);
     try {
-      // create 모드: 저장 직전 중복 날짜 최종 확인 (날짜 변경 후 저장하는 경우 대비)
+      // create 모드: 저장 직전 중복 날짜 최종 확인 (날짜 변경 후 저장하는 경우 대비).
+      // 다른 멤버가 같은 날 일기를 추가했을 수 있어, 캐시가 아닌 서버 최신을 강제 조회한다.
       if (widget.mode == DiaryFormMode.create) {
         final diaryDates =
-            (await Di.diaryRepository.calendar(groupId, _date)).dates;
+            (await Di.diaryRepository.calendar(groupId, _date,
+                    forceRefresh: true))
+                .dates;
         final dateUtc = DateTime.utc(_date.year, _date.month, _date.day);
         final hasDuplicate = diaryDates.any(
           (d) => DateTime.utc(d.year, d.month, d.day) == dateUtc,
