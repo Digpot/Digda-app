@@ -177,6 +177,7 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
           ),
           const SizedBox(height: 12),
           Wrap(
+            alignment: WrapAlignment.center,
             spacing: 14,
             runSpacing: 18,
             children: defs.map(_buildTile).toList(),

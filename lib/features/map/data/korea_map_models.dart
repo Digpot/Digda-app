@@ -116,6 +116,57 @@ class KoreaMapData {
     return m;
   }();
 
+  /// 조각 → 지도 라벨 그룹. 광역시는 개별 시도명(서울/부산), 그 외는 포커스 버킷
+  /// (전북/강원/경기북부…). 지도에는 시·군 라벨 대신 이 "도 단위"로만 글자를 띄운다.
+  static String labelGroupOf(MapRegion r) =>
+      r.metro ? r.sido : focusGroupOf(r);
+
+  /// 라벨 그룹 → 지도 라벨 표시 위치(그 그룹 전체를 감싸는 bounds 중심).
+  late final Map<String, Offset> labelGroupCenter = () {
+    final groups = <String, Rect>{};
+    for (final r in regions) {
+      final g = labelGroupOf(r);
+      final b = r.path.getBounds();
+      groups[g] = groups[g] == null ? b : groups[g]!.expandToInclude(b);
+    }
+    return {for (final e in groups.entries) e.key: e.value.center};
+  }();
+
+  /// 라벨 그룹 → 포커스 버킷(광역시 라벨들은 '광역시' 버킷으로). 포커스 디밍 판정용.
+  late final Map<String, String> labelGroupToFocus = () {
+    final m = <String, String>{};
+    for (final r in regions) {
+      m[labelGroupOf(r)] = focusGroupOf(r);
+    }
+    return m;
+  }();
+
+  /// 포커스 버킷(도) 전체를 합친 외곽선 path(캐시). 탭 선택 시 그 도 경계를 색으로 그린다.
+  /// union 은 비용이 있어 버킷당 1회만 계산하고 보관한다.
+  final Map<String, Path> _focusGroupOutlineCache = {};
+  Path focusGroupOutline(String group) {
+    final cached = _focusGroupOutlineCache[group];
+    if (cached != null) return cached;
+    Path acc = Path();
+    var first = true;
+    for (final r in regions) {
+      if (focusGroupOf(r) != group) continue;
+      if (first) {
+        acc = Path.from(r.path);
+        first = false;
+      } else {
+        try {
+          acc = Path.combine(PathOperation.union, acc, r.path);
+        } catch (_) {
+          // union 실패(희귀) 시 단순 합치기로 폴백 — 내부선 보일 수 있으나 안전.
+          acc.addPath(r.path, Offset.zero);
+        }
+      }
+    }
+    _focusGroupOutlineCache[group] = acc;
+    return acc;
+  }
+
   /// 경기 북부(북부청사 관할) 10개 시·군의 색칠키.
   /// 나머지 경기 조각은 모두 남부로 본다(김포 포함).
   static const Set<String> gyeonggiNorthKeys = {
