@@ -214,16 +214,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _showCodeInputSheet(BuildContext context) {
-    showModalBottomSheet<String>(
+    // 참여 성공 시 시트가 직접 해당 그룹홈으로 이동(스택 비움)한다.
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _CodeInputBottomSheet(),
-    ).then((groupName) {
-      if (groupName != null && mounted) {
-        showInfoDialog(context, '그룹방 참여', '"$groupName" 그룹방에 참여했어요!');
-      }
-    });
+    );
   }
 
   Widget _buildProfileSection(BuildContext context, UserProfile? profile) {
@@ -490,8 +487,21 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
       if (!mounted) return;
       final result = await Di.inviteRepository.join(code);
       if (!mounted) return;
-      // 등록 완료 — bottom sheet 닫고 그룹명 반환(부모가 스낵바 표시)
-      Navigator.of(context).pop(result.groupRoom.name);
+      // 참여한 그룹을 활성화하고 그 그룹홈으로 이동(스택 비움) — 온보딩 참여와 동일.
+      Di.activeGroup.enter(
+        groupRoomId: result.groupRoom.id,
+        groupRoomName: result.groupRoom.name,
+        isOwner: false,
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/group-home',
+        (route) => false,
+        arguments: {
+          'name': result.groupRoom.name,
+          'members': result.memberships.length,
+          'isOwner': false,
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
