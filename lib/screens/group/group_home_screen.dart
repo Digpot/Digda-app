@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/app_config/models/app_config.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/group_room/models/group_room_models.dart';
 import '../../features/notification/models/notification_models.dart';
@@ -11,6 +12,7 @@ import '../../widgets/app_dialog.dart';
 import '../../widgets/feature_card.dart';
 import '../../widgets/group_default_avatar.dart';
 import '../../widgets/invite_code_sheet.dart';
+import '../../widgets/notice_banner.dart';
 import '../../widgets/notification_bell_icon.dart';
 
 /// 그룹 홈 — '대시보드' 리디자인.
@@ -51,11 +53,20 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   bool _deleteScheduledBlock = false;
   /// 오늘 날짜 일기가 이미 있는지 — 그룹홈에서 '일기 쓰기' 중복 작성을 막는 데 쓴다.
   bool _todayHasDiary = false;
+  /// 앱 운영 설정(대공지 등). best-effort 로 받아 배너 노출에 사용.
+  AppConfig _appConfig = AppConfig.empty;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _loadAppConfig() async {
+    try {
+      final cfg = await Di.appConfigRepository.get(forceRefresh: true);
+      if (mounted) setState(() => _appConfig = cfg);
+    } catch (_) {/* 설정 조회 실패는 화면에 영향 없음 */}
   }
 
   Future<void> _load() async {
@@ -72,6 +83,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       _errorMessage = null;
       _deleteScheduledBlock = false;
     });
+    _loadAppConfig(); // 대공지 배너 (best-effort, 비동기)
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -470,6 +482,11 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             onUnread: () => _goThenReload('/notifications'),
           ),
           const SizedBox(height: 20),
+          // 대공지(전광판) — 어드민이 켜고 메시지가 있을 때만.
+          if (_appConfig.showNotice) ...[
+            NoticeBanner(message: _appConfig.noticeMessage),
+            const SizedBox(height: 20),
+          ],
           _ActiveGroupCard(
             group: group,
             avatarColors: _avatarColors,

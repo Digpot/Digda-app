@@ -23,6 +23,7 @@ import 'screens/character/character_shop_screen.dart';
 import 'screens/character/quiz/character_quiz_play_screen.dart';
 import 'screens/character/quiz/character_quiz_create_screen.dart';
 import 'screens/mypage/my_page_screen.dart';
+import 'screens/title/title_collection_screen.dart';
 import 'screens/mypage/edit_profile_screen.dart';
 import 'screens/mypage/notification_settings_screen.dart';
 import 'screens/mypage/privacy_settings_screen.dart';
@@ -131,6 +132,9 @@ class AppRouter {
       case '/my-page':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const MyPageScreen());
+      case '/titles':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const TitleCollectionScreen());
       case '/edit-profile':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const EditProfileScreen());

@@ -5,7 +5,6 @@ class UserProfile {
     required this.name,
     this.email,
     this.profileImage,
-    this.statusMessage,
     required this.provider,
     this.createdAt,
   });
@@ -14,7 +13,6 @@ class UserProfile {
   final String name;
   final String? email;
   final String? profileImage;
-  final String? statusMessage;
   final String provider;
   final DateTime? createdAt;
 
@@ -24,7 +22,6 @@ class UserProfile {
       name: json['name'] as String,
       email: json['email'] as String?,
       profileImage: json['profileImage'] as String?,
-      statusMessage: json['statusMessage'] as String?,
       provider: json['provider'] as String,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
@@ -36,14 +33,12 @@ class UserProfile {
     String? name,
     String? email,
     String? profileImage,
-    String? statusMessage,
   }) {
     return UserProfile(
       id: id,
       name: name ?? this.name,
       email: email ?? this.email,
       profileImage: profileImage ?? this.profileImage,
-      statusMessage: statusMessage ?? this.statusMessage,
       provider: provider,
       createdAt: createdAt,
     );
@@ -54,12 +49,10 @@ class UserProfile {
 class UpdateProfileRequest {
   const UpdateProfileRequest({
     this.name,
-    this.statusMessage = unset,
     this.profileImageId = unset,
   });
 
   final String? name;
-  final Object? statusMessage; // null=삭제, unset=변경 없음
   final Object? profileImageId; // null=기본 아바타, unset=변경 없음
 
   /// "변경 없음" 의도 sentinel. 외부에서도 동일한 인스턴스를 사용하도록 노출.
@@ -68,7 +61,6 @@ class UpdateProfileRequest {
   Map<String, dynamic> toJson() {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
-    if (!identical(statusMessage, unset)) body['statusMessage'] = statusMessage ?? '';
     if (!identical(profileImageId, unset)) body['profileImageId'] = profileImageId;
     return body;
   }

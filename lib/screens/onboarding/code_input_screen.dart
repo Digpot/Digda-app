@@ -50,9 +50,26 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
   }
 
   void _onChanged(String value, int index) {
-    if (value.length == 1 && index < _codeLength - 1) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    // 붙여넣기(여러 자리) — 0번 칸부터 분배하고 마지막 입력 칸으로 포커스.
+    if (digits.length > 1) {
+      for (int i = 0; i < _codeLength; i++) {
+        _controllers[i].text = i < digits.length ? digits[i] : '';
+      }
+      final focusIdx = digits.length.clamp(1, _codeLength) - 1;
+      _focusNodes[focusIdx].requestFocus();
+      setState(() {});
+      return;
+    }
+    // 단일 입력 — 한 글자만 유지.
+    if (_controllers[index].text != digits) {
+      _controllers[index].text = digits;
+      _controllers[index].selection =
+          TextSelection.collapsed(offset: digits.length);
+    }
+    if (digits.isNotEmpty && index < _codeLength - 1) {
       _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
+    } else if (digits.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
     }
     setState(() {});
@@ -189,15 +206,17 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                 ),
                 const SizedBox(height: 28),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(_codeLength, (index) {
-                    return SizedBox(
-                      width: 48,
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: index == _codeLength - 1 ? 0 : 8,
+                        ),
+                        child: SizedBox(
                       height: 56,
                       child: TextField(
                         controller: _controllers[index],
                         focusNode: _focusNodes[index],
-                        maxLength: 1,
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -232,6 +251,8 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                         ),
                         onChanged: (value) => _onChanged(value, index),
                         onTap: () => setState(() {}),
+                      ),
+                        ),
                       ),
                     );
                   }),

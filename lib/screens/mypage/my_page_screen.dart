@@ -7,10 +7,12 @@ import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
 import '../../features/user/models/user_models.dart';
+import '../../features/app_config/models/app_config.dart';
 
 /// 디그팟 개인정보처리방침 호스팅 URL.
 const String _privacyPolicyUrl =
     'https://datediary.github.io/Digda-app/privacy-policy.html';
+
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -20,16 +22,26 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
+  // 피드백 메뉴 노출/링크 — 어드민 설정(서버)에서 받아온다.
+  AppConfig _appConfig = AppConfig.empty;
+
   @override
   void initState() {
     super.initState();
     Di.userSession.addListener(_onSession);
+    _appConfig = Di.appConfigRepository.cachedOrEmpty;
     // 캐시가 비어 있으면 강제 갱신, 있더라도 화면 진입 시 최신화. 실패는 화면 표시에 영향 없음.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Di.userSession.refresh().then(
             (_) {},
             onError: (_) {},
           );
+      Di.appConfigRepository.get().then(
+        (cfg) {
+          if (mounted) setState(() => _appConfig = cfg);
+        },
+        onError: (_) {},
+      );
     });
   }
 
@@ -162,6 +174,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                       onTap: () {},
                     ),
+                    if (_appConfig.showFeedback)
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.feedback_outlined,
+                        label: '피드백 받기',
+                        onTap: () => _openFeedback(context),
+                      ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -181,17 +200,27 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
+  Future<void> _openFeedback(BuildContext context) async {
+    final url = _appConfig.feedbackUrl.trim();
+    if (url.isEmpty) {
+      showInfoDialog(context, '피드백 받기', '피드백 폼을 준비 중이에요. 곧 열릴 예정입니다!');
+      return;
+    }
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      showErrorDialog(context, '브라우저를 열 수 없어요');
+    }
+  }
+
   void _showCodeInputSheet(BuildContext context) {
-    showModalBottomSheet<String>(
+    // 참여 성공 시 시트가 직접 해당 그룹홈으로 이동(스택 비움)한다.
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _CodeInputBottomSheet(),
-    ).then((groupName) {
-      if (groupName != null && mounted) {
-        showInfoDialog(context, '그룹방 참여', '"$groupName" 그룹방에 참여했어요!');
-      }
-    });
+    );
   }
 
   Widget _buildProfileSection(BuildContext context, UserProfile? profile) {
@@ -261,7 +290,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
+                // 칭호 수집가 진입 (상태메시지 자리)
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pushNamed('/titles'),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.workspace_premium_rounded,
+                          size: 15, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        '내 칭호를 확인해볼까요?',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      SizedBox(width: 1),
+                      Icon(Icons.chevron_right,
+                          size: 14, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 5),
                 GestureDetector(
                   onTap: () =>
                       Navigator.of(context).pushNamed('/edit-profile'),
@@ -273,14 +326,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w400,
                           fontSize: 13,
-                          color: AppColors.primary,
+                          color: AppColors.gray500,
                         ),
                       ),
                       SizedBox(width: 2),
                       Icon(
                         Icons.chevron_right,
                         size: 14,
-                        color: AppColors.primary,
+                        color: AppColors.gray500,
                       ),
                     ],
                   ),
@@ -401,9 +454,25 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
   }
 
   void _onChanged(String value, int index) {
-    if (value.length == 1 && index < _codeLength - 1) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    // 붙여넣기(여러 자리) — 0번 칸부터 분배하고 마지막 입력 칸으로 포커스.
+    if (digits.length > 1) {
+      for (int i = 0; i < _codeLength; i++) {
+        _controllers[i].text = i < digits.length ? digits[i] : '';
+      }
+      final focusIdx = digits.length.clamp(1, _codeLength) - 1;
+      _focusNodes[focusIdx].requestFocus();
+      setState(() {});
+      return;
+    }
+    if (_controllers[index].text != digits) {
+      _controllers[index].text = digits;
+      _controllers[index].selection =
+          TextSelection.collapsed(offset: digits.length);
+    }
+    if (digits.isNotEmpty && index < _codeLength - 1) {
       _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
+    } else if (digits.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
     }
     setState(() {});
@@ -418,8 +487,21 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
       if (!mounted) return;
       final result = await Di.inviteRepository.join(code);
       if (!mounted) return;
-      // 등록 완료 — bottom sheet 닫고 그룹명 반환(부모가 스낵바 표시)
-      Navigator.of(context).pop(result.groupRoom.name);
+      // 참여한 그룹을 활성화하고 그 그룹홈으로 이동(스택 비움) — 온보딩 참여와 동일.
+      Di.activeGroup.enter(
+        groupRoomId: result.groupRoom.id,
+        groupRoomName: result.groupRoom.name,
+        isOwner: false,
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/group-home',
+        (route) => false,
+        arguments: {
+          'name': result.groupRoom.name,
+          'members': result.memberships.length,
+          'isOwner': false,
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -520,15 +602,17 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
           ),
           const SizedBox(height: 28),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(_codeLength, (index) {
-              return SizedBox(
-                width: 48,
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: index == _codeLength - 1 ? 0 : 8,
+                  ),
+                  child: SizedBox(
                 height: 56,
                 child: TextField(
                   controller: _controllers[index],
                   focusNode: _focusNodes[index],
-                  maxLength: 1,
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
@@ -563,6 +647,8 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
                   ),
                   onChanged: (value) => _onChanged(value, index),
                   onTap: () => setState(() {}),
+                ),
+                  ),
                 ),
               );
             }),

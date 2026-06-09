@@ -5,6 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
 import 'core/di.dart';
 import 'core/route_observer.dart';
+import 'features/title/title_catalog.dart';
+import 'features/title/widgets/title_earned_dialog.dart';
 import 'theme/colors.dart';
 
 class DigdaApp extends StatefulWidget {
@@ -19,17 +21,22 @@ class _DigdaAppState extends State<DigdaApp> {
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
 
+  bool _celebrating = false;
+
   @override
   void initState() {
     super.initState();
     _appLinks = AppLinks();
     _initDeepLink();
     Di.authSession.addListener(_onAuthChanged);
+    Di.titleRepository.newlyEarned.addListener(_onNewTitle);
+    if (Di.authSession.isAuthenticated) _primeTitles();
   }
 
   @override
   void dispose() {
     Di.authSession.removeListener(_onAuthChanged);
+    Di.titleRepository.newlyEarned.removeListener(_onNewTitle);
     _linkSub?.cancel();
     super.dispose();
   }
@@ -41,7 +48,30 @@ class _DigdaAppState extends State<DigdaApp> {
         '/login',
         (_) => false,
       );
+    } else {
+      // 로그인 직후 — 현재 보유 칭호로 기준선을 잡아 이후 획득만 축하한다.
+      _primeTitles();
     }
+  }
+
+  /// 기준선 설정 — 서버 카탈로그 로드 + 최초 list() 로 기존 칭호를 축하 없이 흡수한다.
+  void _primeTitles() {
+    TitleCatalog.ensureLoaded().then((_) {}, onError: (_) {});
+    Di.titleRepository.list().then((_) {}, onError: (_) {});
+  }
+
+  /// 새로 획득한 칭호가 생기면 축하 팝업을 순차적으로 띄운다.
+  void _onNewTitle() {
+    if (_celebrating) return;
+    final queue = Di.titleRepository.newlyEarned.value;
+    if (queue.isEmpty) return;
+    final ctx = _navigatorKey.currentContext;
+    if (ctx == null) return;
+    _celebrating = true;
+    showTitleEarnedDialog(ctx, queue.first).whenComplete(() {
+      _celebrating = false;
+      Di.titleRepository.popNewlyEarned(); // 다음 것이 있으면 리스너 재발화
+    });
   }
 
   Future<void> _initDeepLink() async {
