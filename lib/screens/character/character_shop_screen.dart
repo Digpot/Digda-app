@@ -89,6 +89,7 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
       List<EarnedTitle> earnedTitles = _earnedTitles;
       EquippedTitle? equippedTitle = _equippedTitle;
       try {
+        await TitleCatalog.ensureLoaded();
         earnedTitles = await Di.titleRepository.list();
         final gstr = Di.activeGroup.groupRoomId;
         if (gstr != null) equippedTitle = await Di.titleRepository.equipped(gstr);

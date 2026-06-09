@@ -28,6 +28,46 @@ class EarnedTitle {
   }
 }
 
+/// 서버 칭호 카탈로그 1종(원본). 표시 메타·획득 조건이 서버에서 내려온다.
+/// 앱은 이걸 받아 [code]·[iconKey] 로 렌더한다(모찌 ShopItem 의 assetKey 와 동일 패턴).
+class TitleCatalogItem {
+  const TitleCatalogItem({
+    required this.code,
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.accentColor,
+    required this.iconKey,
+    required this.conditionType,
+    this.conditionValue,
+    this.sortOrder = 0,
+  });
+
+  final String code;
+  final String name;
+  final String description;
+  final String category; // region / diary / character
+  final String accentColor; // hex "#RRGGBB"
+  final String iconKey;
+  final String conditionType; // region / diary / mochi_level / manual
+  final String? conditionValue; // 지역 버킷명 / 일기 임계 / 모찌 레벨
+  final int sortOrder;
+
+  factory TitleCatalogItem.fromJson(Map<String, dynamic> json) {
+    return TitleCatalogItem(
+      code: json['code'] as String,
+      name: json['name'] as String? ?? json['code'] as String,
+      description: json['description'] as String? ?? '',
+      category: json['category'] as String? ?? 'manual',
+      accentColor: json['accentColor'] as String? ?? '#999999',
+      iconKey: json['iconKey'] as String? ?? 'default',
+      conditionType: json['conditionType'] as String? ?? 'manual',
+      conditionValue: json['conditionValue'] as String?,
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 /// 그룹 모찌에 장착된 칭호. [code] 가 null 이면 미장착.
 class EquippedTitle {
   const EquippedTitle({this.code, this.equippedBy});

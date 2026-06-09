@@ -38,6 +38,7 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
       _error = null;
     });
     try {
+      await TitleCatalog.ensureLoaded(); // 서버 카탈로그(메타) 로드
       final list = await Di.titleRepository.list();
       if (!mounted) return;
       setState(() {

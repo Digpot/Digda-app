@@ -39,6 +39,15 @@ class TitleRepository {
     if (v.isNotEmpty) newlyEarned.value = v.sublist(1);
   }
 
+  /// 칭호 카탈로그(표시 메타 + 조건) — 모찌 상점 아이템처럼 서버가 단일 소스.
+  Future<List<TitleCatalogItem>> catalog() async {
+    final res = await _api.get<List<dynamic>>('/titles/catalog');
+    final items = res.data ?? const [];
+    return items
+        .map((e) => TitleCatalogItem.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+  }
+
   /// 내가 획득한 칭호 전체. (작성 일기 수 칭호는 서버가 조회 시 자동 적재)
   Future<List<EarnedTitle>> list() async {
     final res = await _api.get<List<dynamic>>('/titles');

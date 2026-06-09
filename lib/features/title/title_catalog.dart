@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/di.dart';
+import 'models/title_models.dart';
+
 /// 칭호 분류.
 enum TitleCategory { region, diary, character }
 
@@ -16,7 +19,7 @@ extension TitleCategoryLabel on TitleCategory {
   }
 }
 
-/// 칭호 1종의 표시 메타. 획득 여부는 서버([EarnedTitle])가 code 로 알려준다.
+/// 칭호 1종의 렌더 메타. 서버 카탈로그([TitleCatalogItem])에서 빌드된다.
 class TitleDef {
   const TitleDef({
     required this.code,
@@ -35,199 +38,133 @@ class TitleDef {
   final IconData icon;
 }
 
-/// 앱이 소유하는 칭호 카탈로그(이름/설명/색/아이콘 + 획득 조건은 클라가 판정).
-/// 서버는 code 만 저장하므로 여기 code 가 서버 diary_* 임계값·지도 버킷과 짝이 맞아야 한다.
+/// 칭호 레벨 마일스톤(모찌) — 캐릭터 화면이 레벨로 claim 할 때 사용.
+class MochiTitleMilestone {
+  const MochiTitleMilestone({required this.level, required this.code});
+  final int level;
+  final String code;
+}
+
+/// 칭호 카탈로그 — **서버가 단일 소스**(모찌 ShopItem 패턴).
+/// 앱은 `GET /titles/catalog` 로 메타를 받아 빌드하고, 여기엔 `iconKey→IconData`
+/// 매핑(폰트 글리프라 앱에 있을 수밖에 없음)과 hex→Color 변환만 남는다.
 class TitleCatalog {
   TitleCatalog._();
 
-  /// 지도 탭 버킷명 → 지역 칭호 code. 지도에서 도를 정복하면 이 code 로 claim 한다.
-  static const Map<String, String> regionBucketToCode = {
-    '광역시': 'region_metro',
-    '경기북부': 'region_gyeonggi_north',
-    '경기남부': 'region_gyeonggi_south',
-    '강원': 'region_gangwon',
-    '충북': 'region_chungbuk',
-    '충남': 'region_chungnam',
-    '전북': 'region_jeonbuk',
-    '전남': 'region_jeonnam',
-    '경북': 'region_gyeongbuk',
-    '경남': 'region_gyeongnam',
-    '제주': 'region_jeju',
-  };
+  static List<TitleDef> _all = const [];
+  static Map<String, TitleDef> _byCode = const {};
+  static Map<String, String> _regionBucketToCode = const {};
+  static List<MochiTitleMilestone> _mochiMilestones = const [];
 
-  static const List<TitleDef> all = [
-    // ── 지역 정복 ──────────────────────────────────────────────
-    TitleDef(
-      code: 'region_metro',
-      name: '광역시 정복자',
-      description: '전국 광역시를 모두 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFFF8A5B),
-      icon: Icons.location_city_rounded,
-    ),
-    TitleDef(
-      code: 'region_gyeonggi_north',
-      name: '경기북부 정복자',
-      description: '경기 북부의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFFF6B6B),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_gyeonggi_south',
-      name: '경기남부 정복자',
-      description: '경기 남부의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFE8553D),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_gangwon',
-      name: '강원 정복자',
-      description: '강원의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFF5B9BF0),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_chungbuk',
-      name: '충북 정복자',
-      description: '충청북도의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFF4B53C),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_chungnam',
-      name: '충남 정복자',
-      description: '충청남도의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFE0962B),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_jeonbuk',
-      name: '전북 정복자',
-      description: '전라북도의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFF33C08A),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_jeonnam',
-      name: '전남 정복자',
-      description: '전라남도의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFF1FA876),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_gyeongbuk',
-      name: '경북 정복자',
-      description: '경상북도의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFA98BF0),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_gyeongnam',
-      name: '경남 정복자',
-      description: '경상남도의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFF8B6BE0),
-      icon: Icons.flag_rounded,
-    ),
-    TitleDef(
-      code: 'region_jeju',
-      name: '제주 정복자',
-      description: '제주의 모든 시·군을 채웠어요',
-      category: TitleCategory.region,
-      accent: Color(0xFFF47BB4),
-      icon: Icons.flag_rounded,
-    ),
-    // ── 기록(작성 일기 수) ─────────────────────────────────────
-    TitleDef(
-      code: 'diary_1',
-      name: '첫 발자국',
-      description: '첫 일기를 남겼어요',
-      category: TitleCategory.diary,
-      accent: Color(0xFF7DC4A5),
-      icon: Icons.edit_note_rounded,
-    ),
-    TitleDef(
-      code: 'diary_10',
-      name: '기록의 시작',
-      description: '일기 10개를 작성했어요',
-      category: TitleCategory.diary,
-      accent: Color(0xFF54B98A),
-      icon: Icons.menu_book_rounded,
-    ),
-    TitleDef(
-      code: 'diary_30',
-      name: '꾸준한 기록가',
-      description: '일기 30개를 작성했어요',
-      category: TitleCategory.diary,
-      accent: Color(0xFF3FA9D6),
-      icon: Icons.auto_stories_rounded,
-    ),
-    TitleDef(
-      code: 'diary_50',
-      name: '기록 수집가',
-      description: '일기 50개를 작성했어요',
-      category: TitleCategory.diary,
-      accent: Color(0xFF6E8BE0),
-      icon: Icons.collections_bookmark_rounded,
-    ),
-    TitleDef(
-      code: 'diary_100',
-      name: '기록 마스터',
-      description: '일기 100개를 작성했어요',
-      category: TitleCategory.diary,
-      accent: Color(0xFFC9A23B),
-      icon: Icons.workspace_premium_rounded,
-    ),
-    // ── 모찌(레벨) ─────────────────────────────────────────────
-    TitleDef(
-      code: 'mochi_lv5',
-      name: '모찌 새싹',
-      description: '모찌를 Lv.5까지 키웠어요',
-      category: TitleCategory.character,
-      accent: Color(0xFFFFB0C0),
-      icon: Icons.spa_rounded,
-    ),
-    TitleDef(
-      code: 'mochi_lv10',
-      name: '모찌 단짝',
-      description: '모찌를 Lv.10까지 키웠어요',
-      category: TitleCategory.character,
-      accent: Color(0xFFF583A8),
-      icon: Icons.favorite_rounded,
-    ),
-    TitleDef(
-      code: 'mochi_lv15',
-      name: '모찌 베테랑',
-      description: '모찌를 Lv.15까지 키웠어요',
-      category: TitleCategory.character,
-      accent: Color(0xFFC78BE0),
-      icon: Icons.military_tech_rounded,
-    ),
-    TitleDef(
-      code: 'mochi_lv20',
-      name: '모찌 마스터',
-      description: '모찌를 만렙(Lv.20)까지 키웠어요',
-      category: TitleCategory.character,
-      accent: Color(0xFFB07BE0),
-      icon: Icons.workspace_premium_rounded,
-    ),
-  ];
+  static bool _loaded = false;
+  static Future<void>? _loading;
 
-  /// code → 정의 (없으면 알 수 없는 칭호용 폴백).
-  static final Map<String, TitleDef> byCode = {
-    for (final t in all) t.code: t,
-  };
+  /// 카탈로그를 1회 로드(메모이즈). 실패 시 비워두고 재시도 가능.
+  static Future<void> ensureLoaded() {
+    if (_loaded) return Future.value();
+    return _loading ??= _doLoad();
+  }
 
-  static TitleDef? defOf(String code) => byCode[code];
+  static Future<void> _doLoad() async {
+    try {
+      final items = await Di.titleRepository.catalog();
+      _apply(items);
+      _loaded = true;
+    } finally {
+      _loading = null;
+    }
+  }
+
+  static void _apply(List<TitleCatalogItem> items) {
+    final sorted = [...items]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final defs = <TitleDef>[];
+    final byCode = <String, TitleDef>{};
+    final regionMap = <String, String>{};
+    final mochi = <MochiTitleMilestone>[];
+    for (final it in sorted) {
+      final def = TitleDef(
+        code: it.code,
+        name: it.name,
+        description: it.description,
+        category: _categoryOf(it.category),
+        accent: _colorFromHex(it.accentColor),
+        icon: _iconForKey(it.iconKey),
+      );
+      defs.add(def);
+      byCode[it.code] = def;
+      if (it.conditionType == 'region' && it.conditionValue != null) {
+        regionMap[it.conditionValue!] = it.code;
+      } else if (it.conditionType == 'mochi_level') {
+        final lv = int.tryParse(it.conditionValue ?? '');
+        if (lv != null) mochi.add(MochiTitleMilestone(level: lv, code: it.code));
+      }
+    }
+    _all = defs;
+    _byCode = byCode;
+    _regionBucketToCode = regionMap;
+    _mochiMilestones = mochi;
+  }
+
+  static List<TitleDef> get all => _all;
+
+  /// 지도 탭 버킷명 → 지역 칭호 code (서버 카탈로그에서 빌드).
+  static Map<String, String> get regionBucketToCode => _regionBucketToCode;
+
+  /// 모찌 레벨 마일스톤 목록(서버 카탈로그에서 빌드).
+  static List<MochiTitleMilestone> get mochiMilestones => _mochiMilestones;
+
+  static TitleDef? defOf(String code) => _byCode[code];
 
   static List<TitleDef> ofCategory(TitleCategory c) =>
-      all.where((t) => t.category == c).toList();
+      _all.where((t) => t.category == c).toList();
+
+  // ── 렌더링 매핑(앱에 남는 부분) ──────────────────────────────
+
+  static TitleCategory _categoryOf(String s) {
+    switch (s) {
+      case 'region':
+        return TitleCategory.region;
+      case 'diary':
+        return TitleCategory.diary;
+      case 'character':
+        return TitleCategory.character;
+      default:
+        return TitleCategory.character;
+    }
+  }
+
+  static Color _colorFromHex(String hex) {
+    var h = hex.replaceAll('#', '').trim();
+    if (h.length == 6) h = 'FF$h';
+    final v = int.tryParse(h, radix: 16);
+    return v != null ? Color(v) : const Color(0xFF999999);
+  }
+
+  /// iconKey → IconData. 모찌의 assetKey→모양 매핑과 동일 성격(폰트 글리프).
+  static IconData _iconForKey(String key) {
+    switch (key) {
+      case 'location_city':
+        return Icons.location_city_rounded;
+      case 'flag':
+        return Icons.flag_rounded;
+      case 'spa':
+        return Icons.spa_rounded;
+      case 'favorite':
+        return Icons.favorite_rounded;
+      case 'military_tech':
+        return Icons.military_tech_rounded;
+      case 'workspace_premium':
+        return Icons.workspace_premium_rounded;
+      case 'edit_note':
+        return Icons.edit_note_rounded;
+      case 'menu_book':
+        return Icons.menu_book_rounded;
+      case 'auto_stories':
+        return Icons.auto_stories_rounded;
+      case 'collections_bookmark':
+        return Icons.collections_bookmark_rounded;
+      default:
+        return Icons.emoji_events_rounded;
+    }
+  }
 }

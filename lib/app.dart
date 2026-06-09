@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
 import 'core/di.dart';
 import 'core/route_observer.dart';
+import 'features/title/title_catalog.dart';
 import 'features/title/widgets/title_earned_dialog.dart';
 import 'theme/colors.dart';
 
@@ -53,8 +54,9 @@ class _DigdaAppState extends State<DigdaApp> {
     }
   }
 
-  /// 기준선 설정 — 최초 list() 는 기존 칭호를 축하 없이 흡수한다.
+  /// 기준선 설정 — 서버 카탈로그 로드 + 최초 list() 로 기존 칭호를 축하 없이 흡수한다.
   void _primeTitles() {
+    TitleCatalog.ensureLoaded().then((_) {}, onError: (_) {});
     Di.titleRepository.list().then((_) {}, onError: (_) {});
   }
 

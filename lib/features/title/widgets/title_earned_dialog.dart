@@ -173,13 +173,16 @@ class _TitleEarnedDialogState extends State<TitleEarnedDialog>
   }
 }
 
-/// 코드로 [TitleEarnedDialog] 를 띄운다. 카탈로그에 없는 코드면 무시.
+/// 코드로 [TitleEarnedDialog] 를 띄운다. 서버 카탈로그를 보장 후 조회, 없는 코드면 무시.
 Future<void> showTitleEarnedDialog(
   BuildContext context,
   EarnedTitle earned,
-) {
+) async {
+  try {
+    await TitleCatalog.ensureLoaded();
+  } catch (_) {/* 카탈로그 로드 실패 시 팝업 생략 */}
   final def = TitleCatalog.defOf(earned.code);
-  if (def == null) return Future.value();
+  if (def == null || !context.mounted) return;
   return showDialog<void>(
     context: context,
     barrierDismissible: true,

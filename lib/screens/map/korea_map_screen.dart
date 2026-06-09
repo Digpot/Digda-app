@@ -182,13 +182,14 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     final groupId = Di.activeGroup.groupRoomId;
     final gid = groupId == null ? null : int.tryParse(groupId);
     if (gid == null || _completedGroups.isEmpty) return;
-    final claims = <TitleClaim>[];
-    for (final bucket in _completedGroups) {
-      final code = TitleCatalog.regionBucketToCode[bucket];
-      if (code != null) claims.add(TitleClaim(code: code, groupRoomId: gid));
-    }
-    if (claims.isEmpty) return;
     try {
+      await TitleCatalog.ensureLoaded(); // 버킷→코드 매핑은 서버 카탈로그에서
+      final claims = <TitleClaim>[];
+      for (final bucket in _completedGroups) {
+        final code = TitleCatalog.regionBucketToCode[bucket];
+        if (code != null) claims.add(TitleClaim(code: code, groupRoomId: gid));
+      }
+      if (claims.isEmpty) return;
       await Di.titleRepository.claim(claims);
     } catch (_) {
       // 칭호 적재 실패는 화면 표시에 영향 없음

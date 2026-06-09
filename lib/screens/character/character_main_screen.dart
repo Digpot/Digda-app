@@ -153,16 +153,16 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     }
   }
 
-  /// 모찌 칭호 적재 — 레벨 마일스톤(Lv.5/10/15/20). 멱등·best-effort.
+  /// 모찌 칭호 적재 — 레벨 마일스톤(서버 카탈로그 기준). 멱등·best-effort.
   Future<void> _claimCharacterTitles(int groupId, CharacterState state) async {
-    const milestones = [5, 10, 15, 20];
-    final claims = <TitleClaim>[
-      for (final lv in milestones)
-        if (state.level >= lv)
-          TitleClaim(code: 'mochi_lv$lv', groupRoomId: groupId),
-    ];
-    if (claims.isEmpty) return;
     try {
+      await TitleCatalog.ensureLoaded();
+      final claims = <TitleClaim>[
+        for (final m in TitleCatalog.mochiMilestones)
+          if (state.level >= m.level)
+            TitleClaim(code: m.code, groupRoomId: groupId),
+      ];
+      if (claims.isEmpty) return;
       await Di.titleRepository.claim(claims);
     } catch (_) {/* 칭호 적재 실패는 화면에 영향 없음 */}
   }
