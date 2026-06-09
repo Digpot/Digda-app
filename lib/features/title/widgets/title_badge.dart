@@ -19,11 +19,12 @@ class TitleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = def.accent;
-    final base = earned ? accent : const Color(0xFFB9B3A8);
+    // 미획득은 도감처럼 검정 실루엣 메달 + 물음표.
+    final base = earned ? accent : const Color(0xFF35302B);
     final light =
-        earned ? Color.lerp(accent, Colors.white, 0.5)! : const Color(0xFFD9D3C8);
+        earned ? Color.lerp(accent, Colors.white, 0.5)! : const Color(0xFF55504A);
     final dark =
-        earned ? Color.lerp(accent, Colors.black, 0.20)! : const Color(0xFF9A948A);
+        earned ? Color.lerp(accent, Colors.black, 0.20)! : const Color(0xFF1F1D1A);
 
     return SizedBox(
       width: size,
@@ -71,9 +72,9 @@ class TitleBadge extends StatelessWidget {
             ),
             child: Center(
               child: Icon(
-                earned ? def.icon : Icons.lock_rounded,
+                earned ? def.icon : Icons.question_mark_rounded,
                 size: size * 0.36,
-                color: Colors.white.withValues(alpha: earned ? 1 : 0.85),
+                color: Colors.white.withValues(alpha: earned ? 1 : 0.7),
               ),
             ),
           ),

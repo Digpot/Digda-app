@@ -60,7 +60,7 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const BackHeader(title: '칭호'),
+            const BackHeader(title: '칭호 수집가'),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -186,7 +186,8 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
   }
 
   Widget _buildTile(TitleDef def) {
-    final earned = _earned.containsKey(def.code);
+    final e = _earned[def.code];
+    final earned = e != null;
     return GestureDetector(
       onTap: () => _showDetail(def),
       child: SizedBox(
@@ -196,7 +197,7 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
             TitleBadge(def: def, earned: earned, size: 78),
             const SizedBox(height: 8),
             Text(
-              def.name,
+              earned ? def.name : '???',
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -208,11 +209,27 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
                 color: earned ? AppColors.gray900 : AppColors.gray400,
               ),
             ),
+            if (e != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                _shortDate(e.earnedAt),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                  color: AppColors.gray400,
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  static String _shortDate(DateTime d) =>
+      '${d.year % 100}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
   void _showDetail(TitleDef def) {
     final earnedTitle = _earned[def.code];
@@ -319,7 +336,7 @@ class _TitleDetailSheetState extends State<_TitleDetailSheet> {
                   TitleBadge(def: def, earned: _isEarned, size: 132),
                   const SizedBox(height: 16),
                   Text(
-                    def.name,
+                    _isEarned ? def.name : '???',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w800,

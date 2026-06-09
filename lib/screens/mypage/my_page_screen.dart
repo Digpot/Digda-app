@@ -361,7 +361,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '내 칭호',
+                      '칭호 수집가',
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w800,
