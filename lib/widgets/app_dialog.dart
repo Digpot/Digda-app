@@ -161,8 +161,8 @@ void showInfoDialog(
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.info_outline_rounded,
-                size: 32,
+                Icons.check_rounded,
+                size: 34,
                 color: AppColors.primary,
               ),
             ),
