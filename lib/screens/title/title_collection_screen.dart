@@ -176,11 +176,26 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 14,
-            runSpacing: 18,
-            children: defs.map(_buildTile).toList(),
+          // 그리드 블록 전체를 중앙 정렬(좌우 여백 균등) + 부분 줄(2개짜리)은 왼쪽 정렬.
+          LayoutBuilder(
+            builder: (context, c) {
+              const tile = 88.0;
+              const gap = 14.0;
+              final cols = ((c.maxWidth + gap) / (tile + gap))
+                  .floor()
+                  .clamp(1, defs.length);
+              final gridW = cols * tile + (cols - 1) * gap;
+              return Center(
+                child: SizedBox(
+                  width: gridW,
+                  child: Wrap(
+                    spacing: gap,
+                    runSpacing: 18,
+                    children: defs.map(_buildTile).toList(),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

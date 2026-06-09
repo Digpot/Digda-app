@@ -82,13 +82,18 @@ class TitleCatalog {
     final regionMap = <String, String>{};
     final mochi = <MochiTitleMilestone>[];
     for (final it in sorted) {
+      // 지역 정복 칭호는 서버가 모두 'flag' 로 보내 똑같아 보였다 →
+      // 지역(버킷)별 특색 아이콘으로 덮어써 각 칭호를 구분되게.
+      final regionIcon = (it.conditionType == 'region')
+          ? _regionIcon[it.conditionValue]
+          : null;
       final def = TitleDef(
         code: it.code,
         name: it.name,
         description: it.description,
         category: _categoryOf(it.category),
         accent: _colorFromHex(it.accentColor),
-        icon: _iconForKey(it.iconKey),
+        icon: regionIcon ?? _iconForKey(it.iconKey),
       );
       defs.add(def);
       byCode[it.code] = def;
@@ -139,6 +144,21 @@ class TitleCatalog {
     final v = int.tryParse(h, radix: 16);
     return v != null ? Color(v) : const Color(0xFF999999);
   }
+
+  /// 지역(버킷)별 특색 아이콘 — 지역 정복 칭호가 전부 깃발로 똑같아 보이지 않도록.
+  static const Map<String, IconData> _regionIcon = {
+    '광역시': Icons.location_city_rounded,
+    '경기북부': Icons.castle_rounded,
+    '경기남부': Icons.factory_rounded,
+    '강원': Icons.terrain_rounded,
+    '충북': Icons.park_rounded,
+    '충남': Icons.sailing_rounded,
+    '전북': Icons.rice_bowl_rounded,
+    '전남': Icons.set_meal_rounded,
+    '경북': Icons.temple_buddhist_rounded,
+    '경남': Icons.anchor_rounded,
+    '제주': Icons.beach_access_rounded,
+  };
 
   /// iconKey → IconData. 모찌의 assetKey→모양 매핑과 동일 성격(폰트 글리프).
   static IconData _iconForKey(String key) {
