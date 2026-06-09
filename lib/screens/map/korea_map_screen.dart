@@ -309,6 +309,177 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   // 깔끔한 흰 배경 — 점토 지도가 또렷이 떠 보이도록.
   static const Color _warmBg = Color(0xFFFFFFFF);
 
+  /// 지도 채우는 법 안내 팝업 — 헤더 전구 아이콘에서 띄운다.
+  void _showMapGuide() {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 코랄 헤더 — 아이콘 + 제목
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFF8A5B), AppColors.primary],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.map_rounded,
+                        size: 30, color: AppColors.white),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    '지도 채우는 법',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '우리가 다녀온 곳을 코랄빛으로 물들여요',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 단계 안내
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+              child: Column(
+                children: [
+                  _guideStep(
+                    Icons.edit_location_alt_rounded,
+                    '장소를 남겨요',
+                    '일기를 쓸 때 장소를 함께 기록하면\n그 지역이 지도에 표시돼요.',
+                  ),
+                  _guideStep(
+                    Icons.palette_rounded,
+                    '지역이 채워져요',
+                    '시·군은 일기 1개, 광역시는 10개를\n모으면 코랄빛으로 색칠돼요.',
+                  ),
+                  _guideStep(
+                    Icons.photo_library_rounded,
+                    '기록을 다시 봐요',
+                    '채운 지역을 누르면 그곳에 남긴\n일기를 모아 볼 수 있어요.',
+                  ),
+                  _guideStep(
+                    Icons.workspace_premium_rounded,
+                    '칭호를 받아요',
+                    '한 권역을 모두 채우면 그 지역의\n특별한 칭호를 받게 돼요.',
+                    last: true,
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    '알겠어요',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _guideStep(IconData icon, String title, String body,
+      {bool last = false}) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 21, color: AppColors.primary),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -316,7 +487,32 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const BackHeader(title: '우리 발자취'),
+            BackHeader(
+              title: '우리 발자취',
+              actions: [
+                // 지도 채우는 법 안내 — 누르면 도움말 팝업.
+                GestureDetector(
+                  onTap: _showMapGuide,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // 헤더와 권역 탭이 붙어 보이지 않도록 살짝 숨 틔우기.
+            const SizedBox(height: 10),
             Expanded(child: _buildBody()),
           ],
         ),
