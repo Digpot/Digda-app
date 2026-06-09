@@ -4,6 +4,7 @@ import '../../core/di.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/center_title_header.dart';
+import '../../widgets/retrying_network_image.dart';
 
 /// 시그니처 지도에서 특정 지역을 선택해 들어오는 그 지역의 일기 목록.
 class RegionDiaryListScreen extends StatefulWidget {
@@ -151,8 +152,22 @@ class _RegionDiaryListScreenState extends State<RegionDiaryListScreen> {
                   ),
                   if (d.thumbnailUrl != null && d.thumbnailUrl!.isNotEmpty) ...[
                     const SizedBox(width: 12),
-                    const Icon(Icons.image_outlined,
-                        size: 18, color: AppColors.gray400),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: RetryingNetworkImage(
+                        url: d.thumbnailUrl!,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        fallback: Container(
+                          width: 56,
+                          height: 56,
+                          color: AppColors.gray100,
+                          child: const Icon(Icons.image_outlined,
+                              size: 18, color: AppColors.gray400),
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
