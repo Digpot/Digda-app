@@ -1,21 +1,26 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/korea_map_models.dart';
 
-/// 지형 베이스 레이어 — ambient/측벽/윗면/홈선. 색칠(counts)·권역 포커스·fit 이 바뀔
-/// 때만 다시 그리며, RepaintBoundary 로 캐시돼 패닝/줌·선택 시엔 재래스터되지 않는다.
+/// 지형 + 색칠 + 선택 강조 + 권역/광역시 포커스(디밍·경계선)를 모두 그리는 베이스 레이어.
+/// InteractiveViewer 의 변환을 받는 child 안에 있으므로, 줌/패닝 시에는 이 레이어를
+/// 다시 그리지 않고(RepaintBoundary 라스터를 GPU 가 변환만) — counts/포커스/선택이
+/// 바뀔 때만 repaint 한다. 라벨은 별도의 화면 좌표 레이어([KoreaLabelPainter]).
 class KoreaBasePainter extends CustomPainter {
   KoreaBasePainter({
     required this.data,
     required this.counts,
-    required this.completedGroups,
-    required this.partialGroups,
     required this.scale,
     required this.dx,
     required this.dy,
     this.focusGroup,
+    this.focusKey,
+    this.focusColor,
+    this.selectedKey,
   });
 
   final KoreaMapData data;
@@ -23,21 +28,32 @@ class KoreaBasePainter extends CustomPainter {
   /// 색칠 키 → 일기 수.
   final Map<String, int> counts;
 
-  /// 모든 시·군·구가 채워진 도(버킷) — 그 도 전체를 코랄로 색칠.
-  final Set<String> completedGroups;
-
-  /// 일부만 채워진 도(버킷) — 진행 중 소프트 톤.
-  final Set<String> partialGroups;
-
   final double scale;
   final double dx;
   final double dy;
 
-  /// 선택된 탭 버킷(광역시/경기북부/강원/…). 지정 시 그 버킷만 또렷하고 나머지는 디밍.
+  /// 포커스 권역(수도권/강원/…). focusKey 가 없을 때만 사용.
   final String? focusGroup;
 
-  /// 비포커스 권역을 가라앉히는 아이보리 베일.
-  final Paint _dimVeil = Paint()..color = const Color(0xCCFBF7EF);
+  /// 포커스 광역시 색칠 키(서울/부산/…). 지정 시 그 시 1곳만 또렷.
+  final String? focusKey;
+
+  /// 포커스 대상의 시그니처 색 — 경계선을 이 색으로 그린다.
+  final Color? focusColor;
+
+  /// 선택(탭)된 조각 — 살짝 띄워 강조.
+  final String? selectedKey;
+
+  /// 비포커스 영역을 흰 바탕으로 가라앉히는 베일.
+  final Paint _dimVeil = Paint()..color = KoreaMapTokens.dimVeil;
+
+  bool get _hasFocus => focusKey != null || focusGroup != null;
+
+  bool _isFocused(MapRegion r) {
+    if (focusKey != null) return r.key == focusKey;
+    if (focusGroup != null) return r.group == focusGroup;
+    return true;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -48,7 +64,7 @@ class KoreaBasePainter extends CustomPainter {
     final w = data.width;
     final h = data.height;
 
-    // 공유 그라데이션(handoff §2 핵심: 시군별 개별 금지, 전역 1개 공유)
+    // 공유 그라데이션(시군별 개별 금지, 전역 1개 공유).
     final warmShader = ui.Gradient.linear(
       Offset(w * 0.42, h * 0.12),
       Offset(w * 0.58, h * 0.95),
@@ -61,7 +77,7 @@ class KoreaBasePainter extends CustomPainter {
       KoreaMapTokens.coral,
     );
 
-    // 1) Ambient shadow — 합친 실루엣 1회 블러(250회 개별 블러 대비 대폭 절감).
+    // 1) Ambient shadow — 합친 실루엣 1회 블러.
     final ambient = Paint()
       ..color = KoreaMapTokens.ambientShadow
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
@@ -70,7 +86,7 @@ class KoreaBasePainter extends CustomPainter {
     canvas.drawPath(data.combinedPath, ambient);
     canvas.restore();
 
-    // 2) Side wall — 두께도 합친 실루엣 1회.
+    // 2) Side wall — 합친 실루엣 1회.
     final side = Paint()..color = KoreaMapTokens.sideWall;
     canvas.save();
     canvas.translate(0, 7);
@@ -82,24 +98,24 @@ class KoreaBasePainter extends CustomPainter {
     final coralPaint = Paint()..shader = coralShader;
     final softPaint = Paint()..color = KoreaMapTokens.coralSoft;
     for (final r in data.regions) {
-      // 색칠은 도(버킷) 단위 — 그 도의 시·군·구가 다 차면 코랄, 일부면 소프트.
-      final group = data.keyFocusGroup[r.key];
+      final meta = data.metaOf(r.key);
+      final count = counts[r.key] ?? 0;
       final Paint p;
-      if (completedGroups.contains(group)) {
+      if (meta != null && meta.isColored(count)) {
         p = coralPaint;
-      } else if (partialGroups.contains(group)) {
+      } else if (count > 0) {
         p = softPaint;
       } else {
         p = warmPaint;
       }
       canvas.drawPath(r.path, p);
-      // 탭 포커스 시 다른 버킷은 아이보리 베일로 덮어 가라앉힌다.
-      if (focusGroup != null && group != focusGroup) {
+      // 포커스 시 대상 외 영역은 흰 베일로 가라앉힌다.
+      if (_hasFocus && !_isFocused(r)) {
         canvas.drawPath(r.path, _dimVeil);
       }
     }
 
-    // 4) Grooves — 경계선(하이라이트 + 섀도).
+    // 4) Grooves — 경계선(섀도 + 하이라이트).
     final grooveHi = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
@@ -113,75 +129,11 @@ class KoreaBasePainter extends CustomPainter {
       canvas.drawPath(r.path, grooveHi);
     }
 
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant KoreaBasePainter old) =>
-      old.focusGroup != focusGroup ||
-      !identical(old.counts, counts) ||
-      !identical(old.completedGroups, completedGroups) ||
-      !identical(old.partialGroups, partialGroups) ||
-      old.scale != scale ||
-      old.dx != dx ||
-      old.dy != dy;
-}
-
-/// 선택 강조(lift) + 라벨 오버레이. InteractiveViewer 변환([transform])에 맞춰 다시 그리되,
-/// 화면 밖 라벨은 컬링하고 줌 레벨로 노출을 조절해 가볍게 유지한다.
-/// 베이스(지형)는 별도 RepaintBoundary 라 이 오버레이만 패닝/줌 때 재그려진다.
-class KoreaOverlayPainter extends CustomPainter {
-  KoreaOverlayPainter({
-    required this.data,
-    required this.counts,
-    required this.completedGroups,
-    required this.scale,
-    required this.dx,
-    required this.dy,
-    required this.transform,
-    this.selectedKey,
-    this.focusGroup,
-  }) : super(repaint: transform);
-
-  final KoreaMapData data;
-  final Map<String, int> counts;
-
-  /// 모든 시·군·구가 채워진 도(버킷) — 그 도의 라벨을 코랄(흰 글자)로.
-  final Set<String> completedGroups;
-  final double scale;
-  final double dx;
-  final double dy;
-
-  /// InteractiveViewer 의 현재 변환(child→screen). 줌/가시영역 계산에 사용.
-  final ValueListenable<Matrix4> transform;
-
-  final String? selectedKey;
-  final String? focusGroup;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.translate(dx, dy);
-    canvas.scale(scale);
-
-    final w = data.width;
-    final h = data.height;
-    final coralShader = ui.Gradient.linear(
-      Offset(w * 0.3, h * 0.15),
-      Offset(w * 0.7, h * 0.9),
-      KoreaMapTokens.coral,
-    );
-
-    final m = transform.value;
-    final zoom = m.getMaxScaleOnAxis();
-    final Rect? visible = _visibleViewBox(m, size);
-
-    // 선택 강조 — 선택 조각을 살짝 띄워(lift) 입체적으로 강조(handoff §5).
+    // 5) 선택 강조 — 선택 조각을 살짝 띄워(lift) 입체적으로.
     const double lift = 5.0;
     final sel = selectedKey;
     if (sel != null) {
       final selPaths = data.byKey[sel] ?? const [];
-      // a) 떠오른 블록 아래 드롭 섀도.
       final dropShadow = Paint()
         ..color = const Color(0x4D7A4A2E)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
@@ -191,12 +143,10 @@ class KoreaOverlayPainter extends CustomPainter {
         canvas.drawPath(r.path, dropShadow);
       }
       canvas.restore();
-      // b) 측벽(원위치, 진한 코랄).
       final selSide = Paint()..color = const Color(0xFFE07A63);
       for (final r in selPaths) {
         canvas.drawPath(r.path, selSide);
       }
-      // c) 윗면(코랄) + 외곽선을 lift 만큼 위로.
       final selTop = Paint()..shader = coralShader;
       final selStroke = Paint()
         ..style = PaintingStyle.stroke
@@ -211,139 +161,206 @@ class KoreaOverlayPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // 라벨 — 줌 레벨별 노출 + 화면 밖 컬링. 채색/선택/광역시는 항상(보일 때).
-    final double minFont = _minLabelFontForZoom(zoom);
-    for (final entry in data.keyCenter.entries) {
-      final center0 = entry.value;
-      // 화면 밖이면 건너뜀(고배율에서 라벨 레이아웃 비용 절감).
-      if (visible != null && !visible.contains(center0)) continue;
-      final key = entry.key;
-      final group = data.keyFocusGroup[key];
-      final colored = completedGroups.contains(group);
-      final isSel = key == sel;
-      final sizeF = data.keyLabelSize[key] ?? 8.0;
-      final alwaysShow = colored || isSel || data.keyMetro[key] == true;
-      if (!alwaysShow && sizeF < minFont) continue;
-      final dimmed = focusGroup != null && group != focusGroup;
-      final center = isSel ? center0 - const Offset(0, lift) : center0;
-      _drawLabel(
-        canvas,
-        data.keyLabel[key] ?? key,
-        center,
-        colored || isSel,
-        sizeF,
-        dimmed,
-      );
+    // 6) 포커스 경계선 — 권역/광역시 외곽을 포커스 색으로(헤일로 + 실선).
+    if (_hasFocus && focusColor != null) {
+      final outline = focusKey != null
+          ? data.keyOutline(focusKey!)
+          : data.groupOutline(focusGroup!);
+      final halo = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5.0
+        ..strokeJoin = StrokeJoin.round
+        ..color = focusColor!.withValues(alpha: 0.22)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      final line = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..strokeJoin = StrokeJoin.round
+        ..color = focusColor!;
+      canvas.drawPath(outline, halo);
+      canvas.drawPath(outline, line);
     }
 
     canvas.restore();
   }
 
-  /// 현재 변환에서 화면에 보이는 viewBox 영역(컬링용). 역행렬 실패 시 null(=전체 표시).
-  Rect? _visibleViewBox(Matrix4 m, Size size) {
-    final inv = Matrix4.tryInvert(m);
-    if (inv == null) return null;
-    // 화면 4모서리 → child 좌표 → viewBox 좌표 바운딩박스.
-    final corners = [
-      _apply(inv, 0, 0),
-      _apply(inv, size.width, 0),
-      _apply(inv, 0, size.height),
-      _apply(inv, size.width, size.height),
-    ];
-    double minX = double.infinity, minY = double.infinity;
-    double maxX = -double.infinity, maxY = -double.infinity;
-    for (final c in corners) {
-      final vx = (c.dx - dx) / scale;
-      final vy = (c.dy - dy) / scale;
-      if (vx < minX) minX = vx;
-      if (vy < minY) minY = vy;
-      if (vx > maxX) maxX = vx;
-      if (vy > maxY) maxY = vy;
-    }
-    // 라벨 텍스트가 중심 밖으로 번지므로 약간의 여유.
-    return Rect.fromLTRB(minX, minY, maxX, maxY).inflate(24);
+  @override
+  bool shouldRepaint(covariant KoreaBasePainter old) =>
+      old.focusGroup != focusGroup ||
+      old.focusKey != focusKey ||
+      old.focusColor != focusColor ||
+      old.selectedKey != selectedKey ||
+      !identical(old.counts, counts) ||
+      old.scale != scale ||
+      old.dx != dx ||
+      old.dy != dy;
+}
+
+/// 라벨 전용 화면 좌표 레이어. InteractiveViewer **바깥**에 얹혀, 변환 행렬을 읽어
+/// 각 라벨의 화면 위치를 직접 계산하고 **상수 크기**로 그린다. 그래서 확대하면
+/// 지역은 벌어지지만 글자는 커지지 않아 밀집 지역이 분리되어 읽힌다.
+///
+/// 성능: ① 화면 밖 라벨은 컬링, ② TextPainter 는 키별 1회만 layout 후 캐시,
+/// ③ 제스처 중([interacting])엔 주요 라벨만 그려 프레임을 가볍게 유지.
+class KoreaLabelPainter extends CustomPainter {
+  KoreaLabelPainter({
+    required this.data,
+    required this.counts,
+    required this.scale,
+    required this.dx,
+    required this.dy,
+    required this.transform,
+    this.selectedKey,
+    this.focusGroup,
+    this.focusKey,
+    this.interacting = false,
+  }) : super(repaint: transform);
+
+  final KoreaMapData data;
+  final Map<String, int> counts;
+  final double scale;
+  final double dx;
+  final double dy;
+
+  /// InteractiveViewer 의 현재 변환(child→screen).
+  final ValueListenable<Matrix4> transform;
+
+  final String? selectedKey;
+  final String? focusGroup;
+  final String? focusKey;
+  final bool interacting;
+
+  /// 키별 [stroke, fill] TextPainter 캐시. 스타일은 인스턴스 내 키마다 고정.
+  final Map<String, List<TextPainter>> _cache = {};
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final m = transform.value;
+    final zoom = m.getMaxScaleOnAxis();
+    final viewport = (Offset.zero & size).inflate(48);
+    final double minSpacingFont = _minLabelFontForZoom(zoom);
+    // 확대하면 글씨도 커지되 지도보다 천천히(√zoom, 상한 2.6배) → 밀집 지역은
+    // 지역이 더 빨리 벌어져 글자가 분리되면서도, 줌인하면 글씨가 커져 읽기 쉽다.
+    final double growth = math.sqrt(zoom).clamp(1.0, 2.6).toDouble();
+
+    data.keyCenter.forEach((key, vc) {
+      // viewBox 중심 → child 좌표(fit) → 화면 좌표(변환 적용).
+      final child = Offset(vc.dx * scale + dx, vc.dy * scale + dy);
+      final sp = MatrixUtils.transformPoint(m, child);
+      if (!viewport.contains(sp)) return; // 화면 밖 컬링
+
+      final metro = data.keyMetro[key] == true;
+      final count = counts[key] ?? 0;
+      final colored = count >= (metro ? 10 : 1);
+      final isSel = key == selectedKey;
+      final spacingFont = data.keyLabelSize[key] ?? 8.0;
+      final major = metro || colored || isSel || spacingFont >= 9.5;
+
+      // 줌 레벨 LOD: 한산한(큰 폰트) 라벨부터, 확대할수록 촘촘한 것까지.
+      if (!(metro || colored || isSel) && spacingFont < minSpacingFont) return;
+      // 제스처 중에는 주요 라벨만 → 프레임 경량화.
+      if (interacting && !major) return;
+
+      final focused = focusKey != null
+          ? key == focusKey
+          : (focusGroup != null ? data.keyGroup[key] == focusGroup : true);
+
+      _drawLabel(canvas, key, data.keyShortLabel[key] ?? key, sp, growth,
+          colored || isSel, spacingFont, !focused);
+    });
   }
 
-  Offset _apply(Matrix4 m, double x, double y) {
-    final s = m.storage;
-    final nx = s[0] * x + s[4] * y + s[12];
-    final ny = s[1] * x + s[5] * y + s[13];
-    final nw = s[3] * x + s[7] * y + s[15];
-    if (nw == 0) return Offset(nx, ny);
-    return Offset(nx / nw, ny / nw);
-  }
-
-  /// 현재 줌에서 표시할 라벨의 최소 적응형 폰트 크기. 0 이면 전부 표시.
+  /// 현재 줌에서 표시할 라벨의 최소 간격-폰트. 0 이면 전부 표시.
   double _minLabelFontForZoom(double z) {
-    if (z >= 3.0) return 0;
-    if (z >= 2.2) return 6.5;
-    if (z >= 1.6) return 7.5;
-    if (z >= 1.25) return 9.0;
+    if (z >= 4.5) return 0;
+    if (z >= 3.0) return 6.5;
+    if (z >= 2.2) return 7.5;
+    if (z >= 1.6) return 8.5;
+    if (z >= 1.25) return 9.5;
     return 10.0;
   }
 
   void _drawLabel(
     Canvas canvas,
+    String key,
     String text,
-    Offset center,
+    Offset screenCenter,
+    double growth,
     bool onCoral,
-    double fontSize,
+    double spacingFont,
     bool dimmed,
   ) {
-    final double op = dimmed ? 0.34 : 1.0;
-    // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
-    final Color fill =
-        (onCoral ? Colors.white : const Color(0xFF453A2C)).withValues(alpha: op);
-    final Color outline =
-        (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFFBF6EC))
-            .withValues(alpha: op);
-    final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
+    var pair = _cache[key];
+    if (pair == null) {
+      final double op = dimmed ? 0.34 : 1.0;
+      // 기준 화면 크기 — fit 스케일 반영 후 가독 범위로 클램프. 줌 성장(growth)은
+      // layout 비용 없이 캔버스 스케일로 적용(아래)하므로 캐시는 키별 1회만.
+      final double fontSize = (spacingFont * scale).clamp(8.5, 16.0).toDouble();
+      final Color fill = (onCoral ? Colors.white : const Color(0xFF453A2C))
+          .withValues(alpha: op);
+      final Color outline =
+          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFFBF6EC))
+              .withValues(alpha: op);
+      final double strokeW = (fontSize * 0.28).clamp(1.6, 4.0);
 
-    final strokePainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: fontSize,
-          fontWeight: FontWeight.w800,
-          height: 1.0,
-          foreground: Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = strokeW
-            ..strokeJoin = StrokeJoin.round
-            ..color = outline,
+      final strokePainter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            height: 1.0,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = strokeW
+              ..strokeJoin = StrokeJoin.round
+              ..color = outline,
+          ),
         ),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    )..layout();
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout();
+
+      final fillPainter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            height: 1.0,
+            color: fill,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout();
+
+      pair = [strokePainter, fillPainter];
+      _cache[key] = pair;
+    }
+
+    final strokePainter = pair[0];
+    final fillPainter = pair[1];
+    // 중심을 기준으로 growth 배 확대해 그린다(캐시된 레이아웃 재사용 → 비용 없음).
     final pos =
-        center - Offset(strokePainter.width / 2, strokePainter.height / 2);
+        Offset(-strokePainter.width / 2, -strokePainter.height / 2);
+    canvas.save();
+    canvas.translate(screenCenter.dx, screenCenter.dy);
+    if (growth != 1.0) canvas.scale(growth);
     strokePainter.paint(canvas, pos);
-
-    final fillPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: fontSize,
-          fontWeight: FontWeight.w800,
-          height: 1.0,
-          color: fill,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    )..layout();
     fillPainter.paint(canvas, pos);
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant KoreaOverlayPainter old) =>
+  bool shouldRepaint(covariant KoreaLabelPainter old) =>
       old.selectedKey != selectedKey ||
       old.focusGroup != focusGroup ||
+      old.focusKey != focusKey ||
+      old.interacting != interacting ||
       !identical(old.counts, counts) ||
-      !identical(old.completedGroups, completedGroups) ||
       old.scale != scale ||
       old.dx != dx ||
       old.dy != dy;
