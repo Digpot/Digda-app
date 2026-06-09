@@ -62,9 +62,12 @@ class TitleRepository {
   /// (이미 보유/비멤버 그룹/잘못된 코드는 서버가 조용히 건너뜀)
   Future<List<EarnedTitle>> claim(List<TitleClaim> titles) async {
     if (titles.isEmpty) return list();
+    // 이번 세션에 이미 보유 확인된 코드는 제외 — 화면 진입마다 반복 POST 방지.
+    final fresh = titles.where((t) => !_knownCodes.contains(t.code)).toList();
+    if (fresh.isEmpty) return const [];
     final res = await _api.post<List<dynamic>>(
       '/titles/claim',
-      body: {'titles': titles.map((t) => t.toJson()).toList()},
+      body: {'titles': fresh.map((t) => t.toJson()).toList()},
     );
     final items = res.data ?? const [];
     final result = items

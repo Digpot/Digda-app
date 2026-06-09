@@ -217,10 +217,17 @@ class DiaryRegionCount {
 }
 
 class DiaryRegionMapResult {
-  DiaryRegionMapResult({required this.regions, required this.total});
+  DiaryRegionMapResult({
+    required this.regions,
+    required this.total,
+    this.adminFilledKeys = const {},
+  });
 
   final List<DiaryRegionCount> regions;
   final int total;
+
+  /// 어드민이 임의로 채운 region_key 집합(실제 일기 아님).
+  final Set<String> adminFilledKeys;
 
   /// region_key → 일기 수.
   Map<String, int> get countByKey =>
@@ -232,6 +239,9 @@ class DiaryRegionMapResult {
             .map((e) => DiaryRegionCount.fromJson(e as Map<String, dynamic>))
             .toList(),
         total: (json['total'] as num? ?? 0).toInt(),
+        adminFilledKeys: ((json['adminFilledKeys'] as List?) ?? const [])
+            .map((e) => e as String)
+            .toSet(),
       );
 }
 

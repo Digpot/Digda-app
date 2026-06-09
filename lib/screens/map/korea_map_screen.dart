@@ -42,6 +42,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
 
   KoreaMapData? _data;
   Map<String, int> _counts = const {};
+  // 어드민이 임의로 채운 지역(실제 일기 아님) — 패널에서 "관리자 채움"으로 구분.
+  Set<String> _adminFilled = const {};
   bool _loadingMap = true;
   bool _loadingCounts = false;
   String? _error;
@@ -132,6 +134,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       if (!mounted) return;
       setState(() {
         _counts = res.countByKey;
+        _adminFilled = res.adminFilledKeys;
         _loadingCounts = false;
         _computeBucketFill();
       });
@@ -786,8 +789,12 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     final group = data.keyFocusGroup[key];
     final accent = _groupColors[group] ?? AppColors.primary;
 
+    final isAdminFilled = _adminFilled.contains(key);
     final String statusText;
-    if (colored) {
+    if (isAdminFilled) {
+      // 어드민이 임의로 채운 지역 — 실제 일기 수가 아니므로 별도 표기.
+      statusText = '관리자가 채운 지역이에요';
+    } else if (colored) {
       statusText = '채움 완료! · 일기 $count개';
     } else if (count == 0) {
       statusText = '아직 기록이 없어요';

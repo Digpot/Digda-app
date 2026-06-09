@@ -104,11 +104,6 @@ class KoreaMapData {
     for (final e in byKey.entries) e.key: e.value.first.metro,
   };
 
-  /// 색칠 키 → 권역.
-  late final Map<String, String> keyGroup = {
-    for (final e in byKey.entries) e.key: e.value.first.group,
-  };
-
   /// 색칠 키 → 포커스 탭 버킷(광역시 묶음 + 경기 남/북 분할 + 도 단위).
   late final Map<String, String> keyFocusGroup = {
     for (final e in byKey.entries) e.key: focusGroupOf(e.value.first),

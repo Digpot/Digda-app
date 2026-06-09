@@ -206,10 +206,13 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                 ),
                 const SizedBox(height: 28),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(_codeLength, (index) {
-                    return SizedBox(
-                      width: 48,
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: index == _codeLength - 1 ? 0 : 8,
+                        ),
+                        child: SizedBox(
                       height: 56,
                       child: TextField(
                         controller: _controllers[index],
@@ -248,6 +251,8 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                         ),
                         onChanged: (value) => _onChanged(value, index),
                         onTap: () => setState(() {}),
+                      ),
+                        ),
                       ),
                     );
                   }),
