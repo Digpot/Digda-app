@@ -287,11 +287,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   }
 
   /// 탭/패널에 보이는 권역 표시 이름. 데이터 키 '광역시' 버킷은 서울(특별시)·세종
-  /// (특별자치시)도 포함하므로 표시만 '특별·광역시'로 바로잡는다(키는 그대로).
+  /// (특별자치시)도 포함하므로 표시만 '대도시'로 바로잡는다(키는 그대로).
   static String _groupDisplayName(String group) =>
-      group == '광역시' ? '특별·광역시' : group;
+      group == '광역시' ? '대도시' : group;
 
-  /// '특별·광역시' 칩에서 앞쪽에 고정할 도시 순서(서울 → 인천 → 부산).
+  /// '대도시' 칩에서 앞쪽에 고정할 도시 순서(서울 → 인천 → 부산).
   static const List<String> _metroLeadOrder = ['서울', '인천', '부산'];
 
   /// 선택된 도(버킷)에 속한 색칠 키들 — 라벨 가나다순.
