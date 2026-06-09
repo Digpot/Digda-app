@@ -20,6 +20,7 @@ class AppColors {
   static const Color gray900 = Color(0xFF191F28);        // 기본 텍스트
   static const Color gray800 = Color(0xFF333333);        // 본문 텍스트
   static const Color gray700 = Color(0xFF4E5968);        // 보조 텍스트
+  static const Color gray600 = Color(0xFF6B7684);        // 보조 텍스트(연함)
   static const Color gray500 = Color(0xFF8B95A1);        // 서브 텍스트/비활성
   static const Color gray400 = Color(0xFFB0B8C1);        // 플레이스홀더/비활성버튼
   static const Color gray300 = Color(0xFFC8C8C0);        // 입력 플레이스홀더
