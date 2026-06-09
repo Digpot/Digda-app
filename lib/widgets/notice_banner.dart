@@ -26,9 +26,9 @@ class _NoticeBannerState extends State<NoticeBanner>
 
   static const _textStyle = TextStyle(
     fontFamily: 'Inter',
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     fontSize: 13,
-    color: Color(0xFFFFE08A), // LED 앰버
+    color: AppColors.gray900,
     height: 1.0,
   );
 
@@ -44,19 +44,36 @@ class _NoticeBannerState extends State<NoticeBanner>
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF24222A),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Row(
         children: [
-          const SizedBox(width: 12),
-          const Icon(Icons.campaign_rounded, size: 18, color: Color(0xFFFFC24D)),
-          const SizedBox(width: 8),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.campaign_rounded,
+                size: 17, color: AppColors.white),
+          ),
+          const SizedBox(width: 10),
           Expanded(child: _buildMarquee()),
-          const SizedBox(width: 12),
+          const SizedBox(width: 4),
         ],
       ),
     );
