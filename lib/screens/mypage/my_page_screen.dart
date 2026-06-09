@@ -7,10 +7,12 @@ import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
 import '../../features/user/models/user_models.dart';
+import '../../features/app_config/models/app_config.dart';
 
 /// 디그팟 개인정보처리방침 호스팅 URL.
 const String _privacyPolicyUrl =
     'https://datediary.github.io/Digda-app/privacy-policy.html';
+
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -20,16 +22,26 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
+  // 피드백 메뉴 노출/링크 — 어드민 설정(서버)에서 받아온다.
+  AppConfig _appConfig = AppConfig.empty;
+
   @override
   void initState() {
     super.initState();
     Di.userSession.addListener(_onSession);
+    _appConfig = Di.appConfigRepository.cachedOrEmpty;
     // 캐시가 비어 있으면 강제 갱신, 있더라도 화면 진입 시 최신화. 실패는 화면 표시에 영향 없음.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Di.userSession.refresh().then(
             (_) {},
             onError: (_) {},
           );
+      Di.appConfigRepository.get().then(
+        (cfg) {
+          if (mounted) setState(() => _appConfig = cfg);
+        },
+        onError: (_) {},
+      );
     });
   }
 
@@ -162,6 +174,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                       onTap: () {},
                     ),
+                    if (_appConfig.showFeedback)
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.feedback_outlined,
+                        label: '피드백 받기',
+                        onTap: () => _openFeedback(context),
+                      ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -175,6 +194,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _openPrivacyPolicy(BuildContext context) async {
     final uri = Uri.parse(_privacyPolicyUrl);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      showErrorDialog(context, '브라우저를 열 수 없어요');
+    }
+  }
+
+  Future<void> _openFeedback(BuildContext context) async {
+    final url = _appConfig.feedbackUrl.trim();
+    if (url.isEmpty) {
+      showInfoDialog(context, '피드백 받기', '피드백 폼을 준비 중이에요. 곧 열릴 예정입니다!');
+      return;
+    }
+    final uri = Uri.parse(url);
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
       showErrorDialog(context, '브라우저를 열 수 없어요');
@@ -425,9 +457,25 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
   }
 
   void _onChanged(String value, int index) {
-    if (value.length == 1 && index < _codeLength - 1) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    // 붙여넣기(여러 자리) — 0번 칸부터 분배하고 마지막 입력 칸으로 포커스.
+    if (digits.length > 1) {
+      for (int i = 0; i < _codeLength; i++) {
+        _controllers[i].text = i < digits.length ? digits[i] : '';
+      }
+      final focusIdx = digits.length.clamp(1, _codeLength) - 1;
+      _focusNodes[focusIdx].requestFocus();
+      setState(() {});
+      return;
+    }
+    if (_controllers[index].text != digits) {
+      _controllers[index].text = digits;
+      _controllers[index].selection =
+          TextSelection.collapsed(offset: digits.length);
+    }
+    if (digits.isNotEmpty && index < _codeLength - 1) {
       _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
+    } else if (digits.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
     }
     setState(() {});
@@ -552,7 +600,6 @@ class _CodeInputBottomSheetState extends State<_CodeInputBottomSheet> {
                 child: TextField(
                   controller: _controllers[index],
                   focusNode: _focusNodes[index],
-                  maxLength: 1,
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
