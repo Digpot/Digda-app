@@ -170,6 +170,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   /// 이 그룹 모찌에 장착된 칭호를 best-effort 로 받아 모찌 아래 칩에 표시한다.
   Future<void> _loadEquippedTitle(int groupId) async {
     try {
+      // 칩 렌더가 카탈로그(defOf)에 의존하므로 먼저 카탈로그를 보장한 뒤 setState.
+      await TitleCatalog.ensureLoaded();
       final eq = await Di.titleRepository.equipped(groupId.toString());
       if (mounted) setState(() => _equippedTitle = eq);
     } catch (_) {/* 장착 칭호 조회 실패는 화면에 영향 없음 */}
