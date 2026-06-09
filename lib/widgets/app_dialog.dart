@@ -71,22 +71,65 @@ void showAppSnackBar(
   String message, {
   bool isError = false,
 }) {
-  ScaffoldMessenger.of(context).showSnackBar(
+  // 어두운 기본 스낵바 대신 디그팟 톤의 밝은 카드형 토스트 —
+  // 흰 배경 + 둥근 모서리 + 부드러운 그림자, 성공/오류를 색 아이콘으로 구분.
+  final Color accent = isError ? AppColors.primaryDark : AppColors.primary;
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
     SnackBar(
-      content: Text(
-        message,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: isError ? const Color(0xFFFF4D4D) : AppColors.gray900,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      padding: EdgeInsets.zero,
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       duration: const Duration(seconds: 2),
+      content: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.22)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.gray900.withValues(alpha: 0.10),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isError ? Icons.error_outline_rounded : Icons.check_rounded,
+                size: 19,
+                color: accent,
+              ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  height: 1.35,
+                  color: AppColors.gray900,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

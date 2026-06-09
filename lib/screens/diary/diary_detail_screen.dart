@@ -213,37 +213,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       await Di.diaryRepository.delete(groupId, diaryId);
       if (mounted) {
         Navigator.of(context).pop();
-        _showCopiedToast('일기를 삭제했어요');
+        showAppSnackBar(context, '일기를 삭제했어요');
       }
       return true;
     } catch (e) {
       if (mounted) showErrorDialog(context, errorMessageOf(e));
       return false;
     }
-  }
-
-  void _showCopiedToast(String message) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        backgroundColor: _ink,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: AppColors.white,
-          ),
-        ),
-      ),
-    );
   }
 
   bool get _isMine {
