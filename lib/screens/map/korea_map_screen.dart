@@ -286,14 +286,32 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       ..scale(zoom);
   }
 
+  /// 탭/패널에 보이는 권역 표시 이름. 데이터 키 '광역시' 버킷은 서울(특별시)·세종
+  /// (특별자치시)도 포함하므로 표시만 '특별·광역시'로 바로잡는다(키는 그대로).
+  static String _groupDisplayName(String group) =>
+      group == '광역시' ? '특별·광역시' : group;
+
+  /// '특별·광역시' 칩에서 앞쪽에 고정할 도시 순서(서울 → 인천 → 부산).
+  static const List<String> _metroLeadOrder = ['서울', '인천', '부산'];
+
   /// 선택된 도(버킷)에 속한 색칠 키들 — 라벨 가나다순.
+  /// 단, 광역시 버킷은 서울·인천·부산을 앞에 고정하고 나머지를 가나다순으로.
   List<String> _bucketKeys(KoreaMapData data, String group) {
     final keys = data.keyFocusGroup.entries
         .where((e) => e.value == group)
         .map((e) => e.key)
         .toList();
-    keys.sort(
-        (a, b) => (data.keyLabel[a] ?? a).compareTo(data.keyLabel[b] ?? b));
+    int rank(String k) {
+      if (group != '광역시') return _metroLeadOrder.length;
+      final i = _metroLeadOrder.indexOf(data.keyLabel[k] ?? k);
+      return i == -1 ? _metroLeadOrder.length : i;
+    }
+
+    keys.sort((a, b) {
+      final ra = rank(a), rb = rank(b);
+      if (ra != rb) return ra.compareTo(rb);
+      return (data.keyLabel[a] ?? a).compareTo(data.keyLabel[b] ?? b);
+    });
     return keys;
   }
 
@@ -720,7 +738,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             ),
             const SizedBox(width: 6),
             Text(
-              g ?? '전체',
+              g == null ? '전체' : _groupDisplayName(g),
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
@@ -780,7 +798,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
               ),
               const SizedBox(width: 7),
               Text(
-                group,
+                _groupDisplayName(group),
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w800,
@@ -1074,7 +1092,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              group,
+                              _groupDisplayName(group),
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w700,
