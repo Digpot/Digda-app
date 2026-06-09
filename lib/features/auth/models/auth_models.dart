@@ -36,7 +36,6 @@ class AuthUser {
     required this.name,
     this.email,
     this.profileImage,
-    this.statusMessage,
     required this.provider,
     this.createdAt,
   });
@@ -45,7 +44,6 @@ class AuthUser {
   final String name;
   final String? email;
   final String? profileImage;
-  final String? statusMessage;
   final String provider;
   final DateTime? createdAt;
 
@@ -55,7 +53,6 @@ class AuthUser {
       name: json['name'] as String,
       email: json['email'] as String?,
       profileImage: json['profileImage'] as String?,
-      statusMessage: json['statusMessage'] as String?,
       provider: json['provider'] as String,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)

@@ -18,7 +18,6 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _nameController;
-  late final TextEditingController _statusController;
   File? _profileImage;
   bool _imageCleared = false;
   bool _saving = false;
@@ -28,7 +27,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final me = Di.userSession.profile;
     _nameController = TextEditingController(text: me?.name ?? '');
-    _statusController = TextEditingController(text: me?.statusMessage ?? '');
     if (me == null) {
       // Lazy fetch — 진입 시 한 번 동기화.
       WidgetsBinding.instance.addPostFrameCallback((_) => _hydrate());
@@ -41,9 +39,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final me = Di.userSession.profile;
     if (me == null) return;
     if (_nameController.text.isEmpty) _nameController.text = me.name;
-    if (_statusController.text.isEmpty && me.statusMessage != null) {
-      _statusController.text = me.statusMessage!;
-    }
     setState(() {});
   }
 
@@ -60,14 +55,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     Di.userSession.removeListener(_onSession);
     _nameController.dispose();
-    _statusController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     if (_saving) return;
     final name = _nameController.text.trim();
-    final status = _statusController.text.trim();
     setState(() => _saving = true);
     try {
       Object? profileImageId = UpdateProfileRequest.unset;
@@ -83,7 +76,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
       final body = UpdateProfileRequest(
         name: name.isEmpty ? null : name,
-        statusMessage: status,
         profileImageId: profileImageId,
       );
       await Di.userSession.update(body);
@@ -224,10 +216,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _buildFieldLabel('이름'),
                     const SizedBox(height: 8),
                     _NameInput(controller: _nameController),
-                    const SizedBox(height: 24),
-                    _buildFieldLabel('상태 메시지'),
-                    const SizedBox(height: 8),
-                    _StatusInput(controller: _statusController),
                     const SizedBox(height: 28),
                     _buildFieldLabel('연동 계정'),
                     const SizedBox(height: 10),
@@ -308,45 +296,6 @@ class _NameInput extends StatelessWidget {
           onTap: controller.clear,
           child: const Icon(Icons.close, size: 18, color: AppColors.gray400),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-    );
-  }
-}
-
-class _StatusInput extends StatelessWidget {
-  const _StatusInput({required this.controller});
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      maxLength: 100,
-      style: const TextStyle(
-        fontFamily: 'Inter',
-        fontWeight: FontWeight.w400,
-        fontSize: 15,
-        color: AppColors.gray900,
-      ),
-      decoration: InputDecoration(
-        hintText: '상태 메시지를 입력하세요',
-        hintStyle: const TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w400,
-          fontSize: 15,
-          color: AppColors.gray300,
-        ),
-        filled: true,
-        fillColor: AppColors.gray50,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

@@ -94,9 +94,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildProfileSection(context, profile),
-                    const SizedBox(height: 20),
-                    _buildTitleCard(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     _buildSectionLabel('그룹방 관리'),
                     _buildMenuItem(
                       context,
@@ -263,7 +261,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
+                // 칭호 수집가 진입 (상태메시지 자리)
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pushNamed('/titles'),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.workspace_premium_rounded,
+                          size: 15, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        '내 칭호를 확인해볼까요?',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      SizedBox(width: 1),
+                      Icon(Icons.chevron_right,
+                          size: 14, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 5),
                 GestureDetector(
                   onTap: () =>
                       Navigator.of(context).pushNamed('/edit-profile'),
@@ -275,14 +297,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w400,
                           fontSize: 13,
-                          color: AppColors.primary,
+                          color: AppColors.gray500,
                         ),
                       ),
                       SizedBox(width: 2),
                       Icon(
                         Icons.chevron_right,
                         size: 14,
-                        color: AppColors.primary,
+                        color: AppColors.gray500,
                       ),
                     ],
                   ),
@@ -311,81 +333,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
           fontWeight: FontWeight.w700,
           fontSize: 24,
           color: AppColors.primary,
-        ),
-      ),
-    );
-  }
-
-  /// 칭호 수집함 진입 카드 — 계정 단위라 그룹방 탈퇴와 무관하게 유지된다.
-  Widget _buildTitleCard(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).pushNamed('/titles'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primary.withValues(alpha: 0.12),
-                AppColors.primary.withValues(alpha: 0.04),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.workspace_premium_rounded,
-                    size: 24, color: AppColors.white),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '칭호 수집가',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: AppColors.gray900,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      '지역 정복·기록·모찌로 모은 칭호를 확인해요',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 12,
-                        color: AppColors.gray500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right,
-                  size: 20, color: AppColors.gray400),
-            ],
-          ),
         ),
       ),
     );
