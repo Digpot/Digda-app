@@ -675,6 +675,12 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final isEnd = schedule.isEndDay(day);
     final isMulti = schedule.isMultiDay;
 
+    // 가독성: 막대는 일정 색을 '진하게'(solid) 깔고 글자는 흰색 볼드로 통일한다.
+    // 공휴일만 예외 — 연한 배경 + 빨간 글자를 유지한다.
+    final isHoliday = schedule.isHoliday;
+    final bg = isHoliday ? color.withValues(alpha: 0.15) : color;
+    final fg = isHoliday ? color : AppColors.white;
+
     // 단일 일정 — 둥근 pill
     if (!isMulti) {
       return Container(
@@ -682,7 +688,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
         padding: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
+          color: bg,
           borderRadius: BorderRadius.circular(4),
         ),
         alignment: Alignment.center,
@@ -690,9 +696,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           schedule.title,
           style: TextStyle(
             fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w700,
             fontSize: fontSize,
-            color: color,
+            color: fg,
           ),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
@@ -711,7 +717,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
     // 배경 바 (모든 셀에 그려짐)
     final barDecoration = BoxDecoration(
-      color: color.withValues(alpha: 0.15),
+      color: bg,
       borderRadius: BorderRadius.horizontal(
         left: roundLeft ? const Radius.circular(4) : Radius.zero,
         right: roundRight ? const Radius.circular(4) : Radius.zero,
@@ -741,9 +747,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 schedule.title,
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w700,
                   fontSize: fontSize,
-                  color: color,
+                  color: fg,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
@@ -776,6 +782,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     double fontSize = 11,
   }) {
     final color = schedule.color;
+    // 막대는 진한 색 배경 + 흰색 볼드 글자로 통일(공휴일만 연한 배경 + 빨간 글자).
+    final isHoliday = schedule.isHoliday;
+    final bg = isHoliday ? color.withValues(alpha: 0.15) : color;
+    final fg = isHoliday ? color : AppColors.white;
 
     if (!schedule.isMultiDay) {
       return Container(
@@ -783,7 +793,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         margin: const EdgeInsets.only(top: 1, left: 2, right: 2),
         padding: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
+          color: bg,
           borderRadius: BorderRadius.circular(4),
         ),
         alignment: Alignment.center,
@@ -791,9 +801,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           schedule.title,
           style: TextStyle(
             fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w700,
             fontSize: fontSize,
-            color: color,
+            color: fg,
           ),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
@@ -819,7 +829,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: bg,
         borderRadius: BorderRadius.horizontal(
           left: runStart ? const Radius.circular(4) : Radius.zero,
           right: runEnd ? const Radius.circular(4) : Radius.zero,
@@ -832,9 +842,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               schedule.title,
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w700,
                 fontSize: fontSize,
-                color: color,
+                color: fg,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
