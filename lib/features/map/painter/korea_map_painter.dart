@@ -159,6 +159,11 @@ class KoreaOverlayPainter extends CustomPainter {
   final String? selectedKey;
   final String? focusGroup;
 
+  /// 키별 [stroke, fill] TextPainter 캐시 — 매 프레임 layout 비용 제거(줌/팬 성능).
+  /// 색칠·포커스·선택 상태가 바뀌면 setState 로 새 인스턴스가 생겨 캐시가 비므로
+  /// (색/투명도/굵기를 생성 시 고정해도) 항상 최신이 보장된다.
+  final Map<String, List<TextPainter>> _labelCache = {};
+
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
@@ -229,6 +234,7 @@ class KoreaOverlayPainter extends CustomPainter {
       final center = isSel ? center0 - const Offset(0, lift) : center0;
       _drawLabel(
         canvas,
+        key,
         data.keyLabel[key] ?? key,
         center,
         colored || isSel,
@@ -285,57 +291,68 @@ class KoreaOverlayPainter extends CustomPainter {
 
   void _drawLabel(
     Canvas canvas,
+    String key,
     String text,
     Offset center,
     bool onCoral,
     double fontSize,
     bool dimmed,
   ) {
-    final double op = dimmed ? 0.34 : 1.0;
-    // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
-    final Color fill =
-        (onCoral ? Colors.white : const Color(0xFF453A2C)).withValues(alpha: op);
-    final Color outline =
-        (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFFBF6EC))
-            .withValues(alpha: op);
-    final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
+    var pair = _labelCache[key];
+    if (pair == null) {
+      final double op = dimmed ? 0.34 : 1.0;
+      // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
+      final Color fill =
+          (onCoral ? Colors.white : const Color(0xFF453A2C))
+              .withValues(alpha: op);
+      final Color outline =
+          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFFBF6EC))
+              .withValues(alpha: op);
+      final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
 
-    final strokePainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: fontSize,
-          fontWeight: FontWeight.w800,
-          height: 1.0,
-          foreground: Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = strokeW
-            ..strokeJoin = StrokeJoin.round
-            ..color = outline,
+      final strokePainter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            height: 1.0,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = strokeW
+              ..strokeJoin = StrokeJoin.round
+              ..color = outline,
+          ),
         ),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    )..layout();
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout();
+
+      final fillPainter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            height: 1.0,
+            color: fill,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout();
+
+      pair = [strokePainter, fillPainter];
+      _labelCache[key] = pair;
+    }
+
+    final strokePainter = pair[0];
+    final fillPainter = pair[1];
     final pos =
         center - Offset(strokePainter.width / 2, strokePainter.height / 2);
     strokePainter.paint(canvas, pos);
-
-    final fillPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: fontSize,
-          fontWeight: FontWeight.w800,
-          height: 1.0,
-          color: fill,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    )..layout();
     fillPainter.paint(canvas, pos);
   }
 

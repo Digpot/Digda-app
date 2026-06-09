@@ -306,8 +306,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       ..forward();
   }
 
-  // 따뜻한 점토 지도와 어울리는 아이보리 화면 배경.
-  static const Color _warmBg = Color(0xFFFCF8F1);
+  // 깔끔한 흰 배경 — 점토 지도가 또렷이 떠 보이도록.
+  static const Color _warmBg = Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -369,12 +369,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
-              gradient: const RadialGradient(
-                center: Alignment(0, -0.1),
-                radius: 0.95,
-                colors: KoreaMapTokens.stageRadial,
-              ),
-              border: Border.all(color: const Color(0xFFEFE6D6)),
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFEFEFF1)),
             ),
             clipBehavior: Clip.antiAlias,
             child: LayoutBuilder(
