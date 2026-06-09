@@ -81,19 +81,17 @@ class TitleCatalog {
     final byCode = <String, TitleDef>{};
     final regionMap = <String, String>{};
     final mochi = <MochiTitleMilestone>[];
+    // 카테고리별 등장 순서 — 같은 iconKey 가 와도 칭호마다 다른 아이콘이 배정되도록.
+    final catSeq = <TitleCategory, int>{};
     for (final it in sorted) {
-      // 지역 정복 칭호는 서버가 모두 'flag' 로 보내 똑같아 보였다 →
-      // 지역(버킷)별 특색 아이콘으로 덮어써 각 칭호를 구분되게.
-      final regionIcon = (it.conditionType == 'region')
-          ? _regionIcon[it.conditionValue]
-          : null;
+      final cat = _categoryOf(it.category);
       final def = TitleDef(
         code: it.code,
         name: it.name,
         description: it.description,
-        category: _categoryOf(it.category),
+        category: cat,
         accent: _colorFromHex(it.accentColor),
-        icon: regionIcon ?? _iconForKey(it.iconKey),
+        icon: _iconFor(cat, it, catSeq),
       );
       defs.add(def);
       byCode[it.code] = def;
@@ -159,6 +157,58 @@ class TitleCatalog {
     '경남': Icons.anchor_rounded,
     '제주': Icons.beach_access_rounded,
   };
+
+  /// 기록(일기) 칭호 — 마일스톤이 올라갈수록 풍성해지는 순서.
+  static const List<IconData> _diaryIcons = [
+    Icons.edit_note_rounded,
+    Icons.auto_stories_rounded,
+    Icons.menu_book_rounded,
+    Icons.local_library_rounded,
+    Icons.collections_bookmark_rounded,
+    Icons.history_edu_rounded,
+    Icons.photo_album_rounded,
+    Icons.favorite_rounded,
+    Icons.local_florist_rounded,
+    Icons.emoji_events_rounded,
+  ];
+
+  /// 모찌 칭호 — 알→성장→별→왕관 느낌의 순서.
+  static const List<IconData> _mochiIcons = [
+    Icons.egg_rounded,
+    Icons.pets_rounded,
+    Icons.spa_rounded,
+    Icons.auto_awesome_rounded,
+    Icons.star_rounded,
+    Icons.bolt_rounded,
+    Icons.local_fire_department_rounded,
+    Icons.rocket_launch_rounded,
+    Icons.military_tech_rounded,
+    Icons.workspace_premium_rounded,
+  ];
+
+  /// 칭호 1종의 아이콘 — 지역은 버킷별 고정, 일기/모찌는 카테고리 풀에서 등장 순서대로
+  /// 골라 칭호마다 독특하게. 알 수 없으면 서버 iconKey 폴백.
+  static IconData _iconFor(
+    TitleCategory cat,
+    TitleCatalogItem it,
+    Map<TitleCategory, int> seq,
+  ) {
+    if (cat == TitleCategory.region) {
+      final byRegion = _regionIcon[it.conditionValue];
+      if (byRegion != null) return byRegion;
+    }
+    final pool = cat == TitleCategory.diary
+        ? _diaryIcons
+        : cat == TitleCategory.character
+            ? _mochiIcons
+            : const <IconData>[];
+    if (pool.isNotEmpty) {
+      final idx = seq[cat] ?? 0;
+      seq[cat] = idx + 1;
+      return pool[idx % pool.length];
+    }
+    return _iconForKey(it.iconKey);
+  }
 
   /// iconKey → IconData. 모찌의 assetKey→모양 매핑과 동일 성격(폰트 글리프).
   static IconData _iconForKey(String key) {
