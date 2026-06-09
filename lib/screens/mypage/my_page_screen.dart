@@ -291,30 +291,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 5),
-                // 칭호 수집가 진입 (상태메시지 자리)
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pushNamed('/titles'),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.workspace_premium_rounded,
-                          size: 15, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text(
-                        '내 칭호를 확인해볼까요?',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      SizedBox(width: 1),
-                      Icon(Icons.chevron_right,
-                          size: 14, color: AppColors.primary),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 5),
                 GestureDetector(
                   onTap: () =>
                       Navigator.of(context).pushNamed('/edit-profile'),

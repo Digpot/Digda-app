@@ -220,6 +220,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _buildFieldLabel('연동 계정'),
                     const SizedBox(height: 10),
                     _ProviderBadge(provider: me?.provider ?? 'kakao'),
+                    const SizedBox(height: 28),
+                    _buildFieldLabel('내 칭호'),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pushNamed('/titles'),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.workspace_premium_rounded,
+                                size: 20, color: AppColors.primary),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '칭호 수집가',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: AppColors.gray900,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.chevron_right_rounded,
+                                size: 20, color: AppColors.gray400),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),

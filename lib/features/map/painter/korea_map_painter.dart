@@ -17,6 +17,7 @@ class KoreaBasePainter extends CustomPainter {
     required this.dx,
     required this.dy,
     this.focusGroup,
+    this.focusColor,
   });
 
   final KoreaMapData data;
@@ -24,10 +25,10 @@ class KoreaBasePainter extends CustomPainter {
   /// 색칠 키 → 일기 수.
   final Map<String, int> counts;
 
-  /// 모든 시·군·구가 채워진 도(버킷) — 그 도 전체를 코랄로 색칠.
+  /// 모든 시·군·구가 채워진 도(버킷) — 도 정복 칭호용(색칠엔 쓰지 않음).
   final Set<String> completedGroups;
 
-  /// 일부만 채워진 도(버킷) — 진행 중 소프트 톤.
+  /// 일부만 채워진 도(버킷) — 진행률 집계용.
   final Set<String> partialGroups;
 
   final double scale;
@@ -36,6 +37,9 @@ class KoreaBasePainter extends CustomPainter {
 
   /// 선택된 탭 버킷(광역시/경기북부/강원/…). 지정 시 그 버킷만 또렷하고 나머지는 디밍.
   final String? focusGroup;
+
+  /// 포커스 버킷의 시그니처 색 — 그 도 경계선을 이 색으로 그린다.
+  final Color? focusColor;
 
   /// 비포커스 권역을 가라앉히는 아이보리 베일.
   final Paint _dimVeil = Paint()..color = const Color(0xCCFBF7EF);
@@ -78,24 +82,26 @@ class KoreaBasePainter extends CustomPainter {
     canvas.drawPath(data.combinedPath, side);
     canvas.restore();
 
-    // 3) Top faces — 채색 여부에 따라 코랄/소프트/웜.
+    // 3) Top faces — 조각(시·군) 개별 색칠. 시·군은 1회만 써도 코랄, 광역시는 10회.
+    //    (도 전체를 다 채워야 칠해지던 버킷 색칠 제거 — 남원만 채우면 남원만 칠해진다.)
     final warmPaint = Paint()..shader = warmShader;
     final coralPaint = Paint()..shader = coralShader;
     final softPaint = Paint()..color = KoreaMapTokens.coralSoft;
     for (final r in data.regions) {
-      // 색칠은 도(버킷) 단위 — 그 도의 시·군·구가 다 차면 코랄, 일부면 소프트.
-      final group = data.keyFocusGroup[r.key];
+      final count = counts[r.key] ?? 0;
+      final metro = data.keyMetro[r.key] == true;
+      final threshold = metro ? 10 : 1;
       final Paint p;
-      if (completedGroups.contains(group)) {
-        p = coralPaint;
-      } else if (partialGroups.contains(group)) {
-        p = softPaint;
+      if (count >= threshold) {
+        p = coralPaint; // 달성 → 코랄
+      } else if (count > 0) {
+        p = softPaint; // 진행 중(광역시 1~9) → 소프트
       } else {
-        p = warmPaint;
+        p = warmPaint; // 미시작 → 웜
       }
       canvas.drawPath(r.path, p);
       // 탭 포커스 시 다른 버킷은 아이보리 베일로 덮어 가라앉힌다.
-      if (focusGroup != null && group != focusGroup) {
+      if (focusGroup != null && data.keyFocusGroup[r.key] != focusGroup) {
         canvas.drawPath(r.path, _dimVeil);
       }
     }
@@ -114,15 +120,34 @@ class KoreaBasePainter extends CustomPainter {
       canvas.drawPath(r.path, grooveHi);
     }
 
+    // 5) 포커스 경계선 — 선택한 도(버킷)의 외곽을 시그니처 색으로(헤일로 + 실선).
+    final fg = focusGroup;
+    final fc = focusColor;
+    if (fg != null && fc != null) {
+      final outline = data.focusGroupOutline(fg);
+      final halo = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5.0
+        ..strokeJoin = StrokeJoin.round
+        ..color = fc.withValues(alpha: 0.22)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      final line = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeJoin = StrokeJoin.round
+        ..color = fc;
+      canvas.drawPath(outline, halo);
+      canvas.drawPath(outline, line);
+    }
+
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant KoreaBasePainter old) =>
       old.focusGroup != focusGroup ||
+      old.focusColor != focusColor ||
       !identical(old.counts, counts) ||
-      !identical(old.completedGroups, completedGroups) ||
-      !identical(old.partialGroups, partialGroups) ||
       old.scale != scale ||
       old.dx != dx ||
       old.dy != dy;
@@ -179,7 +204,6 @@ class KoreaOverlayPainter extends CustomPainter {
     );
 
     final m = transform.value;
-    final zoom = m.getMaxScaleOnAxis();
     final Rect? visible = _visibleViewBox(m, size);
 
     // 선택 강조 — 선택 조각을 살짝 띄워(lift) 입체적으로 강조(handoff §5).
@@ -217,30 +241,15 @@ class KoreaOverlayPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // 라벨 — 줌 레벨별 노출 + 화면 밖 컬링. 채색/선택/광역시는 항상(보일 때).
-    final double minFont = _minLabelFontForZoom(zoom);
-    for (final entry in data.keyCenter.entries) {
-      final center0 = entry.value;
-      // 화면 밖이면 건너뜀(고배율에서 라벨 레이아웃 비용 절감).
-      if (visible != null && !visible.contains(center0)) continue;
-      final key = entry.key;
-      final group = data.keyFocusGroup[key];
-      final colored = completedGroups.contains(group);
-      final isSel = key == sel;
-      final sizeF = data.keyLabelSize[key] ?? 8.0;
-      final alwaysShow = colored || isSel || data.keyMetro[key] == true;
-      if (!alwaysShow && sizeF < minFont) continue;
-      final dimmed = focusGroup != null && group != focusGroup;
-      final center = isSel ? center0 - const Offset(0, lift) : center0;
-      _drawLabel(
-        canvas,
-        key,
-        data.keyLabel[key] ?? key,
-        center,
-        colored || isSel,
-        sizeF,
-        dimmed,
-      );
+    // 라벨 — 시·군 글자는 띄우지 않고 "도 단위"로만(전북/강원/경기북부/서울…).
+    // 화면 밖이면 컬링. 포커스 시 다른 도 라벨은 흐리게.
+    for (final entry in data.labelGroupCenter.entries) {
+      final g = entry.key;
+      final center = entry.value;
+      if (visible != null && !visible.contains(center)) continue;
+      final dimmed =
+          focusGroup != null && data.labelGroupToFocus[g] != focusGroup;
+      _drawLabel(canvas, g, g, center, false, 12.0, dimmed);
     }
 
     canvas.restore();
@@ -278,15 +287,6 @@ class KoreaOverlayPainter extends CustomPainter {
     final nw = s[3] * x + s[7] * y + s[15];
     if (nw == 0) return Offset(nx, ny);
     return Offset(nx / nw, ny / nw);
-  }
-
-  /// 현재 줌에서 표시할 라벨의 최소 적응형 폰트 크기. 0 이면 전부 표시.
-  double _minLabelFontForZoom(double z) {
-    if (z >= 3.0) return 0;
-    if (z >= 2.2) return 6.5;
-    if (z >= 1.6) return 7.5;
-    if (z >= 1.25) return 9.0;
-    return 10.0;
   }
 
   void _drawLabel(

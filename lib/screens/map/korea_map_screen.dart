@@ -366,9 +366,9 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             child: ScaleTransition(
             scale: _introScale,
             child: Container(
-            margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            margin: const EdgeInsets.fromLTRB(6, 2, 6, 6),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(24),
               color: Colors.white,
               border: Border.all(color: const Color(0xFFEFEFF1)),
             ),
@@ -409,6 +409,10 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                               dx: dx,
                               dy: dy,
                               focusGroup: _focusGroup,
+                              focusColor: _focusGroup == null
+                                  ? null
+                                  : (_groupColors[_focusGroup] ??
+                                      AppColors.primary),
                             ),
                           ),
                         ),
@@ -447,14 +451,35 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
         .where(data.keyFocusGroup.values.contains)
         .toList();
     final tabs = <String?>[null, ...present];
-    // 가로 스크롤 대신 Wrap 으로 줄바꿈 — 모든 탭을 한눈에(2줄 안팎).
+    // 정확히 2줄로 — 절반씩 나눠 각 줄을 가로 스크롤(넘치면)로. 세로로 퍼지지 않게.
+    final half = (tabs.length / 2).ceil();
+    final row1 = tabs.sublist(0, half);
+    final row2 = tabs.sublist(half);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 6,
-        runSpacing: 6,
-        children: tabs.map(_buildTab).toList(),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _tabRow(row1),
+          const SizedBox(height: 6),
+          _tabRow(row2),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabRow(List<String?> tabs) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < tabs.length; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            _buildTab(tabs[i]),
+          ],
+        ],
       ),
     );
   }
