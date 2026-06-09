@@ -10,6 +10,8 @@ class KoreaBasePainter extends CustomPainter {
   KoreaBasePainter({
     required this.data,
     required this.counts,
+    required this.completedGroups,
+    required this.partialGroups,
     required this.scale,
     required this.dx,
     required this.dy,
@@ -21,11 +23,17 @@ class KoreaBasePainter extends CustomPainter {
   /// 색칠 키 → 일기 수.
   final Map<String, int> counts;
 
+  /// 모든 시·군·구가 채워진 도(버킷) — 그 도 전체를 코랄로 색칠.
+  final Set<String> completedGroups;
+
+  /// 일부만 채워진 도(버킷) — 진행 중 소프트 톤.
+  final Set<String> partialGroups;
+
   final double scale;
   final double dx;
   final double dy;
 
-  /// 선택된 권역(수도권/강원/…). 지정 시 그 권역만 또렷하고 나머지는 디밍.
+  /// 선택된 탭 버킷(광역시/경기북부/강원/…). 지정 시 그 버킷만 또렷하고 나머지는 디밍.
   final String? focusGroup;
 
   /// 비포커스 권역을 가라앉히는 아이보리 베일.
@@ -74,20 +82,19 @@ class KoreaBasePainter extends CustomPainter {
     final coralPaint = Paint()..shader = coralShader;
     final softPaint = Paint()..color = KoreaMapTokens.coralSoft;
     for (final r in data.regions) {
-      final meta = data.metaOf(r.key);
-      final count = counts[r.key] ?? 0;
+      // 색칠은 도(버킷) 단위 — 그 도의 시·군·구가 다 차면 코랄, 일부면 소프트.
+      final group = data.keyFocusGroup[r.key];
       final Paint p;
-      if (meta != null && meta.isColored(count)) {
+      if (completedGroups.contains(group)) {
         p = coralPaint;
-      } else if (count > 0) {
-        // 진행 중(특히 광역시 1..9) — 살짝 번지는 소프트 톤.
+      } else if (partialGroups.contains(group)) {
         p = softPaint;
       } else {
         p = warmPaint;
       }
       canvas.drawPath(r.path, p);
-      // 권역 포커스 시 다른 권역은 아이보리 베일로 덮어 가라앉힌다.
-      if (focusGroup != null && r.group != focusGroup) {
+      // 탭 포커스 시 다른 버킷은 아이보리 베일로 덮어 가라앉힌다.
+      if (focusGroup != null && group != focusGroup) {
         canvas.drawPath(r.path, _dimVeil);
       }
     }
@@ -113,6 +120,8 @@ class KoreaBasePainter extends CustomPainter {
   bool shouldRepaint(covariant KoreaBasePainter old) =>
       old.focusGroup != focusGroup ||
       !identical(old.counts, counts) ||
+      !identical(old.completedGroups, completedGroups) ||
+      !identical(old.partialGroups, partialGroups) ||
       old.scale != scale ||
       old.dx != dx ||
       old.dy != dy;
@@ -125,6 +134,7 @@ class KoreaOverlayPainter extends CustomPainter {
   KoreaOverlayPainter({
     required this.data,
     required this.counts,
+    required this.completedGroups,
     required this.scale,
     required this.dx,
     required this.dy,
@@ -135,6 +145,9 @@ class KoreaOverlayPainter extends CustomPainter {
 
   final KoreaMapData data;
   final Map<String, int> counts;
+
+  /// 모든 시·군·구가 채워진 도(버킷) — 그 도의 라벨을 코랄(흰 글자)로.
+  final Set<String> completedGroups;
   final double scale;
   final double dx;
   final double dy;
@@ -205,14 +218,13 @@ class KoreaOverlayPainter extends CustomPainter {
       // 화면 밖이면 건너뜀(고배율에서 라벨 레이아웃 비용 절감).
       if (visible != null && !visible.contains(center0)) continue;
       final key = entry.key;
-      final count = counts[key] ?? 0;
-      final meta = data.metaOf(key);
-      final colored = meta != null && meta.isColored(count);
+      final group = data.keyFocusGroup[key];
+      final colored = completedGroups.contains(group);
       final isSel = key == sel;
       final sizeF = data.keyLabelSize[key] ?? 8.0;
       final alwaysShow = colored || isSel || data.keyMetro[key] == true;
       if (!alwaysShow && sizeF < minFont) continue;
-      final dimmed = focusGroup != null && data.keyGroup[key] != focusGroup;
+      final dimmed = focusGroup != null && group != focusGroup;
       final center = isSel ? center0 - const Offset(0, lift) : center0;
       _drawLabel(
         canvas,
@@ -331,6 +343,7 @@ class KoreaOverlayPainter extends CustomPainter {
       old.selectedKey != selectedKey ||
       old.focusGroup != focusGroup ||
       !identical(old.counts, counts) ||
+      !identical(old.completedGroups, completedGroups) ||
       old.scale != scale ||
       old.dx != dx ||
       old.dy != dy;

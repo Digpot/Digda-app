@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/di.dart';
+import '../../features/title/models/title_models.dart';
+import '../../features/title/title_catalog.dart';
 import '../../features/map/data/korea_map_loader.dart';
 import '../../features/map/data/korea_map_models.dart';
 import '../../features/map/painter/korea_map_painter.dart';
@@ -23,23 +25,18 @@ class KoreaMapScreen extends StatefulWidget {
 
 class _KoreaMapScreenState extends State<KoreaMapScreen>
     with SingleTickerProviderStateMixin {
-  /// 권역 탭 표준 순서(데이터에 존재하는 것만 노출).
-  static const List<String> _groupOrder = [
-    '수도권',
-    '강원',
-    '충청',
-    '전라',
-    '경상',
-    '제주',
-  ];
-
-  /// 권역별 시그니처 색(handoff §3 groupColors). 선택 패널 액센트에 사용.
+  /// 탭 버킷별 시그니처 색. 선택 패널 액센트·뱃지에 사용.
   static const Map<String, Color> _groupColors = {
-    '수도권': Color(0xFFFF6B6B),
+    '광역시': Color(0xFFFF8A5B),
+    '경기북부': Color(0xFFFF6B6B),
+    '경기남부': Color(0xFFE8553D),
     '강원': Color(0xFF5B9BF0),
-    '충청': Color(0xFFF4B53C),
-    '전라': Color(0xFF33C08A),
-    '경상': Color(0xFFA98BF0),
+    '충북': Color(0xFFF4B53C),
+    '충남': Color(0xFFE0962B),
+    '전북': Color(0xFF33C08A),
+    '전남': Color(0xFF1FA876),
+    '경북': Color(0xFFA98BF0),
+    '경남': Color(0xFF8B6BE0),
     '제주': Color(0xFFF47BB4),
   };
 
@@ -50,6 +47,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   String? _error;
   String? _selectedKey;
   String? _focusGroup; // null = 전체
+
+  // 도(버킷) 단위 색칠 상태 — 모든 시·군·구가 차면 completed, 일부면 partial.
+  // _counts 가 바뀔 때만 다시 계산해 페인터에 안정적인 참조로 전달(불필요한 재페인트 방지).
+  Set<String> _completedGroups = const {};
+  Set<String> _partialGroups = const {};
 
   // 현재 화면에 적용된 fit 변환(탭 포커스 시 좌표 계산에 사용).
   double _scale = 1, _dx = 0, _dy = 0;
@@ -131,7 +133,10 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       setState(() {
         _counts = res.countByKey;
         _loadingCounts = false;
+        _computeBucketFill();
       });
+      // 정복한 도(시·군 전부 채움)는 지역 칭호로 적재. 실패해도 지도엔 영향 없음.
+      _claimConqueredRegions();
     } catch (_) {
       if (mounted) setState(() => _loadingCounts = false);
     }
@@ -147,6 +152,47 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       if (meta != null && meta.isColored(_counts[entry] ?? 0)) n++;
     }
     return n;
+  }
+
+  /// 도(버킷)별로 시·군·구 채움을 집계해 completed/partial 집합을 갱신.
+  void _computeBucketFill() {
+    final data = _data;
+    if (data == null) return;
+    final completed = <String>{};
+    final partial = <String>{};
+    data.keysByFocusGroup.forEach((group, keys) {
+      var done = 0;
+      for (final k in keys) {
+        final meta = data.metaOf(k);
+        if (meta != null && meta.isColored(_counts[k] ?? 0)) done++;
+      }
+      if (done == 0) return;
+      if (done == keys.length) {
+        completed.add(group);
+      } else {
+        partial.add(group);
+      }
+    });
+    _completedGroups = completed;
+    _partialGroups = partial;
+  }
+
+  /// 정복 완료된 도(버킷)를 지역 칭호로 서버에 적재(멱등). 활성 그룹 맥락으로 기록.
+  Future<void> _claimConqueredRegions() async {
+    final groupId = Di.activeGroup.groupRoomId;
+    final gid = groupId == null ? null : int.tryParse(groupId);
+    if (gid == null || _completedGroups.isEmpty) return;
+    final claims = <TitleClaim>[];
+    for (final bucket in _completedGroups) {
+      final code = TitleCatalog.regionBucketToCode[bucket];
+      if (code != null) claims.add(TitleClaim(code: code, groupRoomId: gid));
+    }
+    if (claims.isEmpty) return;
+    try {
+      await Di.titleRepository.claim(claims);
+    } catch (_) {
+      // 칭호 적재 실패는 화면 표시에 영향 없음
+    }
   }
 
   void _handleTap(Offset local) {
@@ -173,7 +219,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     if (cached != null) return cached;
     Rect? acc;
     for (final r in data.regions) {
-      if (r.group != group) continue;
+      if (data.keyFocusGroup[r.key] != group) continue;
       final b = r.path.getBounds();
       acc = acc == null ? b : acc.expandToInclude(b);
     }
@@ -187,33 +233,64 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       _selectedKey = null;
     });
     if (_viewport == Size.zero) return;
-    Matrix4 target;
     if (group == null) {
-      target = Matrix4.identity();
-    } else {
-      final vb = _groupBounds(group);
-      if (vb == null) return;
-      // view 좌표 bounds → 현재 fit 적용된 화면 좌표 rect.
-      final screenRect = Rect.fromLTWH(
-        _dx + vb.left * _scale,
-        _dy + vb.top * _scale,
-        vb.width * _scale,
-        vb.height * _scale,
-      ).inflate(16);
-      final z = (_viewport.width / screenRect.width)
-          .clamp(1.0, 5.0)
-          .toDouble();
-      final zy = (_viewport.height / screenRect.height)
-          .clamp(1.0, 5.0)
-          .toDouble();
-      final zoom = z < zy ? z : zy;
-      final tx = _viewport.width / 2 - zoom * screenRect.center.dx;
-      final ty = _viewport.height / 2 - zoom * screenRect.center.dy;
-      target = Matrix4.identity()
-        ..translate(tx, ty)
-        ..scale(zoom);
+      _animateTo(Matrix4.identity());
+      return;
     }
-    _animateTo(target);
+    final vb = _groupBounds(group);
+    final target = vb == null ? null : _matrixForViewBounds(vb);
+    if (target != null) _animateTo(target);
+  }
+
+  /// 리스트에서 시·군·구 칩을 누르면 — 선택 강조 + 그 조각으로 부드럽게 이동.
+  void _selectKey(String key) {
+    setState(() => _selectedKey = key);
+    if (_viewport == Size.zero) return;
+    final vb = _keyBounds(key);
+    if (vb == null) return;
+    _animateTo(_matrixForViewBounds(vb, maxZoom: 4.0));
+  }
+
+  /// 색칠 키 하나(여러 조각)를 감싸는 view 좌표 bounds.
+  Rect? _keyBounds(String key) {
+    final list = _data?.byKey[key];
+    if (list == null || list.isEmpty) return null;
+    Rect? acc;
+    for (final r in list) {
+      final b = r.path.getBounds();
+      acc = acc == null ? b : acc.expandToInclude(b);
+    }
+    return acc;
+  }
+
+  /// view 좌표 bounds → 화면 중앙에 맞춰 줌인하는 변환 행렬.
+  Matrix4 _matrixForViewBounds(Rect vb, {double maxZoom = 3.5}) {
+    final screenRect = Rect.fromLTWH(
+      _dx + vb.left * _scale,
+      _dy + vb.top * _scale,
+      vb.width * _scale,
+      vb.height * _scale,
+    ).inflate(16);
+    final z = (_viewport.width / screenRect.width).clamp(1.0, maxZoom).toDouble();
+    final zy =
+        (_viewport.height / screenRect.height).clamp(1.0, maxZoom).toDouble();
+    final zoom = z < zy ? z : zy;
+    final tx = _viewport.width / 2 - zoom * screenRect.center.dx;
+    final ty = _viewport.height / 2 - zoom * screenRect.center.dy;
+    return Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(zoom);
+  }
+
+  /// 선택된 도(버킷)에 속한 색칠 키들 — 라벨 가나다순.
+  List<String> _bucketKeys(KoreaMapData data, String group) {
+    final keys = data.keyFocusGroup.entries
+        .where((e) => e.value == group)
+        .map((e) => e.key)
+        .toList();
+    keys.sort(
+        (a, b) => (data.keyLabel[a] ?? a).compareTo(data.keyLabel[b] ?? b));
+    return keys;
   }
 
   void _animateTo(Matrix4 target) {
@@ -271,7 +348,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     return Column(
       children: [
         _buildTabs(data),
-        _buildSummary(),
+        // 전체 탭이면 전국 요약, 도 탭이면 그 도의 진행률 카드만 — 위쪽을 가볍게.
+        if (_focusGroup == null)
+          _buildSummary()
+        else
+          _buildRegionStrip(data),
         // 점토 지도가 따뜻한 무대 위에 놓인 듯 보이도록 방사형 배경 + 라운드 프레임.
         // (LayoutBuilder 는 프레임 안쪽이라 constraints 가 margin 적용 후 크기 → fit/히트테스트 일치)
         // 첫 진입 시 살짝 줌인+페이드인 인트로(_intro).
@@ -308,7 +389,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                 return InteractiveViewer(
                   transformationController: _tc,
                   minScale: 1.0,
-                  maxScale: 6.0,
+                  maxScale: 4.0,
                   boundaryMargin: const EdgeInsets.all(120),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -322,6 +403,8 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                             painter: KoreaBasePainter(
                               data: data,
                               counts: _counts,
+                              completedGroups: _completedGroups,
+                              partialGroups: _partialGroups,
                               scale: scale,
                               dx: dx,
                               dy: dy,
@@ -335,6 +418,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                           painter: KoreaOverlayPainter(
                             data: data,
                             counts: _counts,
+                            completedGroups: _completedGroups,
                             scale: scale,
                             dx: dx,
                             dy: dy,
@@ -359,53 +443,232 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   }
 
   Widget _buildTabs(KoreaMapData data) {
-    final present = _groupOrder.where(data.keyGroup.values.contains).toList();
+    final present = KoreaMapData.focusGroupOrder
+        .where(data.keyFocusGroup.values.contains)
+        .toList();
     final tabs = <String?>[null, ...present];
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final g = tabs[i];
-          final active = _focusGroup == g;
-          return GestureDetector(
-            onTap: () => _selectGroup(g),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+    // 가로 스크롤 대신 Wrap 으로 줄바꿈 — 모든 탭을 한눈에(2줄 안팎).
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 6,
+        runSpacing: 6,
+        children: tabs.map(_buildTab).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTab(String? g) {
+    final active = _focusGroup == g;
+    final dot = g == null ? AppColors.primary : (_groupColors[g] ?? AppColors.primary);
+    return GestureDetector(
+      onTap: () => _selectGroup(g),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.fromLTRB(11, 7, 13, 7),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary : AppColors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: active ? AppColors.primary : const Color(0xFFEDE3D2),
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 권역 시그니처 색 점 — 활성 시엔 흰 점으로 통일감.
+            Container(
+              width: 7,
+              height: 7,
               decoration: BoxDecoration(
-                color: active ? AppColors.primary : AppColors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: active ? AppColors.primary : const Color(0xFFEFE6D6),
-                ),
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.28),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Text(
-                g ?? '전체',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: active ? AppColors.white : AppColors.gray700,
-                ),
+                color: active ? Colors.white : dot,
+                shape: BoxShape.circle,
               ),
             ),
-          );
-        },
+            const SizedBox(width: 6),
+            Text(
+              g ?? '전체',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+                color: active ? AppColors.white : AppColors.gray700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 도(버킷) 탭 선택 시 — 그 도의 진행률 + 시·군·구 칩을 담은 카드.
+  /// 채움 여부가 칩 색으로 보이고, 누르면 지도에서 그 지역으로 이동.
+  Widget _buildRegionStrip(KoreaMapData data) {
+    final group = _focusGroup;
+    if (group == null) return const SizedBox.shrink();
+    final keys = _bucketKeys(data, group);
+    if (keys.isEmpty) return const SizedBox.shrink();
+
+    var done = 0;
+    for (final k in keys) {
+      final meta = data.metaOf(k);
+      if (meta != null && meta.isColored(_counts[k] ?? 0)) done++;
+    }
+    final frac = (done / keys.length).clamp(0.0, 1.0);
+    final pct = (frac * 100).round();
+    final accent = _groupColors[group] ?? AppColors.primary;
+    final complete = done == keys.length;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEFE6D6)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.10),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 도 헤더 — 색 점 + 이름 + (완료 뱃지 or 개수) + 퍼센트
+          Row(
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                group,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: AppColors.gray900,
+                ),
+              ),
+              const SizedBox(width: 6),
+              if (complete)
+                Icon(Icons.verified, size: 15, color: accent),
+              const Spacer(),
+              Text(
+                '$done/${keys.length}',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppColors.gray400,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$pct%',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          // 진행 바
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: frac,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFF1E9DC),
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
+          ),
+          const SizedBox(height: 11),
+          // 시·군·구 칩
+          SizedBox(
+            height: 30,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: keys.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (_, i) {
+                final key = keys[i];
+                final meta = data.metaOf(key);
+                final colored =
+                    meta != null && meta.isColored(_counts[key] ?? 0);
+                final selected = key == _selectedKey;
+                return GestureDetector(
+                  onTap: () => _selectKey(key),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? accent
+                          : (colored
+                              ? accent.withValues(alpha: 0.13)
+                              : const Color(0xFFFAF6EE)),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: selected
+                            ? accent
+                            : (colored
+                                ? accent.withValues(alpha: 0.35)
+                                : const Color(0xFFEDE3D2)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (colored) ...[
+                          Icon(
+                            Icons.check_rounded,
+                            size: 13,
+                            color: selected ? AppColors.white : accent,
+                          ),
+                          const SizedBox(width: 3),
+                        ],
+                        Text(
+                          data.keyLabel[key] ?? key,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w600,
+                            fontSize: 12,
+                            color: selected
+                                ? AppColors.white
+                                : (colored ? accent : AppColors.gray500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -462,7 +725,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             ),
             const SizedBox(height: 8),
             SizedBox(
-              width: 200,
+              width: 230,
               child: Row(
                 children: [
                   Expanded(
@@ -479,7 +742,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '$done/$total',
+                    '$done/$total · ${(frac * 100).round()}%',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
@@ -519,16 +782,16 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     final threshold = meta?.threshold ?? 1;
     final colored = meta?.isColored(count) ?? false;
     final remaining = (threshold - count).clamp(0, threshold);
-    final group = data.keyGroup[key];
+    final group = data.keyFocusGroup[key];
     final accent = _groupColors[group] ?? AppColors.primary;
 
     final String statusText;
     if (colored) {
-      statusText = '색칠 완료! · 일기 $count개';
+      statusText = '채움 완료! · 일기 $count개';
     } else if (count == 0) {
       statusText = '아직 기록이 없어요';
     } else {
-      statusText = '일기 $count개 · 색칠까지 $remaining개 더!';
+      statusText = '일기 $count개 · 채움까지 $remaining개 더!';
     }
 
     return Container(

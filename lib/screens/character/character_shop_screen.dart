@@ -5,6 +5,9 @@ import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
+import '../../features/title/models/title_models.dart';
+import '../../features/title/title_catalog.dart';
+import '../../features/title/widgets/title_badge.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 
@@ -34,6 +37,11 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
   /// 카테고리별 미리보기 선택 — 장착되지 않았지만 사용자가 탭한 아이템.
   /// `key=ShopItemType.serverKey`, `value=itemKey`. 실제 장착은 별도 API 호출.
   final Map<ShopItemType, String> _previewByType = {};
+
+  /// 칭호 — 계정 단위로 획득한 칭호 목록 + 이 그룹 모찌에 장착된 칭호.
+  List<EarnedTitle> _earnedTitles = const [];
+  EquippedTitle? _equippedTitle;
+  bool _titlePending = false;
 
   late final TabController _tab;
 
@@ -77,10 +85,20 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
         character = null;
       }
       final shop = await Di.characterRepository.getShop(groupRoomId: groupId);
+      // 칭호(획득 목록 + 장착) — 실패해도 상점 표시엔 영향 없음.
+      List<EarnedTitle> earnedTitles = _earnedTitles;
+      EquippedTitle? equippedTitle = _equippedTitle;
+      try {
+        earnedTitles = await Di.titleRepository.list();
+        final gstr = Di.activeGroup.groupRoomId;
+        if (gstr != null) equippedTitle = await Di.titleRepository.equipped(gstr);
+      } catch (_) {/* 칭호 로드 실패 무시 */}
       if (!mounted) return;
       setState(() {
         _character = character;
         _shop = shop;
+        _earnedTitles = earnedTitles;
+        _equippedTitle = equippedTitle;
         // 미리보기 초기 동기화 — 현재 장착된 아이템을 미리보기로 표시
         if (character != null) {
           for (final eq in character.equippedItems) {
@@ -282,6 +300,31 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     });
   }
 
+  /// 칭호 장착/해제([code]=null 이면 해제). 그룹 모찌에 표시된다.
+  Future<void> _equipTitle(String? code) async {
+    if (_titlePending) return;
+    final gstr = Di.activeGroup.groupRoomId;
+    if (gstr == null) return;
+    setState(() => _titlePending = true);
+    try {
+      final result = await Di.titleRepository.equip(gstr, code);
+      if (!mounted) return;
+      setState(() {
+        _equippedTitle = result;
+        _changed = true;
+      });
+      showAppSnackBar(
+        context,
+        code == null ? '칭호를 해제했어요.' : '칭호를 장착했어요!',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, errorMessageOf(e));
+    } finally {
+      if (mounted) setState(() => _titlePending = false);
+    }
+  }
+
   // ── UI ───────────────────────────────────────────────────
 
   @override
@@ -338,6 +381,8 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
           const SizedBox(height: 16),
           _CoinHeader(coin: shop.coin),
           const SizedBox(height: 16),
+          _buildTitleSection(),
+          const SizedBox(height: 16),
           TabBar(
             controller: _tab,
             isScrollable: true,
@@ -371,6 +416,139 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
                   .toList(),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 칭호 장착 섹션 — 계정에서 획득한 칭호를 그룹 모찌에 끼운다(그룹당 1개).
+  Widget _buildTitleSection() {
+    final equippedCode = _equippedTitle?.code;
+    // 카탈로그에 있는(렌더 가능한) 획득 칭호만.
+    final owned = _earnedTitles
+        .map((e) => TitleCatalog.defOf(e.code))
+        .whereType<TitleDef>()
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium_rounded,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 6),
+              const Text(
+                '칭호 장착',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.gray900,
+                ),
+              ),
+              const Spacer(),
+              if (equippedCode != null)
+                TextButton.icon(
+                  onPressed: _titlePending ? null : () => _equipTitle(null),
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  label: const Text('해제'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.gray700,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    textStyle: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (owned.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Text(
+                '아직 획득한 칭호가 없어요. 지도 정복·기록으로 모아보세요!',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12.5,
+                  color: AppColors.gray400,
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(top: 8),
+                itemCount: owned.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) {
+                  final def = owned[i];
+                  final isEquipped = def.code == equippedCode;
+                  return GestureDetector(
+                    onTap: _titlePending
+                        ? null
+                        : () => _equipTitle(isEquipped ? null : def.code),
+                    child: SizedBox(
+                      width: 64,
+                      child: Column(
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              TitleBadge(def: def, earned: true, size: 54),
+                              if (isEquipped)
+                                Positioned(
+                                  right: 2,
+                                  top: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.check,
+                                        size: 11, color: AppColors.white),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            def.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: isEquipped
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              fontSize: 10.5,
+                              color: isEquipped
+                                  ? AppColors.primary
+                                  : AppColors.gray600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );

@@ -109,6 +109,66 @@ class KoreaMapData {
     for (final e in byKey.entries) e.key: e.value.first.group,
   };
 
+  /// 색칠 키 → 포커스 탭 버킷(광역시 묶음 + 경기 남/북 분할 + 도 단위).
+  late final Map<String, String> keyFocusGroup = {
+    for (final e in byKey.entries) e.key: focusGroupOf(e.value.first),
+  };
+
+  /// 포커스 버킷(도) → 그 버킷에 속한 색칠 키들. 도 단위 색칠/진행률 집계에 사용.
+  late final Map<String, List<String>> keysByFocusGroup = () {
+    final m = <String, List<String>>{};
+    keyFocusGroup.forEach((key, group) => (m[group] ??= []).add(key));
+    return m;
+  }();
+
+  /// 경기 북부(북부청사 관할) 10개 시·군의 색칠키.
+  /// 나머지 경기 조각은 모두 남부로 본다(김포 포함).
+  static const Set<String> gyeonggiNorthKeys = {
+    '고양시', '구리시', '남양주시', '동두천시', '양주시',
+    '의정부시', '파주시', '포천시', '가평군', '연천군',
+  };
+
+  /// 탭 노출 순서(데이터에 존재하는 버킷만 노출). '전체'는 화면에서 앞에 붙인다.
+  static const List<String> focusGroupOrder = [
+    '광역시',
+    '경기북부',
+    '경기남부',
+    '강원',
+    '충북',
+    '충남',
+    '전북',
+    '전남',
+    '경북',
+    '경남',
+    '제주',
+  ];
+
+  /// 조각 → 포커스 탭 버킷. 광역시는 한 덩어리, 경기는 남/북, 그 외는 도(시도) 단위.
+  static String focusGroupOf(MapRegion r) {
+    if (r.metro) return '광역시';
+    switch (r.sido) {
+      case '경기':
+        return gyeonggiNorthKeys.contains(r.key) ? '경기북부' : '경기남부';
+      case '강원':
+        return '강원';
+      case '충북':
+        return '충북';
+      case '충남':
+        return '충남';
+      case '전북':
+        return '전북';
+      case '전남':
+        return '전남';
+      case '경북':
+        return '경북';
+      case '경남':
+        return '경남';
+      case '제주':
+        return '제주';
+    }
+    return r.sido;
+  }
+
   /// 색칠 키 → 라벨 폰트 크기. 이웃 라벨과의 최단 거리로 적응형 산출(handoff §4).
   /// 밀집 지역은 작게, 한산한 지역은 크게. 광역시는 최소 8.5 보장.
   late final Map<String, double> keyLabelSize = () {

@@ -907,8 +907,9 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
   void _onTap(DateTime day) {
     setState(() {
       if (!_pickingEnd) {
+        // 한 번 탭 = 그날 하루(시작=종료). 바로 확인 가능, 한 번 더 누르면 기간으로 확장.
         _start = day;
-        _end = null;
+        _end = day;
         _pickingEnd = true;
       } else {
         if (day.isBefore(_start!)) {
@@ -1039,9 +1040,23 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
             ),
           ),
 
+          // ── 안내 문구 ──
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
+            child: Text(
+              '날짜를 누르면 하루, 한 번 더 누르면 기간이 선택돼요',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+                color: AppColors.gray400,
+              ),
+            ),
+          ),
+
           // ── 시작/종료 칩 ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
             child: Row(
               children: [
                 Expanded(child: _DateChip(label: '시작일', date: _start)),

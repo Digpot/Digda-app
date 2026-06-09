@@ -12,6 +12,9 @@ import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import '../../features/character/widgets/mochi_diko_stage.dart';
+import '../../features/title/models/title_models.dart';
+import '../../features/title/title_catalog.dart';
+import '../../features/title/widgets/title_badge.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
@@ -48,6 +51,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   int? _remainingQuiz;
   // 역대 별명 전시관 접근 허용 여부 — 어드민이 허용한 사용자만 버튼 노출 (best-effort).
   bool _exhibitAllowed = false;
+  // 이 그룹 모찌에 장착된 칭호 (best-effort, null=미장착/미조회).
+  EquippedTitle? _equippedTitle;
   bool _petInProgress = false;
   bool _savingImage = false;
   final _mochiCtrl = MochiAnimationController();
@@ -115,6 +120,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
       });
       _loadRemainingQuiz(groupId); // 버튼 위 말풍선용 카운트 (best-effort, 비동기)
       _checkExhibitAccess(); // 전시관 버튼 노출 여부 (best-effort, 비동기)
+      _loadEquippedTitle(groupId); // 장착 칭호 (best-effort, 비동기)
+      _claimCharacterTitles(groupId, state); // 모찌 칭호 적재 (best-effort)
       if (isFirst) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _mochiCtrl.triggerHappy();
@@ -144,6 +151,28 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         });
       }
     }
+  }
+
+  /// 모찌 칭호 적재 — 레벨 마일스톤(Lv.5/10/15/20). 멱등·best-effort.
+  Future<void> _claimCharacterTitles(int groupId, CharacterState state) async {
+    const milestones = [5, 10, 15, 20];
+    final claims = <TitleClaim>[
+      for (final lv in milestones)
+        if (state.level >= lv)
+          TitleClaim(code: 'mochi_lv$lv', groupRoomId: groupId),
+    ];
+    if (claims.isEmpty) return;
+    try {
+      await Di.titleRepository.claim(claims);
+    } catch (_) {/* 칭호 적재 실패는 화면에 영향 없음 */}
+  }
+
+  /// 이 그룹 모찌에 장착된 칭호를 best-effort 로 받아 모찌 아래 칩에 표시한다.
+  Future<void> _loadEquippedTitle(int groupId) async {
+    try {
+      final eq = await Di.titleRepository.equipped(groupId.toString());
+      if (mounted) setState(() => _equippedTitle = eq);
+    } catch (_) {/* 장착 칭호 조회 실패는 화면에 영향 없음 */}
   }
 
   /// 풀 수 있는 남은 퀴즈 수를 best-effort 로 받아 '퀴즈 풀기' 버튼 위 말풍선에 쓴다.
@@ -453,6 +482,53 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
     );
   }
 
+  /// 모찌 아래 장착 칭호 칩 — 탭하면 상점(칭호 장착)으로. 미장착이면 숨김.
+  Widget _buildEquippedTitleChip() {
+    final code = _equippedTitle?.code;
+    if (code == null) return const SizedBox.shrink();
+    final def = TitleCatalog.defOf(code);
+    if (def == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Center(
+        child: GestureDetector(
+          onTap: _openShopForTitle,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(7, 5, 14, 5),
+            decoration: BoxDecoration(
+              color: def.accent.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: def.accent.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TitleBadge(def: def, earned: true, size: 26),
+                const SizedBox(width: 8),
+                Text(
+                  def.name,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: def.accent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openShopForTitle() async {
+    await Navigator.of(context).pushNamed('/character-shop');
+    if (!mounted) return;
+    final gid = _activeGroupId;
+    if (gid != null) _loadEquippedTitle(gid);
+  }
+
   Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -488,6 +564,7 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               color: AppColors.gray400,
             ),
           ),
+          _buildEquippedTitleChip(),
           const SizedBox(height: 20),
           _LevelStageRow(state: s),
           const SizedBox(height: 12),
