@@ -1349,17 +1349,17 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 헤더 - 제목 "일정" + 우측 아이콘
+            // 헤더 - 제목 "우리 약속" + 우측 아이콘
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
                   const Text(
-                    '일정',
+                    '우리 약속',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
-                      fontSize: 17,
+                      fontSize: 20,
                       color: AppColors.gray900,
                     ),
                   ),

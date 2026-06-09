@@ -152,15 +152,6 @@ class _GroupListScreenState extends State<GroupListScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).maybePop(),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      size: 14,
-                      color: AppColors.gray900,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   const Text(
                     '내 그룹방',
                     style: TextStyle(
