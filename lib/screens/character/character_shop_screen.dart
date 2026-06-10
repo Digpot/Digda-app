@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ads/ad_service.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
@@ -42,6 +43,7 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
   List<EarnedTitle> _earnedTitles = const [];
   EquippedTitle? _equippedTitle;
   bool _titlePending = false;
+  bool _adLoading = false;
 
   late final TabController _tab;
 
@@ -381,6 +383,8 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
           _PreviewCard(appearance: appearance, stage: stage),
           const SizedBox(height: 16),
           _CoinHeader(coin: shop.coin),
+          const SizedBox(height: 10),
+          _buildAdRewardButton(),
           const SizedBox(height: 16),
           _buildTitleSection(),
           const SizedBox(height: 16),
@@ -418,6 +422,111 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 광고 보고 코인 받기 — 보상형 광고 시청 후 서버에 코인 적립을 위임한다.
+  Future<void> _watchAdForCoins() async {
+    if (_adLoading) return;
+    final groupId = _activeGroupId;
+    if (groupId == null) return;
+    setState(() => _adLoading = true);
+    try {
+      final watched = await AdService.showRewarded();
+      if (!watched) {
+        if (mounted) setState(() => _adLoading = false);
+        return; // 광고 미로드/중도 취소 — 보상 없음
+      }
+      final reward =
+          await Di.characterRepository.claimAdReward(groupRoomId: groupId);
+      if (!mounted) return;
+      await _load(); // 코인 잔액 갱신
+      if (!mounted) return;
+      _changed = true;
+      setState(() => _adLoading = false);
+      final more = reward.dailyRemaining > 0
+          ? ' (오늘 ${reward.dailyRemaining}번 더 가능)'
+          : '';
+      showAppSnackBar(context, '+${reward.coinReward} 코인을 받았어요!$more');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _adLoading = false);
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
+  Widget _buildAdRewardButton() {
+    return GestureDetector(
+      onTap: _adLoading ? null : _watchAdForCoins,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFC24B), Color(0xFFFF8A5B)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF8A5B).withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.play_arrow_rounded,
+                  size: 22, color: Colors.white),
+            ),
+            const SizedBox(width: 11),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '광고 보고 코인 받기',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    '짧은 광고 시청하고 코인 적립',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11.5,
+                      color: Color(0xE6FFFFFF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _adLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.chevron_right_rounded,
+                    size: 22, color: Colors.white),
+          ],
+        ),
       ),
     );
   }

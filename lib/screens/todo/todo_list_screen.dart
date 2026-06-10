@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/todo/models/todo_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
 
 class TodoListScreen extends StatefulWidget {
@@ -446,6 +447,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                                   ),
                                 ),
                               const SizedBox(height: 16),
+                              const AdBanner(),
                             ],
                           ),
                         ),
