@@ -7,6 +7,7 @@ import '../../features/common/models/common_models.dart';
 import '../../features/membership/models/membership_models.dart';
 import '../../features/schedule/models/schedule_models.dart' as api;
 import '../../theme/colors.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
@@ -1641,6 +1642,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 },
               ),
             ),
+            const AdBanner(),
           ],
         ),
       ),
