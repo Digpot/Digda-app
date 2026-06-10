@@ -664,14 +664,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return (span: span, offsetFromStart: offsetFromStart);
   }
 
-  /// 멀티데이 막대의 제목 표시 폭 — 이번 주 구간(span) 전체 셀을 합친 너비.
-  /// 한 셀에 갇혀 글자가 잘리지 않도록 OverflowBox 폭으로 쓴다.
-  double _runTextWidth(DateTime day, _Schedule schedule, double cellWidth) {
-    final info = _rowSpanInfo(day, schedule);
-    final w = cellWidth * info.span - 6; // 좌우 margin/padding 보정
-    return w < cellWidth ? cellWidth : w;
-  }
-
   /// 일정 제목을 최대 [max] 자로 줄이고 넘치면 '…' 을 붙인다(멀티데이 라벨용).
   static String _clampTitle(String s, int max) {
     final runes = s.runes.toList();
@@ -836,6 +828,15 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final bool runStart = schedule.isStartDay(day) || isSunday;
     final bool runEnd = schedule.isEndDay(day) || isSaturday;
 
+    // 제목은 '구간(run) 전체 폭'에 가운데 정렬하되, 셀마다 자기 위치의 슬라이스만
+    // 클립해 그린다. 이렇게 해야 글자가 옆 칸으로 넘쳐 다음 칸 막대에 가려지지 않고,
+    // 인접 칸들의 조각이 모여 하나의 가운데 정렬된 제목으로 보인다.
+    final info = _rowSpanInfo(day, schedule); // span=구간 칸 수, offset=이 칸의 위치
+    final int n = info.span;
+    final int k = info.offsetFromStart;
+    final double alignX = n <= 1 ? 0.0 : (2 * k / (n - 1) - 1);
+    final double fullWidth = cellWidth * n;
+
     return Container(
       height: barHeight,
       margin: EdgeInsets.only(
@@ -843,7 +844,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         left: runStart ? 2 : 0,
         right: runEnd ? 2 : 0,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.horizontal(
@@ -851,31 +852,28 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
           right: runEnd ? const Radius.circular(4) : Radius.zero,
         ),
       ),
-      alignment: Alignment.centerLeft,
-      // 멀티데이 제목은 구간 시작 셀에서만, 구간 전체 폭으로 그린다(한 셀 ≈ 3자에
-      // 갇히지 않도록 OverflowBox 로 넓힘). 최대 7자까지 보여주고 넘치면 '…'.
-      // 막대 전체 구간 기준 가운데 정렬(주 뷰와 동일).
-      child: runStart
-          ? OverflowBox(
-              maxWidth: _runTextWidth(day, schedule, cellWidth),
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: _runTextWidth(day, schedule, cellWidth),
-                child: Text(
-                  _clampTitle(schedule.title, 7),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: fontSize,
-                    color: fg,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
+      child: OverflowBox(
+        maxWidth: fullWidth,
+        alignment: Alignment(alignX, 0),
+        child: SizedBox(
+          width: fullWidth,
+          child: Center(
+            child: Text(
+              _clampTitle(schedule.title, 7),
+              textAlign: TextAlign.center,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              maxLines: 1,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: fontSize,
+                color: fg,
               ),
-            )
-          : null,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1803,6 +1801,9 @@ class _DayDetailBottomSheet extends StatelessWidget {
                             _buildTimelineItem(sorted[index]),
                       ),
               ),
+              // 시트 하단 고정 배너 광고.
+              const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
+              SizedBox(height: MediaQuery.of(context).padding.bottom),
             ],
           ),
         );
