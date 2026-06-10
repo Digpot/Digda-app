@@ -38,6 +38,8 @@ dependencies:
   flutter_local_notifications: ^18.0.0
   # 광고 (배너 + 보상형) — AdMob
   google_mobile_ads: ^5.2.0
+  # iOS 앱 추적 투명성(ATT) 동의 — 개인화 광고용
+  app_tracking_transparency: ^2.0.6
 
 dev_dependencies:
   flutter_test:

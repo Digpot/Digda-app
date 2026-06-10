@@ -17,6 +17,9 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- ATT(앱 추적 투명성) 동의 팝업에 표시될 설명 문구 -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>회원님께 더 알맞은 광고를 보여드리기 위해 활동을 추적합니다. 허용하지 않아도 광고는 표시되며, 앱은 동일하게 이용할 수 있어요.</string>
 	<!--
 		AdMob 앱 ID. 현재는 구글 공식 "테스트" 앱 ID. 출시 전 AdMob 콘솔에서
 		발급한 실제 iOS 앱 ID(ca-app-pub-XXXX~YYYY) 로 교체할 것.

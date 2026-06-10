@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -22,6 +23,22 @@ class AdService {
       _initialized = true;
     } catch (e) {
       debugPrint('AdService.init failed: $e');
+    }
+  }
+
+  /// iOS ATT(앱 추적 투명성) 동의 요청. iOS 14+ 에서 아직 결정되지 않았을 때만
+  /// 실제 팝업이 뜨고, 그 외(안드로이드/이전 iOS/이미 결정)는 아무 동작도 하지 않는다.
+  /// **앱이 foreground(active) 일 때** 호출해야 팝업이 정상 노출되므로, 첫 프레임
+  /// 이후에 부른다.
+  static Future<void> requestTrackingAuthorization() async {
+    try {
+      final status =
+          await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status == TrackingStatus.notDetermined) {
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+    } catch (e) {
+      debugPrint('AdService.requestTrackingAuthorization failed: $e');
     }
   }
 
