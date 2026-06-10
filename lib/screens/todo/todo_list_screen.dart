@@ -447,11 +447,13 @@ class _TodoListScreenState extends State<TodoListScreen> {
                                   ),
                                 ),
                               const SizedBox(height: 16),
-                              const AdBanner(),
                             ],
                           ),
                         ),
                       ),
+                      // 배너 광고 — 스크롤 밖, 입력바 바로 위에 고정.
+                      // (스크롤 안에 두면 목록이 짧을 때 화면 중간에 떠 버린다)
+                      const AdBanner(padding: EdgeInsets.only(top: 8)),
                       Container(
                         padding: const EdgeInsets.only(
                             left: 20, right: 20, top: 12, bottom: 12),
