@@ -290,7 +290,41 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 7),
+                // 칭호 화면이 '프로필 편집' 안에 있어 못 찾는 일이 많아, 바로 가는
+                // 안내 칩을 위에 둔다(탭하면 칭호 수집 화면으로).
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pushNamed('/titles'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium_rounded,
+                            size: 14, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text(
+                          '칭호를 확인해보세요',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(width: 2),
+                        Icon(Icons.chevron_right_rounded,
+                            size: 14, color: AppColors.primary),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 7),
                 GestureDetector(
                   onTap: () =>
                       Navigator.of(context).pushNamed('/edit-profile'),
