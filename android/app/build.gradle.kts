@@ -21,7 +21,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.digda.app"
-    compileSdk = flutter.compileSdkVersion
+    // google_mobile_ads(AdMob)·Android 14 대응으로 compileSdk 34 이상을 보장한다.
+    compileSdk = maxOf(flutter.compileSdkVersion, 34)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -38,7 +39,8 @@ android {
         applicationId = "com.digda.app"
         // google_mobile_ads(AdMob) 5.x 는 minSdk 23 이상을 요구한다.
         minSdk = maxOf(flutter.minSdkVersion, 23)
-        targetSdk = flutter.targetSdkVersion
+        // Play 스토어 신규 제출은 targetSdk 34(Android 14) 이상을 요구한다.
+        targetSdk = maxOf(flutter.targetSdkVersion, 34)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
