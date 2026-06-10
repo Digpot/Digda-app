@@ -276,29 +276,34 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       const SizedBox(height: 24),
                       _buildSectionLabel('날짜'),
                       const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: _pickDateRange,
-                        child: Row(
-                          children: [
-                            Expanded(
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _pickDate(isStart: true),
                               child: _buildDateField('시작일', _startDate),
                             ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: Text(
-                                '~',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 16,
-                                  color: AppColors.gray400,
-                                ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              '~',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 16,
+                                color: AppColors.gray400,
                               ),
                             ),
-                            Expanded(
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _pickDate(isStart: false),
                               child: _buildDateField('종료일', _endDate),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 24),
                       Row(
@@ -635,21 +640,29 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     );
   }
 
-  Future<void> _pickDateRange() async {
-    final result = await showModalBottomSheet<DateTimeRange>(
+  /// 시작일·종료일을 각각 따로 선택한다. 종료일 선택 시에는 시작일 이전 날짜를 막고,
+  /// 시작일을 종료일보다 뒤로 고르면 종료일을 같이 끌어올려 항상 시작일 ≤ 종료일 을 유지.
+  Future<void> _pickDate({required bool isStart}) async {
+    final result = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _DateRangePickerSheet(
-        initialRange: DateTimeRange(start: _startDate, end: _endDate),
+      builder: (_) => _SingleDatePickerSheet(
+        initialDate: isStart ? _startDate : _endDate,
+        title: isStart ? '시작일 선택' : '종료일 선택',
+        minDate: isStart ? null : _startDate,
       ),
     );
-    if (result != null) {
-      setState(() {
-        _startDate = result.start;
-        _endDate = result.end;
-      });
-    }
+    if (result == null) return;
+    setState(() {
+      if (isStart) {
+        _startDate = result;
+        if (_endDate.isBefore(_startDate)) _endDate = _startDate;
+      } else {
+        _endDate = result;
+        if (_endDate.isBefore(_startDate)) _startDate = _endDate;
+      }
+    });
   }
 
   Future<void> _pickTime({required bool isStart}) async {
@@ -876,21 +889,27 @@ class _ParticipantPopupState extends State<_ParticipantPopup> {
   }
 }
 
-// ─── 날짜 범위 선택 바텀시트 ─────────────────────────────────────────────────
+// ─── 단일 날짜 선택 바텀시트 ─────────────────────────────────────────────────
+// 시작일·종료일을 각각 따로 고르기 위한 단일 선택 캘린더. [minDate] 이전 날짜는
+// 비활성(종료일 선택 시 시작일 이전을 막는 용도).
 
-class _DateRangePickerSheet extends StatefulWidget {
-  final DateTimeRange initialRange;
-  const _DateRangePickerSheet({required this.initialRange});
+class _SingleDatePickerSheet extends StatefulWidget {
+  final DateTime initialDate;
+  final String title;
+  final DateTime? minDate;
+  const _SingleDatePickerSheet({
+    required this.initialDate,
+    required this.title,
+    this.minDate,
+  });
 
   @override
-  State<_DateRangePickerSheet> createState() => _DateRangePickerSheetState();
+  State<_SingleDatePickerSheet> createState() => _SingleDatePickerSheetState();
 }
 
-class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
+class _SingleDatePickerSheetState extends State<_SingleDatePickerSheet> {
   late DateTime _display;
-  DateTime? _start;
-  DateTime? _end;
-  bool _pickingEnd = false;
+  late DateTime _selected;
 
   static DateTime _strip(DateTime d) => DateTime(d.year, d.month, d.day);
   static bool _eq(DateTime a, DateTime b) =>
@@ -899,28 +918,13 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
   @override
   void initState() {
     super.initState();
-    _start = _strip(widget.initialRange.start);
-    _end = _strip(widget.initialRange.end);
-    _display = DateTime(_start!.year, _start!.month);
+    _selected = _strip(widget.initialDate);
+    _display = DateTime(_selected.year, _selected.month);
   }
 
-  void _onTap(DateTime day) {
-    setState(() {
-      if (!_pickingEnd) {
-        // 한 번 탭 = 그날 하루(시작=종료). 바로 확인 가능, 한 번 더 누르면 기간으로 확장.
-        _start = day;
-        _end = day;
-        _pickingEnd = true;
-      } else {
-        if (day.isBefore(_start!)) {
-          _end = _start;
-          _start = day;
-        } else {
-          _end = day;
-        }
-        _pickingEnd = false;
-      }
-    });
+  bool _disabled(DateTime day) {
+    final min = widget.minDate;
+    return min != null && day.isBefore(_strip(min));
   }
 
   @override
@@ -929,7 +933,6 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
     // Sunday = 0 offset
     final startOffset = DateTime(_display.year, _display.month, 1).weekday % 7;
     final today = _strip(DateTime.now());
-    final hasRange = _start != null && _end != null && !_eq(_start!, _end!);
 
     return Container(
       decoration: const BoxDecoration(
@@ -952,7 +955,19 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // ── 타이틀 ──
+          Text(
+            widget.title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: AppColors.gray900,
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // ── 월 네비게이션 ──
           Padding(
@@ -1035,40 +1050,11 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
                 if (index < startOffset) return const SizedBox();
                 final day = DateTime(
                     _display.year, _display.month, index - startOffset + 1);
-                return _buildDayCell(day, today, hasRange);
+                return _buildDayCell(day, today);
               },
             ),
           ),
-
-          // ── 안내 문구 ──
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
-            child: Text(
-              '날짜를 누르면 하루, 한 번 더 누르면 기간이 선택돼요',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 11,
-                color: AppColors.gray400,
-              ),
-            ),
-          ),
-
-          // ── 시작/종료 칩 ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-            child: Row(
-              children: [
-                Expanded(child: _DateChip(label: '시작일', date: _start)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Icon(Icons.arrow_forward,
-                      size: 16, color: AppColors.gray300),
-                ),
-                Expanded(child: _DateChip(label: '종료일', date: _end)),
-              ],
-            ),
-          ),
+          const SizedBox(height: 14),
 
           // ── 확인 버튼 ──
           Padding(
@@ -1077,26 +1063,20 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: (_start != null && _end != null)
-                    ? () => Navigator.of(context)
-                        .pop(DateTimeRange(start: _start!, end: _end!))
-                    : null,
+                onPressed: () => Navigator.of(context).pop(_selected),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  disabledBackgroundColor: AppColors.gray100,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: Text(
+                child: const Text(
                   '확인',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
-                    color: (_start != null && _end != null)
-                        ? AppColors.white
-                        : AppColors.gray400,
+                    color: AppColors.white,
                   ),
                 ),
               ),
@@ -1107,19 +1087,17 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
     );
   }
 
-  Widget _buildDayCell(DateTime day, DateTime today, bool hasRange) {
-    final isStart = _start != null && _eq(day, _start!);
-    final isEnd = _end != null && _eq(day, _end!);
-    final isBetween = _start != null &&
-        _end != null &&
-        day.isAfter(_start!) &&
-        day.isBefore(_end!);
+  Widget _buildDayCell(DateTime day, DateTime today) {
+    final isSelected = _eq(day, _selected);
     final isToday = _eq(day, today);
+    final disabled = _disabled(day);
     final isSun = day.weekday == DateTime.sunday;
     final isSat = day.weekday == DateTime.saturday;
 
     Color textColor;
-    if (isStart || isEnd) {
+    if (disabled) {
+      textColor = AppColors.gray300;
+    } else if (isSelected) {
       textColor = AppColors.white;
     } else if (isSun) {
       textColor = AppColors.primary;
@@ -1130,78 +1108,47 @@ class _DateRangePickerSheetState extends State<_DateRangePickerSheet> {
     }
 
     return GestureDetector(
-      onTap: () => _onTap(day),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          return SizedBox(
-            height: 44,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // 범위 중간 스트립 (전체 셀)
-                if (isBetween)
-                  Positioned(
-                    top: 4, bottom: 4, left: 0, right: 0,
-                    child: Container(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                    ),
-                  ),
-                // 시작 셀 오른쪽 반 스트립 (범위 있을 때)
-                if (isStart && hasRange)
-                  Positioned(
-                    top: 4, bottom: 4,
-                    left: w / 2, right: 0,
-                    child: Container(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                    ),
-                  ),
-                // 종료 셀 왼쪽 반 스트립 (범위 있을 때)
-                if (isEnd && hasRange)
-                  Positioned(
-                    top: 4, bottom: 4,
-                    left: 0, right: w / 2,
-                    child: Container(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                    ),
-                  ),
-                // 오늘 날짜 테두리
-                if (isToday && !isStart && !isEnd)
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: AppColors.primary, width: 1.5),
-                    ),
-                  ),
-                // 선택된 날짜 원형 배경
-                if (isStart || isEnd)
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                // 날짜 텍스트
-                Text(
-                  '${day.day}',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: (isStart || isEnd || isToday)
-                        ? FontWeight.w700
-                        : FontWeight.w400,
-                    fontSize: 13,
-                    color: textColor,
-                  ),
+      onTap: disabled ? null : () => setState(() => _selected = day),
+      child: SizedBox(
+        height: 44,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // 오늘 날짜 테두리
+            if (isToday && !isSelected)
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: AppColors.primary, width: 1.5),
                 ),
-              ],
+              ),
+            // 선택된 날짜 원형 배경
+            if (isSelected)
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            // 날짜 텍스트
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: (isSelected || isToday)
+                    ? FontWeight.w700
+                    : FontWeight.w400,
+                fontSize: 13,
+                color: textColor,
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -1224,51 +1171,6 @@ class _MonthNavBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, size: 20, color: AppColors.gray700),
-      ),
-    );
-  }
-}
-
-class _DateChip extends StatelessWidget {
-  final String label;
-  final DateTime? date;
-  const _DateChip({required this.label, required this.date});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasDate = date != null;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: hasDate
-            ? AppColors.primary.withValues(alpha: 0.07)
-            : AppColors.gray50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w400,
-              fontSize: 10,
-              color: AppColors.gray400,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            hasDate ? '${date!.month}월 ${date!.day}일' : '미선택',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: hasDate ? AppColors.primary : AppColors.gray300,
-            ),
-          ),
-        ],
       ),
     );
   }

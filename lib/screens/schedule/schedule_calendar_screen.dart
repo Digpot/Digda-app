@@ -815,43 +815,94 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     // 멀티데이 — 주 고정 레인이라 같은 주 안 인접 날들은 같은 행 → 막대가 이어진다.
     // 구간(run)은 일정의 시작/끝일 또는 주 경계(일/토)에서만 끊긴다.
     // 따라서 토→일로 넘어가면 토에서 한 번 끊기고 일에서 새 구간이 시작돼 제목이
-    // 두 줄(주마다 1번)에 표시된다.
+    // 주마다 한 번씩 표시된다.
     final bool isSunday = day.weekday == DateTime.sunday;
     final bool isSaturday = day.weekday == DateTime.saturday;
     final bool runStart = schedule.isStartDay(day) || isSunday;
     final bool runEnd = schedule.isEndDay(day) || isSaturday;
 
+    // 제목은 '구간(run)의 끝 셀'에서 왼쪽으로 펼쳐 그린다.
+    //  - 월 그리드(table_calendar 의 Table)는 셀을 좌→우 순서로 칠하므로, 끝 셀이
+    //    가장 늦게 칠해진다. 끝 셀에서 왼쪽으로 넘긴 글자는 앞 셀 막대 '위'에 얹혀
+    //    구간 전체 폭만큼 안 잘리고 읽힌다. (시작 셀에서 오른쪽으로 넘기면 다음 셀
+    //    막대에 덮여 가려진다.)
+    //  - 이렇게 하면 2일짜리도 두 칸 폭으로 제목이 또렷이 나와 글자가 안 뭉갠다.
+    final info = _rowSpanInfo(day, schedule);
+    final int span = info.span;
+    // 1칸짜리 구간(예: 토요일에 시작해 첫 주가 그 하루뿐)은 글자가 거의 안 들어간다.
+    // 같은 일정에 2칸 이상 구간이 따로 있으면 거기서만 제목을 보여주고 여기선 막대만
+    // 그려, 첫 칸에 7글자가 뭉개져 안 보이던 문제를 없앤다.
+    final bool showTitle =
+        runEnd && (span >= 2 || !_hasWiderRun(schedule));
+
+    final barDecoration = BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.horizontal(
+        left: runStart ? const Radius.circular(4) : Radius.zero,
+        right: runEnd ? const Radius.circular(4) : Radius.zero,
+      ),
+    );
+    final barMargin = EdgeInsets.only(
+      top: 1,
+      left: runStart ? 2 : 0,
+      right: runEnd ? 2 : 0,
+    );
+
+    if (!showTitle) {
+      return Container(
+        height: barHeight,
+        margin: barMargin,
+        decoration: barDecoration,
+      );
+    }
+
+    // 구간 전체 너비 — 끝 셀 기준으로 왼쪽으로 오버플로해 제목을 펼친다.
+    final double totalBarWidth = cellWidth * span - 4;
     return Container(
       height: barHeight,
-      margin: EdgeInsets.only(
-        top: 1,
-        left: runStart ? 2 : 0,
-        right: runEnd ? 2 : 0,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.horizontal(
-          left: runStart ? const Radius.circular(4) : Radius.zero,
-          right: runEnd ? const Radius.circular(4) : Radius.zero,
+      margin: barMargin,
+      decoration: barDecoration,
+      child: OverflowBox(
+        maxWidth: totalBarWidth,
+        alignment: Alignment.centerRight,
+        child: SizedBox(
+          width: totalBarWidth,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                schedule.title,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: fontSize,
+                  color: fg,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ),
         ),
       ),
-      alignment: Alignment.centerLeft,
-      // 제목은 구간 시작 셀에서만 표시(셀 폭에 맞춰 줄임).
-      child: runStart
-          ? Text(
-              schedule.title,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: fontSize,
-                color: fg,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            )
-          : null,
     );
+  }
+
+  /// 멀티데이 일정이 한 주(일~토) 안에서 2칸 이상 차지하는 구간을 갖는지.
+  /// 1칸짜리 자투리 구간에 제목을 중복 표시하지 않기 위한 판단에 쓴다.
+  bool _hasWiderRun(_Schedule s) {
+    final sd = DateTime.utc(s.start.year, s.start.month, s.start.day);
+    final ed = DateTime.utc(s.end.year, s.end.month, s.end.day);
+    var weekStart = _weekSunday(sd);
+    while (!weekStart.isAfter(ed)) {
+      final weekEnd = weekStart.add(const Duration(days: 6));
+      final visStart = sd.isAfter(weekStart) ? sd : weekStart;
+      final visEnd = ed.isBefore(weekEnd) ? ed : weekEnd;
+      if (visEnd.difference(visStart).inDays + 1 >= 2) return true;
+      weekStart = weekStart.add(const Duration(days: 7));
+    }
+    return false;
   }
 
   // ─── 공통 네비게이션 ──────────────────────────────────────────────────────────

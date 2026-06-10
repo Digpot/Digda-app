@@ -695,7 +695,8 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
 
     final hasEquipped = section.items.any((it) => it.equipped);
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      // 마지막 아이템이 탭 영역 바닥에 딱 붙어 답답해 보이지 않도록 아래 여백을 넉넉히.
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 28),
       children: [
         if (hasEquipped && type != ShopItemType.skin)
           Padding(
