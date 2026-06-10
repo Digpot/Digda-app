@@ -854,6 +854,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       alignment: Alignment.centerLeft,
       // 멀티데이 제목은 구간 시작 셀에서만, 구간 전체 폭으로 그린다(한 셀 ≈ 3자에
       // 갇히지 않도록 OverflowBox 로 넓힘). 최대 7자까지 보여주고 넘치면 '…'.
+      // 막대 전체 구간 기준 가운데 정렬(주 뷰와 동일).
       child: runStart
           ? OverflowBox(
               maxWidth: _runTextWidth(day, schedule, cellWidth),
@@ -862,6 +863,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 width: _runTextWidth(day, schedule, cellWidth),
                 child: Text(
                   _clampTitle(schedule.title, 7),
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w700,
