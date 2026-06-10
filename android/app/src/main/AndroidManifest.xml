@@ -41,6 +41,13 @@
             android:name="flutterEmbedding"
             android:value="2" />
         <!--
+            AdMob 앱 ID. 현재는 구글 공식 "테스트" 앱 ID 라 실제 수익이 발생하지 않는다.
+            출시 전 AdMob 콘솔에서 발급한 실제 앱 ID(ca-app-pub-XXXX~YYYY) 로 교체할 것.
+        -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+        <!--
             네이버 로그인 SDK 자격 증명.
             문자열 리소스 참조로 두어야 일부 디바이스에서 '_' 시작 값을 null 로
             반환하는 문제를 회피할 수 있다.
