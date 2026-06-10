@@ -664,6 +664,21 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return (span: span, offsetFromStart: offsetFromStart);
   }
 
+  /// 멀티데이 막대의 제목 표시 폭 — 이번 주 구간(span) 전체 셀을 합친 너비.
+  /// 한 셀에 갇혀 글자가 잘리지 않도록 OverflowBox 폭으로 쓴다.
+  double _runTextWidth(DateTime day, _Schedule schedule, double cellWidth) {
+    final info = _rowSpanInfo(day, schedule);
+    final w = cellWidth * info.span - 6; // 좌우 margin/padding 보정
+    return w < cellWidth ? cellWidth : w;
+  }
+
+  /// 일정 제목을 최대 [max] 자로 줄이고 넘치면 '…' 을 붙인다(멀티데이 라벨용).
+  static String _clampTitle(String s, int max) {
+    final runes = s.runes.toList();
+    if (runes.length <= max) return s;
+    return '${String.fromCharCodes(runes.take(max))}…';
+  }
+
   Widget _buildEventPill(
     DateTime day,
     _Schedule schedule,
@@ -745,7 +760,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             width: totalBarWidth,
             child: Center(
               child: Text(
-                schedule.title,
+                _clampTitle(schedule.title, 7),
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w700,
@@ -837,18 +852,26 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         ),
       ),
       alignment: Alignment.centerLeft,
-      // 제목은 구간 시작 셀에서만 표시(셀 폭에 맞춰 줄임).
+      // 멀티데이 제목은 구간 시작 셀에서만, 구간 전체 폭으로 그린다(한 셀 ≈ 3자에
+      // 갇히지 않도록 OverflowBox 로 넓힘). 최대 7자까지 보여주고 넘치면 '…'.
       child: runStart
-          ? Text(
-              schedule.title,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: fontSize,
-                color: fg,
+          ? OverflowBox(
+              maxWidth: _runTextWidth(day, schedule, cellWidth),
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: _runTextWidth(day, schedule, cellWidth),
+                child: Text(
+                  _clampTitle(schedule.title, 7),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: fontSize,
+                    color: fg,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             )
           : null,
     );
@@ -1468,9 +1491,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             ),
             // 뷰 토글 (월/주/일) + 멤버 필터
             _buildViewToggle(),
-            _buildMemberFilter(),
-            // 배너 광고 — 월/주 탭·멤버필터 아래, 달력 본문 위.
+            // 배너 광고 — 월/주 탭과 멤버 필터(전체) 사이.
             const AdBanner(),
+            _buildMemberFilter(),
             // 본문 — 월/주/일 뷰 전환
             Expanded(
               child: LayoutBuilder(

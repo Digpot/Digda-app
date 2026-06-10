@@ -253,9 +253,11 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
           );
           if (hasDuplicate) {
             if (!mounted) return;
-            showErrorDialog(
+            showLimitDialog(
               context,
-              '해당 날짜에 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+              icon: Icons.event_available_rounded,
+              title: '이미 일기가 있어요',
+              message: '이 날짜엔 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
             );
             return;
           }
@@ -292,9 +294,11 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
         if (hasDuplicate) {
           if (!mounted) return;
           setState(() => _saving = false);
-          showErrorDialog(
+          showLimitDialog(
             context,
-            '해당 날짜에 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+            icon: Icons.event_available_rounded,
+            title: '이미 일기가 있어요',
+            message: '이 날짜엔 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
           );
           return;
         }
