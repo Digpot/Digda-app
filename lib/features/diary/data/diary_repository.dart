@@ -69,9 +69,17 @@ class DiaryRepository {
   }
 
   /// 시그니처 지도 — 그룹의 지역별 일기 수 집계.
-  Future<DiaryRegionMapResult> regionMap(String groupRoomId) async {
+  ///
+  /// [scope] 가 `'claim'` 이면 **현재 사용자가 그룹에 가입한 이후 작성된 일기만** 집계한다
+  /// (지역 정복 칭호 적재 판정용 — 중간 합류자가 가입 전 그룹 성과를 소급 획득하지 못하게).
+  /// 기본(null)은 그룹 전체 집계로, 지도 색칠 표시에 사용한다.
+  Future<DiaryRegionMapResult> regionMap(
+    String groupRoomId, {
+    String? scope,
+  }) async {
     final res = await _api.get<Map<String, dynamic>>(
       '/group-rooms/$groupRoomId/diaries/region-map',
+      query: scope == null ? null : {'scope': scope},
     );
     return DiaryRegionMapResult.fromJson(res.data!);
   }
