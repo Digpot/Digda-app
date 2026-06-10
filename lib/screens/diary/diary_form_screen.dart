@@ -13,6 +13,7 @@ import '../../features/place/data/kakao_place_search.dart';
 import '../../features/place/models/place_models.dart';
 import '../../features/upload/models/upload_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/diary_paper.dart';
 import '../../widgets/image_pick_helper.dart';
@@ -1411,7 +1412,9 @@ class _LocationSearchSheetState extends State<_LocationSearchSheet> {
             ),
             const SizedBox(height: 12),
             Expanded(child: _buildBody(isConfigured)),
-            SizedBox(height: 12 + mediaQuery.padding.bottom * 0.5),
+            // 시트 하단 배너 광고.
+            const AdBanner(padding: EdgeInsets.symmetric(vertical: 6)),
+            SizedBox(height: 8 + mediaQuery.padding.bottom * 0.5),
           ],
         ),
       ),

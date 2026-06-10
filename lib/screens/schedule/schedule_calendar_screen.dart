@@ -1398,7 +1398,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 ],
               ),
             ),
-            const AdBanner(),
             // 날짜 네비게이션 — 좌측 월 이동 + 우측 '오늘' 칩
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -1470,6 +1469,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             // 뷰 토글 (월/주/일) + 멤버 필터
             _buildViewToggle(),
             _buildMemberFilter(),
+            // 배너 광고 — 월/주 탭·멤버필터 아래, 달력 본문 위.
+            const AdBanner(),
             // 본문 — 월/주/일 뷰 전환
             Expanded(
               child: LayoutBuilder(

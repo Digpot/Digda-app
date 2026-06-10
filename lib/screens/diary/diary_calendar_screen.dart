@@ -149,13 +149,14 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            const AdBanner(),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildMonthNav(),
+                    // 배너 광고 — 'YYYY년 M월' 월 네비 바로 아래.
+                    const AdBanner(),
                     if (_view == _DiaryView.calendar) ...[
                       _buildStatStrip(),
                       _buildPhotoGrid(),

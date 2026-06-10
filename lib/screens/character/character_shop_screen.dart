@@ -356,7 +356,8 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
               color: AppColors.gray900,
             ),
           ),
-          centerTitle: true,
+          centerTitle: false,
+          titleSpacing: 0,
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())

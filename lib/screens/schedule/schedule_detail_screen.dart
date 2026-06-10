@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
@@ -425,6 +426,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           const SizedBox(height: 28),
           _buildComments(detail),
           const SizedBox(height: 16),
+          // 스크롤 맨 하단 배너 광고.
+          const AdBanner(),
+          const SizedBox(height: 8),
         ],
       ),
     );
