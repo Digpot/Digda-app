@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/diary/diary_window.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/map/data/region_resolver.dart';
 import '../../features/place/data/kakao_place_search.dart';
@@ -88,6 +89,23 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
       // 시간 컴포넌트 제거 — DatePicker 의 lastDate(오늘 자정)보다 크면 assertion 발생.
       _date = DateTime(initial.year, initial.month, initial.day);
       _hydrated = true;
+      // 3개월 이전 날짜로는 작성 불가 — 어떤 진입 루트(캘린더 과거일 탭 등)든 여기서 차단.
+      if (!isDiaryDateEditable(_date)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          // 폼을 먼저 닫고(이전 화면으로) 루트에 안내를 띄운다 — 순서가 반대면 pop 이
+          // 다이얼로그를 먼저 닫아버린다.
+          final rootContext = Navigator.of(context, rootNavigator: true).context;
+          Navigator.of(context).pop();
+          showLimitDialog(
+            rootContext,
+            icon: Icons.event_busy_rounded,
+            title: '작성할 수 없는 날짜예요',
+            message:
+                '일기는 오늘부터 최근 $kDiaryEditableMonths개월 이내의 날짜만\n작성할 수 있어요. 다른 날짜를 골라주세요.',
+          );
+        });
+      }
     }
     _titleController.addListener(_markDirty);
     _contentController.addListener(_markDirty);
@@ -127,6 +145,19 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
       final detail = await Di.diaryRepository.detail(groupId, diaryId);
       if (!mounted) return;
       final d = detail.diary;
+      // 3개월이 지난 일기는 수정 불가 — 화면을 먼저 닫고 루트에 안내를 띄운다
+      // (순서가 반대면 pop 이 다이얼로그를 먼저 닫아버린다).
+      if (!isDiaryDateEditable(d.date)) {
+        final rootContext = Navigator.of(context, rootNavigator: true).context;
+        Navigator.of(context).pop();
+        showLimitDialog(
+          rootContext,
+          title: '수정할 수 없는 일기예요',
+          message:
+              '작성한 지 $kDiaryEditableMonths개월이 지난 일기는\n수정하거나 삭제할 수 없어요.',
+        );
+        return;
+      }
       setState(() {
         _original = d;
         _titleController.text = d.title;
@@ -190,7 +221,8 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime(2020),
+      // 최근 3개월만 선택 가능 — 그 이전 날짜는 작성·수정 대상이 아니다.
+      firstDate: diaryEditableFrom(),
       lastDate: DateTime(now.year, now.month, now.day),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
@@ -1225,7 +1257,6 @@ class _LocationSearchSheet extends StatefulWidget {
 class _LocationSearchSheetState extends State<_LocationSearchSheet> {
   static const Color _coral = Color(0xFFFF6B6B);
   static const Color _ink = Color(0xFF191F28);
-  static const Color _sub = Color(0xFF4E5968);
   static const Color _muted = Color(0xFF8B95A1);
   static const Color _line = Color(0xFFF2F4F6);
   static const Color _chipBg = Color(0xFFF6F7F9);
@@ -1272,15 +1303,6 @@ class _LocationSearchSheetState extends State<_LocationSearchSheet> {
         _error = '검색에 실패했어요. 잠시 후 다시 시도해주세요.';
       });
     }
-  }
-
-  void _pickFreeText() {
-    final q = _queryController.text.trim();
-    if (q.isEmpty) {
-      Navigator.of(context).pop();
-      return;
-    }
-    Navigator.of(context).pop(LocationPick(name: q));
   }
 
   void _pickPlace(PlaceSummary p) {
@@ -1389,33 +1411,7 @@ class _LocationSearchSheetState extends State<_LocationSearchSheet> {
             ),
             const SizedBox(height: 12),
             Expanded(child: _buildBody(isConfigured)),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                16, 8, 16, 12 + mediaQuery.padding.bottom * 0.5,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: _pickFreeText,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFD1D6DB)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '입력한 그대로 저장',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: _sub,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            SizedBox(height: 12 + mediaQuery.padding.bottom * 0.5),
           ],
         ),
       ),
@@ -1426,8 +1422,8 @@ class _LocationSearchSheetState extends State<_LocationSearchSheet> {
     if (!isConfigured) {
       return const _SheetHint(
         icon: Icons.vpn_key_outlined,
-        title: '카카오 검색 키가 설정돼 있지 않아요',
-        message: '직접 입력 후 "입력한 그대로 저장"으로 사용해주세요.',
+        title: '장소 검색을 사용할 수 없어요',
+        message: '검색 키가 설정되면 장소를 추가할 수 있어요.',
       );
     }
     if (_busy) {
@@ -1444,7 +1440,7 @@ class _LocationSearchSheetState extends State<_LocationSearchSheet> {
       return const _SheetHint(
         icon: Icons.search_off,
         title: '검색 결과가 없어요',
-        message: '키워드를 다르게 입력하거나 직접 저장해보세요.',
+        message: '키워드를 다르게 입력해보세요.',
       );
     }
     return ListView.separated(

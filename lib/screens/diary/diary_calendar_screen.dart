@@ -7,6 +7,7 @@ import '../../features/character/widgets/mochi_character_view.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../map/korea_map_screen.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
@@ -148,6 +149,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         child: Column(
           children: [
             _buildHeader(),
+            const AdBanner(),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(

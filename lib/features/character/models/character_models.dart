@@ -566,3 +566,18 @@ class QuizAttemptResult {
     );
   }
 }
+
+/// 광고 시청 보상 결과. 적립량/오늘 남은 횟수는 서버가 결정해 내려준다.
+class AdReward {
+  const AdReward({required this.coinReward, required this.dailyRemaining});
+
+  final int coinReward;
+  final int dailyRemaining;
+
+  factory AdReward.fromJson(Map<String, dynamic> json) {
+    return AdReward(
+      coinReward: (json['coinReward'] as num? ?? 0).toInt(),
+      dailyRemaining: (json['dailyRemaining'] as num? ?? 0).toInt(),
+    );
+  }
+}

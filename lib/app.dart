@@ -3,6 +3,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
+import 'core/ads/ad_service.dart';
 import 'core/di.dart';
 import 'core/route_observer.dart';
 import 'features/title/title_catalog.dart';
@@ -28,6 +29,11 @@ class _DigdaAppState extends State<DigdaApp> {
     super.initState();
     _appLinks = AppLinks();
     _initDeepLink();
+    // iOS ATT 동의 — 앱이 화면에 뜬 뒤(active) 요청해야 팝업이 정상 노출된다.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await AdService.requestTrackingAuthorization();
+    });
     Di.authSession.addListener(_onAuthChanged);
     Di.titleRepository.newlyEarned.addListener(_onNewTitle);
     if (Di.authSession.isAuthenticated) _primeTitles();

@@ -165,11 +165,12 @@ class KoreaMapData {
     return acc;
   }
 
-  /// 경기 북부(북부청사 관할) 10개 시·군의 색칠키.
-  /// 나머지 경기 조각은 모두 남부로 본다(김포 포함).
+  /// 경기 북부 색칠키. 북부청사 관할 10개 시·군 + 김포시(편입).
+  /// 나머지 경기 조각은 모두 남부로 본다.
   static const Set<String> gyeonggiNorthKeys = {
     '고양시', '구리시', '남양주시', '동두천시', '양주시',
     '의정부시', '파주시', '포천시', '가평군', '연천군',
+    '김포시',
   };
 
   /// 탭 노출 순서(데이터에 존재하는 버킷만 노출). '전체'는 화면에서 앞에 붙인다.
@@ -252,22 +253,22 @@ class KoreaKeyMeta {
 class KoreaMapTokens {
   KoreaMapTokens._();
 
-  // 빈 지도(웜 아이보리)
+  // 빈 지도(쿨 슬레이트 — 코랄 채색이 또렷이 떠 보이도록)
   static const List<Color> topFace = [
-    Color(0xFFFDFAF4),
-    Color(0xFFF6EEE1),
-    Color(0xFFECE1CF),
+    Color(0xFFEDF1F7),
+    Color(0xFFDCE4EF),
+    Color(0xFFC7D3E3),
   ];
-  static const Color sideWall = Color(0xFFE6D8C4);
-  static const Color grooveLo = Color(0xFFCBB89B); // shadow groove
-  static const Color grooveHi = Color(0xCCFFFFFF); // highlight groove
-  static const Color ambientShadow = Color(0x61B89274);
+  static const Color sideWall = Color(0xFFB1BFD2);
+  static const Color grooveLo = Color(0xFF8D9EB8); // 또렷한 경계선(슬레이트)
+  static const Color grooveHi = Color(0x66FFFFFF); // 은은한 하이라이트
+  static const Color ambientShadow = Color(0x55708096);
   static const List<Color> stageRadial = [
-    Color(0xFFFAF5EC),
-    Color(0xFFF1EADF),
-    Color(0xFFE9E0D2),
+    Color(0xFFF1F4F9),
+    Color(0xFFE4EAF2),
+    Color(0xFFD6DEEA),
   ];
-  static const Color labelInk = Color(0xFF9C8C78);
+  static const Color labelInk = Color(0xFF7C8AA0);
 
   // 채색(코랄) — 임계 달성 시
   static const List<Color> coral = [Color(0xFFFF9A86), Color(0xFFFF6B6B)];

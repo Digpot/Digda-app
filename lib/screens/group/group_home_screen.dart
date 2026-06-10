@@ -255,9 +255,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       groups = await Di.groupRoomRepository.myList();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessageOf(e))),
-      );
+      showAppSnackBar(context, errorMessageOf(e), isError: true);
       return;
     }
     if (!mounted) return;
@@ -385,9 +383,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       code = (await Di.inviteRepository.regenerate(groupId)).code;
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessageOf(e))),
-      );
+      showAppSnackBar(context, errorMessageOf(e), isError: true);
       return;
     }
     if (!mounted) return;

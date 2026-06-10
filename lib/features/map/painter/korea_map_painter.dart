@@ -41,8 +41,8 @@ class KoreaBasePainter extends CustomPainter {
   /// 포커스 버킷의 시그니처 색 — 그 도 경계선을 이 색으로 그린다.
   final Color? focusColor;
 
-  /// 비포커스 권역을 가라앉히는 아이보리 베일.
-  final Paint _dimVeil = Paint()..color = const Color(0xCCFBF7EF);
+  /// 비포커스 권역을 가라앉히는 슬레이트 베일.
+  final Paint _dimVeil = Paint()..color = const Color(0xCCEFF2F7);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -106,18 +106,19 @@ class KoreaBasePainter extends CustomPainter {
       }
     }
 
-    // 4) Grooves — 경계선(하이라이트 + 섀도).
+    // 4) Grooves — 경계선. 은은한 하이라이트를 먼저 깔고, 또렷한 슬레이트 선을
+    //    위에 더 굵게 올려 안 채운 지역끼리도 경계가 분명히 보이게 한다.
     final grooveHi = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
+      ..strokeWidth = 0.5
       ..color = KoreaMapTokens.grooveHi;
     final grooveLo = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.6
+      ..strokeWidth = 1.0
       ..color = KoreaMapTokens.grooveLo;
     for (final r in data.regions) {
-      canvas.drawPath(r.path, grooveLo);
       canvas.drawPath(r.path, grooveHi);
+      canvas.drawPath(r.path, grooveLo);
     }
 
     // 5) 포커스 경계선 — 선택한 도(버킷)의 외곽을 시그니처 색으로(헤일로 + 실선).
@@ -303,10 +304,10 @@ class KoreaOverlayPainter extends CustomPainter {
       final double op = dimmed ? 0.34 : 1.0;
       // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
       final Color fill =
-          (onCoral ? Colors.white : const Color(0xFF453A2C))
+          (onCoral ? Colors.white : const Color(0xFF334155))
               .withValues(alpha: op);
       final Color outline =
-          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFFBF6EC))
+          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFF1F4F9))
               .withValues(alpha: op);
       final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
 

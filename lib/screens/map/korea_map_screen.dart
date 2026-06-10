@@ -126,6 +126,13 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     }
 
     // 2) 그룹 색칠 데이터는 백그라운드로 — 도착하면 색만 입힌다.
+    await _loadCounts();
+  }
+
+  /// 그룹 색칠 데이터(region-map)를 받아 지도 색을 갱신한다.
+  /// region-map 은 캐시하지 않고 매번 서버 최신을 받으므로, 일기를 삭제한 뒤
+  /// 다시 호출하면 색칠이 즉시 사라진다(지역 일기 목록에서 돌아올 때 재호출).
+  Future<void> _loadCounts() async {
     final groupId = Di.activeGroup.groupRoomId;
     if (groupId == null) return;
     setState(() => _loadingCounts = true);
@@ -180,18 +187,61 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     _partialGroups = partial;
   }
 
-  /// 정복 완료된 도(버킷)를 지역 칭호로 서버에 적재(멱등). 활성 그룹 맥락으로 기록.
+  /// 주어진 색칠 카운트로 완전 정복(모든 시·군·구 채움)된 도(버킷) 집합을 계산.
+  /// 표시용 _computeBucketFill 과 달리 임의의 카운트 맵에 대해 순수 계산만 한다.
+  Set<String> _completedBucketsFor(Map<String, int> counts) {
+    final data = _data;
+    if (data == null) return const {};
+    final completed = <String>{};
+    data.keysByFocusGroup.forEach((group, keys) {
+      if (keys.isEmpty) return;
+      var done = 0;
+      for (final k in keys) {
+        final meta = data.metaOf(k);
+        if (meta != null && meta.isColored(counts[k] ?? 0)) done++;
+      }
+      if (done == keys.length) completed.add(group);
+    });
+    return completed;
+  }
+
+  /// 정복 완료된 지역을 칭호로 서버에 적재(멱등). 활성 그룹 맥락으로 기록.
+  /// - 도(버킷) 전체 채움 → 도지사(+'광역시' 버킷 전체 → 대도시 정복자 그랜드)
+  /// - 광역시·세종 한 도시 채움(임계 10) → 그 도시 '시장'
+  ///
+  /// 판정 카운트는 지도 표시(_counts, 그룹 전체)가 아니라 **가입 이후 작성분만** 집계한
+  /// scope=claim 맵을 쓴다 — 중간 합류한 그룹원이 가입 전 그룹 성과를 소급해서 칭호로
+  /// 가져가지 못하게(서버도 동일 기준으로 한 번 더 검증).
   Future<void> _claimConqueredRegions() async {
     final groupId = Di.activeGroup.groupRoomId;
     final gid = groupId == null ? null : int.tryParse(groupId);
-    if (gid == null || _completedGroups.isEmpty) return;
+    final data = _data;
+    if (gid == null || groupId == null || data == null) return;
     try {
-      await TitleCatalog.ensureLoaded(); // 버킷→코드 매핑은 서버 카탈로그에서
+      final scoped = await Di.diaryRepository.regionMap(groupId, scope: 'claim');
+      final claimCounts = scoped.countByKey;
+      await TitleCatalog.ensureLoaded(); // 조건값→코드 매핑은 서버 카탈로그에서
+      final map = TitleCatalog.regionBucketToCode;
       final claims = <TitleClaim>[];
-      for (final bucket in _completedGroups) {
-        final code = TitleCatalog.regionBucketToCode[bucket];
-        if (code != null) claims.add(TitleClaim(code: code, groupRoomId: gid));
+      final seen = <String>{};
+      void add(String? condition) {
+        if (condition == null) return;
+        final code = map[condition];
+        if (code != null && seen.add(code)) {
+          claims.add(TitleClaim(code: code, groupRoomId: gid));
+        }
       }
+
+      // 도(권역)·대도시 그랜드 — 버킷 전체 채움(가입 이후 작성분 기준).
+      for (final bucket in _completedBucketsFor(claimCounts)) {
+        add(bucket);
+      }
+      // 광역시·세종 — 도시별 채움(임계 달성) 시 그 도시 시장 칭호.
+      data.byKey.forEach((key, _) {
+        if (data.keyMetro[key] != true) return;
+        final meta = data.metaOf(key);
+        if (meta != null && meta.isColored(claimCounts[key] ?? 0)) add(key);
+      });
       if (claims.isEmpty) return;
       await Di.titleRepository.claim(claims);
     } catch (_) {
@@ -286,14 +336,32 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       ..scale(zoom);
   }
 
+  /// 탭/패널에 보이는 권역 표시 이름. 데이터 키 '광역시' 버킷은 서울(특별시)·세종
+  /// (특별자치시)도 포함하므로 표시만 '대도시'로 바로잡는다(키는 그대로).
+  static String _groupDisplayName(String group) =>
+      group == '광역시' ? '대도시' : group;
+
+  /// '대도시' 칩에서 앞쪽에 고정할 도시 순서(서울 → 인천 → 부산).
+  static const List<String> _metroLeadOrder = ['서울', '인천', '부산'];
+
   /// 선택된 도(버킷)에 속한 색칠 키들 — 라벨 가나다순.
+  /// 단, 광역시 버킷은 서울·인천·부산을 앞에 고정하고 나머지를 가나다순으로.
   List<String> _bucketKeys(KoreaMapData data, String group) {
     final keys = data.keyFocusGroup.entries
         .where((e) => e.value == group)
         .map((e) => e.key)
         .toList();
-    keys.sort(
-        (a, b) => (data.keyLabel[a] ?? a).compareTo(data.keyLabel[b] ?? b));
+    int rank(String k) {
+      if (group != '광역시') return _metroLeadOrder.length;
+      final i = _metroLeadOrder.indexOf(data.keyLabel[k] ?? k);
+      return i == -1 ? _metroLeadOrder.length : i;
+    }
+
+    keys.sort((a, b) {
+      final ra = rank(a), rb = rank(b);
+      if (ra != rb) return ra.compareTo(rb);
+      return (data.keyLabel[a] ?? a).compareTo(data.keyLabel[b] ?? b);
+    });
     return keys;
   }
 
@@ -309,6 +377,177 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
   // 깔끔한 흰 배경 — 점토 지도가 또렷이 떠 보이도록.
   static const Color _warmBg = Color(0xFFFFFFFF);
 
+  /// 지도 채우는 법 안내 팝업 — 헤더 전구 아이콘에서 띄운다.
+  void _showMapGuide() {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 코랄 헤더 — 아이콘 + 제목
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFF8A5B), AppColors.primary],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.map_rounded,
+                        size: 30, color: AppColors.white),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    '지도 채우는 법',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '우리가 다녀온 곳을 코랄빛으로 물들여요',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 단계 안내
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+              child: Column(
+                children: [
+                  _guideStep(
+                    Icons.edit_location_alt_rounded,
+                    '장소를 남겨요',
+                    '일기를 쓸 때 장소를 함께 기록하면\n그 지역이 지도에 표시돼요.',
+                  ),
+                  _guideStep(
+                    Icons.palette_rounded,
+                    '지역이 채워져요',
+                    '시·군은 일기 1개, 광역시는 10개를\n모으면 코랄빛으로 색칠돼요.',
+                  ),
+                  _guideStep(
+                    Icons.photo_library_rounded,
+                    '기록을 다시 봐요',
+                    '채운 지역을 누르면 그곳에 남긴\n일기를 모아 볼 수 있어요.',
+                  ),
+                  _guideStep(
+                    Icons.workspace_premium_rounded,
+                    '칭호를 받아요',
+                    '한 권역을 모두 채우면 그 지역의\n특별한 칭호를 받게 돼요.',
+                    last: true,
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    '알겠어요',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _guideStep(IconData icon, String title, String body,
+      {bool last = false}) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 21, color: AppColors.primary),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -316,7 +555,32 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const BackHeader(title: '우리 발자취'),
+            BackHeader(
+              title: '우리 발자취',
+              actions: [
+                // 지도 채우는 법 안내 — 누르면 도움말 팝업.
+                GestureDetector(
+                  onTap: _showMapGuide,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // 헤더와 권역 탭이 붙어 보이지 않도록 살짝 숨 틔우기.
+            const SizedBox(height: 10),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -524,7 +788,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             ),
             const SizedBox(width: 6),
             Text(
-              g ?? '전체',
+              g == null ? '전체' : _groupDisplayName(g),
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
@@ -584,7 +848,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
               ),
               const SizedBox(width: 7),
               Text(
-                group,
+                _groupDisplayName(group),
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w800,
@@ -878,7 +1142,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              group,
+                              _groupDisplayName(group),
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w700,
@@ -916,7 +1180,10 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                       label: label,
                     ),
                   ),
-                );
+                ).then((_) {
+                  // 그 지역에서 일기를 삭제하면 색칠이 줄 수 있으니 돌아오면 지도 갱신.
+                  if (mounted) _loadCounts();
+                });
               },
               child: Container(
                 padding:

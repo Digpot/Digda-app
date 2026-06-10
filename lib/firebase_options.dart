@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '625310637326',
     projectId: 'digda-792fa',
     storageBucket: 'digda-792fa.firebasestorage.app',
-    iosBundleId: 'com.example.digdaapp',
+    iosBundleId: 'com.digda.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '625310637326',
     projectId: 'digda-792fa',
     storageBucket: 'digda-792fa.firebasestorage.app',
-    iosBundleId: 'com.example.digdaapp',
+    iosBundleId: 'com.digda.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

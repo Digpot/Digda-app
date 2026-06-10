@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/common/models/common_models.dart';
+import '../../features/diary/diary_window.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
@@ -156,10 +157,29 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   Future<void> _onEditTap() async {
     final diaryId = _diaryId;
     if (diaryId == null) return;
+    if (_isLockedByAge) {
+      _showLockedDialog();
+      return;
+    }
     await Navigator.of(context)
         .pushNamed('/edit-diary', arguments: diaryId);
     if (!mounted) return;
     _load();
+  }
+
+  /// 작성 후 3개월이 지나 수정·삭제가 잠긴 일기인지.
+  bool get _isLockedByAge {
+    final d = _detail?.diary;
+    return d != null && !isDiaryDateEditable(d.date);
+  }
+
+  void _showLockedDialog() {
+    showLimitDialog(
+      context,
+      title: '수정·삭제할 수 없어요',
+      message:
+          '작성한 지 $kDiaryEditableMonths개월이 지난 일기는\n수정하거나 삭제할 수 없어요.',
+    );
   }
 
   void _openMoreMenu() {
@@ -192,6 +212,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   void _openDeleteSheet() {
     final detail = _detail;
     if (detail == null) return;
+    if (_isLockedByAge) {
+      _showLockedDialog();
+      return;
+    }
     showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -213,37 +237,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       await Di.diaryRepository.delete(groupId, diaryId);
       if (mounted) {
         Navigator.of(context).pop();
-        _showCopiedToast('일기를 삭제했어요');
+        showAppSnackBar(context, '일기를 삭제했어요');
       }
       return true;
     } catch (e) {
       if (mounted) showErrorDialog(context, errorMessageOf(e));
       return false;
     }
-  }
-
-  void _showCopiedToast(String message) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        backgroundColor: _ink,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: AppColors.white,
-          ),
-        ),
-      ),
-    );
   }
 
   bool get _isMine {

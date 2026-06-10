@@ -11,6 +11,7 @@ import '../../features/title/models/title_models.dart';
 import '../../features/title/title_catalog.dart';
 import '../../features/title/widgets/title_badge.dart';
 import '../../theme/colors.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/back_header.dart';
 
 /// 칭호 수집·조회 화면(마이페이지). 계정 단위로 보관되어 그룹방 탈퇴와 무관하게 유지된다.
@@ -100,6 +101,8 @@ class _TitleCollectionScreenState extends State<TitleCollectionScreen> {
           _buildSummary(owned, total),
           const SizedBox(height: 8),
           for (final cat in TitleCategory.values) _buildCategory(cat),
+          const SizedBox(height: 12),
+          const AdBanner(),
         ],
       ),
     );

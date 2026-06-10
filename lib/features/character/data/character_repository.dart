@@ -73,6 +73,16 @@ class CharacterRepository {
     return MasterGameReward.fromJson(res.data!);
   }
 
+  /// 광고 시청 보상 코인 적립. 적립량/한도는 서버가 결정한다.
+  /// 하루 한도 초과 시 429 (AD_REWARD_LIMIT_EXCEEDED).
+  Future<AdReward> claimAdReward({required int groupRoomId}) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/character/ad-reward',
+      query: {'groupRoomId': groupRoomId},
+    );
+    return AdReward.fromJson(res.data!);
+  }
+
   // ─────────── 상점 (아이템 기반) ───────────
 
   /// 상점 전체 — 카테고리별 [ShopSection] 리스트 + 잔액.
