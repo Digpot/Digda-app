@@ -8,7 +8,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.example.digdaapp</string>
+			<string>com.digda.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>digda</string>
