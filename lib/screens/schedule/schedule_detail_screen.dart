@@ -221,6 +221,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               children: [
                 _buildHeader(),
                 Expanded(child: _buildBody()),
+                // 배너 광고 — 스크롤 밖, 댓글바 바로 위 고정.
+                // (스크롤 안에 두면 내용이 짧을 때 화면 중간에 떠 버린다)
+                const AdBanner(padding: EdgeInsets.only(top: 8)),
                 _buildBottomCommentBar(),
               ],
             ),
@@ -426,9 +429,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           const SizedBox(height: 28),
           _buildComments(detail),
           const SizedBox(height: 16),
-          // 스크롤 맨 하단 배너 광고.
-          const AdBanner(),
-          const SizedBox(height: 8),
         ],
       ),
     );
