@@ -180,18 +180,37 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     _partialGroups = partial;
   }
 
-  /// 정복 완료된 도(버킷)를 지역 칭호로 서버에 적재(멱등). 활성 그룹 맥락으로 기록.
+  /// 정복 완료된 지역을 칭호로 서버에 적재(멱등). 활성 그룹 맥락으로 기록.
+  /// - 도(버킷) 전체 채움 → 도지사(+'광역시' 버킷 전체 → 대도시 정복자 그랜드)
+  /// - 광역시·세종 한 도시 채움(임계 10) → 그 도시 '시장'
   Future<void> _claimConqueredRegions() async {
     final groupId = Di.activeGroup.groupRoomId;
     final gid = groupId == null ? null : int.tryParse(groupId);
-    if (gid == null || _completedGroups.isEmpty) return;
+    final data = _data;
+    if (gid == null || data == null) return;
     try {
-      await TitleCatalog.ensureLoaded(); // 버킷→코드 매핑은 서버 카탈로그에서
+      await TitleCatalog.ensureLoaded(); // 조건값→코드 매핑은 서버 카탈로그에서
+      final map = TitleCatalog.regionBucketToCode;
       final claims = <TitleClaim>[];
-      for (final bucket in _completedGroups) {
-        final code = TitleCatalog.regionBucketToCode[bucket];
-        if (code != null) claims.add(TitleClaim(code: code, groupRoomId: gid));
+      final seen = <String>{};
+      void add(String? condition) {
+        if (condition == null) return;
+        final code = map[condition];
+        if (code != null && seen.add(code)) {
+          claims.add(TitleClaim(code: code, groupRoomId: gid));
+        }
       }
+
+      // 도(권역)·대도시 그랜드 — 버킷 전체 채움.
+      for (final bucket in _completedGroups) {
+        add(bucket);
+      }
+      // 광역시·세종 — 도시별 채움(임계 달성) 시 그 도시 시장 칭호.
+      data.byKey.forEach((key, _) {
+        if (data.keyMetro[key] != true) return;
+        final meta = data.metaOf(key);
+        if (meta != null && meta.isColored(_counts[key] ?? 0)) add(key);
+      });
       if (claims.isEmpty) return;
       await Di.titleRepository.claim(claims);
     } catch (_) {

@@ -143,11 +143,21 @@ class TitleCatalog {
     return v != null ? Color(v) : const Color(0xFF999999);
   }
 
-  /// 지역(버킷)별 특색 아이콘 — 지역 정복 칭호가 전부 깃발로 똑같아 보이지 않도록.
+  /// 지역(색칠 키/버킷)별 특색 아이콘 — 지역 칭호가 전부 깃발로 똑같아 보이지 않도록.
   static const Map<String, IconData> _regionIcon = {
-    '광역시': Icons.location_city_rounded,
+    // 광역시·특별시·특별자치시 — 도시별 특색.
+    '서울': Icons.location_city_rounded,
+    '부산': Icons.sailing_rounded,
+    '대구': Icons.wb_sunny_rounded,
+    '인천': Icons.flight_rounded,
+    '광주': Icons.palette_rounded,
+    '대전': Icons.science_rounded,
+    '울산': Icons.factory_rounded,
+    '세종': Icons.account_balance_rounded,
+    '광역시': Icons.emoji_events_rounded, // 전국 대도시 석권(그랜드)
+    // 도(道).
     '경기북부': Icons.castle_rounded,
-    '경기남부': Icons.factory_rounded,
+    '경기남부': Icons.apartment_rounded,
     '강원': Icons.terrain_rounded,
     '충북': Icons.park_rounded,
     '충남': Icons.sailing_rounded,
