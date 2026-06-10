@@ -1398,6 +1398,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 ],
               ),
             ),
+            const AdBanner(),
             // 날짜 네비게이션 — 좌측 월 이동 + 우측 '오늘' 칩
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -1642,7 +1643,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 },
               ),
             ),
-            const AdBanner(),
           ],
         ),
       ),

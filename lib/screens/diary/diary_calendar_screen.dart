@@ -149,6 +149,7 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         child: Column(
           children: [
             _buildHeader(),
+            const AdBanner(),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -162,7 +163,6 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
                       _buildMapButton(),
                     ] else
                       _buildListView(),
-                    const AdBanner(),
                     const SizedBox(height: 88),
                   ],
                 ),
