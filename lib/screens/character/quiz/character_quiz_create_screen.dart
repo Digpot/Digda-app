@@ -54,11 +54,11 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
   }
 
   bool get _valid {
-    if (_question.text.trim().isEmpty || _question.text.length > 50) {
+    if (_question.text.trim().isEmpty || _question.text.length > 200) {
       return false;
     }
     for (final c in _options) {
-      if (c.text.trim().isEmpty || c.text.length > 20) return false;
+      if (c.text.trim().isEmpty || c.text.length > 100) return false;
     }
     // 이미지를 골라두고 업로드가 끝나지 않았으면 잠시 비활성.
     if (_pickedImage != null && _uploadedImageUrl == null) return false;
@@ -197,8 +197,8 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
           _BoxedField(
             controller: _question,
             hint: '예) 내가 제일 좋아하는 음식은?',
-            maxLength: 50,
-            maxLines: 2,
+            maxLength: 200,
+            maxLines: 3,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 18),
@@ -245,7 +245,7 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
                         child: _BoxedField(
                           controller: _options[i],
                           hint: '선택지 ${i + 1}',
-                          maxLength: 20,
+                          maxLength: 100,
                           maxLines: 1,
                           onChanged: (_) => setState(() {}),
                         ),

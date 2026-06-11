@@ -831,48 +831,70 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     // 제목은 '구간(run) 전체 폭'에 가운데 정렬하되, 셀마다 자기 위치의 슬라이스만
     // 클립해 그린다. 이렇게 해야 글자가 옆 칸으로 넘쳐 다음 칸 막대에 가려지지 않고,
     // 인접 칸들의 조각이 모여 하나의 가운데 정렬된 제목으로 보인다.
+    //
+    // 핵심: 슬라이스 정렬은 '셀 전체 폭(cellWidth)' 기준으로 계산한다. 막대 배경에
+    // 준 바깥 여백(둥근 모서리용 2px)을 OverflowBox 가 같이 먹으면 칸마다 기준 폭이
+    // 달라져 2일(2칸)짜리에서 가운데 글자가 어긋나 깨졌다. 그래서 배경 막대(여백·
+    // 둥근 모서리)와 제목 레이어(여백 없는 셀 전체 폭)를 Stack 으로 분리한다.
     final info = _rowSpanInfo(day, schedule); // span=구간 칸 수, offset=이 칸의 위치
     final int n = info.span;
     final int k = info.offsetFromStart;
     final double alignX = n <= 1 ? 0.0 : (2 * k / (n - 1) - 1);
     final double fullWidth = cellWidth * n;
 
-    return Container(
-      height: barHeight,
-      margin: EdgeInsets.only(
-        top: 1,
-        left: runStart ? 2 : 0,
-        right: runEnd ? 2 : 0,
-      ),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.horizontal(
-          left: runStart ? const Radius.circular(4) : Radius.zero,
-          right: runEnd ? const Radius.circular(4) : Radius.zero,
-        ),
-      ),
-      child: OverflowBox(
-        maxWidth: fullWidth,
-        alignment: Alignment(alignX, 0),
-        child: SizedBox(
-          width: fullWidth,
-          child: Center(
-            child: Text(
-              _clampTitle(schedule.title, 7),
-              textAlign: TextAlign.center,
-              softWrap: false,
-              overflow: TextOverflow.visible,
-              maxLines: 1,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: fontSize,
-                color: fg,
+    return SizedBox(
+      height: barHeight + 1,
+      child: Stack(
+        children: [
+          // 배경 막대 — 구간 바깥 가장자리만 둥글게 + 여백.
+          Container(
+            height: barHeight,
+            margin: EdgeInsets.only(
+              top: 1,
+              left: runStart ? 2 : 0,
+              right: runEnd ? 2 : 0,
+            ),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.horizontal(
+                left: runStart ? const Radius.circular(4) : Radius.zero,
+                right: runEnd ? const Radius.circular(4) : Radius.zero,
               ),
             ),
           ),
-        ),
+          // 제목 슬라이스 — 셀 전체 폭 기준이라 칸 사이 글자가 어긋나지 않는다.
+          Positioned(
+            top: 1,
+            left: 0,
+            right: 0,
+            height: barHeight,
+            child: ClipRect(
+              child: OverflowBox(
+                maxWidth: fullWidth,
+                alignment: Alignment(alignX, 0),
+                child: SizedBox(
+                  width: fullWidth,
+                  height: barHeight,
+                  child: Center(
+                    child: Text(
+                      _clampTitle(schedule.title, 7),
+                      textAlign: TextAlign.center,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: fontSize,
+                        color: fg,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
