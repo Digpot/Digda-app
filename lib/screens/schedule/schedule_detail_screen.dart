@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
@@ -220,6 +221,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               children: [
                 _buildHeader(),
                 Expanded(child: _buildBody()),
+                // 배너 광고 — 스크롤 밖, 댓글바 바로 위 고정.
+                // (스크롤 안에 두면 내용이 짧을 때 화면 중간에 떠 버린다)
+                const AdBanner(padding: EdgeInsets.only(top: 8)),
                 _buildBottomCommentBar(),
               ],
             ),

@@ -401,7 +401,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               top: 0,
               child: RepaintBoundary(
                 key: _captureKey,
-                child: _MochiCaptureCard(state: _state!),
+                child: _MochiCaptureCard(
+                  state: _state!,
+                  titleDef: TitleCatalog.defOf(_equippedTitle?.code ?? ''),
+                ),
               ),
             ),
             // 배경 + 모찌만 (글자 없음)
@@ -1254,18 +1257,22 @@ class _CharacterInfoSheet extends StatelessWidget {
 }
 
 /// 모찌 이미지 내보내기용 정적 카드. 화면 밖에서 RepaintBoundary 로 캡처된다.
-/// 흰 배경 + 꾸민 모찌(full) + 단계/레벨 라벨 + 디그팟 워터마크.
+/// 흰 배경 + 꾸민 모찌(full) + 단계/레벨 + 장착 칭호 + 디그팟 워터마크.
 class _MochiCaptureCard extends StatelessWidget {
-  const _MochiCaptureCard({required this.state});
+  const _MochiCaptureCard({required this.state, this.titleDef});
   final CharacterState state;
+
+  /// 장착 칭호(없으면 null) — 정보 카드에 함께 박제한다.
+  final TitleDef? titleDef;
 
   @override
   Widget build(BuildContext context) {
+    final def = titleDef;
     return Material(
       color: Colors.white,
       child: Container(
         width: 360,
-        height: 420,
+        height: 440,
         decoration: const BoxDecoration(color: Colors.white),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
         child: Column(
@@ -1274,9 +1281,9 @@ class _MochiCaptureCard extends StatelessWidget {
             MochiCharacterView(
               appearance: MochiAppearance.fromState(state),
               stage: state.stage,
-              size: 240,
+              size: 224,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             Text(
               state.stageDisplayName,
               style: const TextStyle(
@@ -1296,6 +1303,33 @@ class _MochiCaptureCard extends StatelessWidget {
                 color: AppColors.primary,
               ),
             ),
+            if (def != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.fromLTRB(7, 5, 14, 5),
+                decoration: BoxDecoration(
+                  color: def.accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: def.accent.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TitleBadge(def: def, earned: true, size: 26),
+                    const SizedBox(width: 8),
+                    Text(
+                      def.name,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: def.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const Spacer(),
             const Text(
               '디그팟',
@@ -1415,7 +1449,7 @@ class _DownloadSheet extends StatelessWidget {
             _DownloadOption(
               icon: Icons.badge_outlined,
               title: '정보 카드',
-              subtitle: '모찌 + 레벨 · 디그팟',
+              subtitle: '모찌 + 레벨 + 칭호',
               unlocked: level >= infoCardLevel,
               requiredLevel: infoCardLevel,
               onTap: onPickInfo,

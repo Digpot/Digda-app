@@ -52,6 +52,11 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: ShopItemType.values.length, vsync: this);
+    // 탭을 바꾸면 해당 카테고리 섹션만 다시 그린다(고정 높이 TabBarView 대신
+    // 선택 섹션을 바깥 스크롤에 인라인으로 펼쳐 아이템이 많아도 다 보이게).
+    _tab.addListener(() {
+      if (_tab.indexIsChanging && mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -357,7 +362,8 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
               color: AppColors.gray900,
             ),
           ),
-          centerTitle: true,
+          centerTitle: false,
+          titleSpacing: 0,
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -411,17 +417,9 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
                 .toList(),
           ),
           const SizedBox(height: 12),
-          // TabBarView 는 SingleChildScrollView 안에서 unbounded 가 되니
-          // 고정 높이 컨테이너로 감싼다. 가장 큰 카테고리 기준으로 넉넉히.
-          SizedBox(
-            height: 480,
-            child: TabBarView(
-              controller: _tab,
-              children: ShopItemType.values
-                  .map((type) => _buildSection(shop, type))
-                  .toList(),
-            ),
-          ),
+          // 선택된 탭의 섹션만 바깥 ListView 에 인라인으로 펼친다 — 고정 높이
+          // TabBarView + 중첩 스크롤을 없애 아이템이 많아도(4개+) 끝까지 스크롤된다.
+          _buildSection(shop, ShopItemType.values[_tab.index]),
         ],
       ),
     );
@@ -794,18 +792,16 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     );
 
     if (section.items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            '${type.displayName} 카테고리에 아이템이 아직 없어요.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              color: AppColors.gray500,
-            ),
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+        child: Text(
+          '카테고리에 아이템이 아직 없어요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+            color: AppColors.gray500,
           ),
         ),
       );

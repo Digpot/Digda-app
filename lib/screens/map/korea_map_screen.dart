@@ -126,6 +126,13 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     }
 
     // 2) 그룹 색칠 데이터는 백그라운드로 — 도착하면 색만 입힌다.
+    await _loadCounts();
+  }
+
+  /// 그룹 색칠 데이터(region-map)를 받아 지도 색을 갱신한다.
+  /// region-map 은 캐시하지 않고 매번 서버 최신을 받으므로, 일기를 삭제한 뒤
+  /// 다시 호출하면 색칠이 즉시 사라진다(지역 일기 목록에서 돌아올 때 재호출).
+  Future<void> _loadCounts() async {
     final groupId = Di.activeGroup.groupRoomId;
     if (groupId == null) return;
     setState(() => _loadingCounts = true);
@@ -180,15 +187,39 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     _partialGroups = partial;
   }
 
+  /// 주어진 색칠 카운트로 완전 정복(모든 시·군·구 채움)된 도(버킷) 집합을 계산.
+  /// 표시용 _computeBucketFill 과 달리 임의의 카운트 맵에 대해 순수 계산만 한다.
+  Set<String> _completedBucketsFor(Map<String, int> counts) {
+    final data = _data;
+    if (data == null) return const {};
+    final completed = <String>{};
+    data.keysByFocusGroup.forEach((group, keys) {
+      if (keys.isEmpty) return;
+      var done = 0;
+      for (final k in keys) {
+        final meta = data.metaOf(k);
+        if (meta != null && meta.isColored(counts[k] ?? 0)) done++;
+      }
+      if (done == keys.length) completed.add(group);
+    });
+    return completed;
+  }
+
   /// 정복 완료된 지역을 칭호로 서버에 적재(멱등). 활성 그룹 맥락으로 기록.
   /// - 도(버킷) 전체 채움 → 도지사(+'광역시' 버킷 전체 → 대도시 정복자 그랜드)
   /// - 광역시·세종 한 도시 채움(임계 10) → 그 도시 '시장'
+  ///
+  /// 판정 카운트는 지도 표시(_counts, 그룹 전체)가 아니라 **가입 이후 작성분만** 집계한
+  /// scope=claim 맵을 쓴다 — 중간 합류한 그룹원이 가입 전 그룹 성과를 소급해서 칭호로
+  /// 가져가지 못하게(서버도 동일 기준으로 한 번 더 검증).
   Future<void> _claimConqueredRegions() async {
     final groupId = Di.activeGroup.groupRoomId;
     final gid = groupId == null ? null : int.tryParse(groupId);
     final data = _data;
-    if (gid == null || data == null) return;
+    if (gid == null || groupId == null || data == null) return;
     try {
+      final scoped = await Di.diaryRepository.regionMap(groupId, scope: 'claim');
+      final claimCounts = scoped.countByKey;
       await TitleCatalog.ensureLoaded(); // 조건값→코드 매핑은 서버 카탈로그에서
       final map = TitleCatalog.regionBucketToCode;
       final claims = <TitleClaim>[];
@@ -201,15 +232,15 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
         }
       }
 
-      // 도(권역)·대도시 그랜드 — 버킷 전체 채움.
-      for (final bucket in _completedGroups) {
+      // 도(권역)·대도시 그랜드 — 버킷 전체 채움(가입 이후 작성분 기준).
+      for (final bucket in _completedBucketsFor(claimCounts)) {
         add(bucket);
       }
       // 광역시·세종 — 도시별 채움(임계 달성) 시 그 도시 시장 칭호.
       data.byKey.forEach((key, _) {
         if (data.keyMetro[key] != true) return;
         final meta = data.metaOf(key);
-        if (meta != null && meta.isColored(_counts[key] ?? 0)) add(key);
+        if (meta != null && meta.isColored(claimCounts[key] ?? 0)) add(key);
       });
       if (claims.isEmpty) return;
       await Di.titleRepository.claim(claims);
@@ -1149,7 +1180,10 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                       label: label,
                     ),
                   ),
-                );
+                ).then((_) {
+                  // 그 지역에서 일기를 삭제하면 색칠이 줄 수 있으니 돌아오면 지도 갱신.
+                  if (mounted) _loadCounts();
+                });
               },
               child: Container(
                 padding:

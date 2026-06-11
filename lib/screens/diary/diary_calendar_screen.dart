@@ -149,13 +149,14 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            const AdBanner(),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildMonthNav(),
+                    // 배너 광고 — 'YYYY년 M월' 월 네비 바로 아래.
+                    const AdBanner(),
                     if (_view == _DiaryView.calendar) ...[
                       _buildStatStrip(),
                       _buildPhotoGrid(),
@@ -1322,43 +1323,11 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   }
 
   void _showDuplicateDiaryDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          '일기가 이미 있어요',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            fontSize: 17,
-            color: AppColors.gray900,
-          ),
-        ),
-        content: const Text(
-          '해당 날짜에 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: AppColors.gray700,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              '확인',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
+    showLimitDialog(
+      context,
+      icon: Icons.event_available_rounded,
+      title: '이미 일기가 있어요',
+      message: '이 날짜엔 이미 작성된 일기가 있어요.\n하루에 한 편만 쓸 수 있어요.',
     );
   }
 }

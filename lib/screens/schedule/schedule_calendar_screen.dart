@@ -664,6 +664,13 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return (span: span, offsetFromStart: offsetFromStart);
   }
 
+  /// 일정 제목을 최대 [max] 자로 줄이고 넘치면 '…' 을 붙인다(멀티데이 라벨용).
+  static String _clampTitle(String s, int max) {
+    final runes = s.runes.toList();
+    if (runes.length <= max) return s;
+    return '${String.fromCharCodes(runes.take(max))}…';
+  }
+
   Widget _buildEventPill(
     DateTime day,
     _Schedule schedule,
@@ -745,7 +752,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             width: totalBarWidth,
             child: Center(
               child: Text(
-                schedule.title,
+                _clampTitle(schedule.title, 7),
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w700,
@@ -821,88 +828,53 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final bool runStart = schedule.isStartDay(day) || isSunday;
     final bool runEnd = schedule.isEndDay(day) || isSaturday;
 
-    // 제목은 '구간(run)의 끝 셀'에서 왼쪽으로 펼쳐 그린다.
-    //  - 월 그리드(table_calendar 의 Table)는 셀을 좌→우 순서로 칠하므로, 끝 셀이
-    //    가장 늦게 칠해진다. 끝 셀에서 왼쪽으로 넘긴 글자는 앞 셀 막대 '위'에 얹혀
-    //    구간 전체 폭만큼 안 잘리고 읽힌다. (시작 셀에서 오른쪽으로 넘기면 다음 셀
-    //    막대에 덮여 가려진다.)
-    //  - 이렇게 하면 2일짜리도 두 칸 폭으로 제목이 또렷이 나와 글자가 안 뭉갠다.
-    final info = _rowSpanInfo(day, schedule);
-    final int span = info.span;
-    // 1칸짜리 구간(예: 토요일에 시작해 첫 주가 그 하루뿐)은 글자가 거의 안 들어간다.
-    // 같은 일정에 2칸 이상 구간이 따로 있으면 거기서만 제목을 보여주고 여기선 막대만
-    // 그려, 첫 칸에 7글자가 뭉개져 안 보이던 문제를 없앤다.
-    final bool showTitle =
-        runEnd && (span >= 2 || !_hasWiderRun(schedule));
+    // 제목은 '구간(run) 전체 폭'에 가운데 정렬하되, 셀마다 자기 위치의 슬라이스만
+    // 클립해 그린다. 이렇게 해야 글자가 옆 칸으로 넘쳐 다음 칸 막대에 가려지지 않고,
+    // 인접 칸들의 조각이 모여 하나의 가운데 정렬된 제목으로 보인다.
+    final info = _rowSpanInfo(day, schedule); // span=구간 칸 수, offset=이 칸의 위치
+    final int n = info.span;
+    final int k = info.offsetFromStart;
+    final double alignX = n <= 1 ? 0.0 : (2 * k / (n - 1) - 1);
+    final double fullWidth = cellWidth * n;
 
-    final barDecoration = BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.horizontal(
-        left: runStart ? const Radius.circular(4) : Radius.zero,
-        right: runEnd ? const Radius.circular(4) : Radius.zero,
-      ),
-    );
-    final barMargin = EdgeInsets.only(
-      top: 1,
-      left: runStart ? 2 : 0,
-      right: runEnd ? 2 : 0,
-    );
-
-    if (!showTitle) {
-      return Container(
-        height: barHeight,
-        margin: barMargin,
-        decoration: barDecoration,
-      );
-    }
-
-    // 구간 전체 너비 — 끝 셀 기준으로 왼쪽으로 오버플로해 제목을 펼친다.
-    final double totalBarWidth = cellWidth * span - 4;
     return Container(
       height: barHeight,
-      margin: barMargin,
-      decoration: barDecoration,
+      margin: EdgeInsets.only(
+        top: 1,
+        left: runStart ? 2 : 0,
+        right: runEnd ? 2 : 0,
+      ),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.horizontal(
+          left: runStart ? const Radius.circular(4) : Radius.zero,
+          right: runEnd ? const Radius.circular(4) : Radius.zero,
+        ),
+      ),
       child: OverflowBox(
-        maxWidth: totalBarWidth,
-        alignment: Alignment.centerRight,
+        maxWidth: fullWidth,
+        alignment: Alignment(alignX, 0),
         child: SizedBox(
-          width: totalBarWidth,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                schedule.title,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: fontSize,
-                  color: fg,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+          width: fullWidth,
+          child: Center(
+            child: Text(
+              _clampTitle(schedule.title, 7),
+              textAlign: TextAlign.center,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              maxLines: 1,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: fontSize,
+                color: fg,
               ),
             ),
           ),
         ),
       ),
     );
-  }
-
-  /// 멀티데이 일정이 한 주(일~토) 안에서 2칸 이상 차지하는 구간을 갖는지.
-  /// 1칸짜리 자투리 구간에 제목을 중복 표시하지 않기 위한 판단에 쓴다.
-  bool _hasWiderRun(_Schedule s) {
-    final sd = DateTime.utc(s.start.year, s.start.month, s.start.day);
-    final ed = DateTime.utc(s.end.year, s.end.month, s.end.day);
-    var weekStart = _weekSunday(sd);
-    while (!weekStart.isAfter(ed)) {
-      final weekEnd = weekStart.add(const Duration(days: 6));
-      final visStart = sd.isAfter(weekStart) ? sd : weekStart;
-      final visEnd = ed.isBefore(weekEnd) ? ed : weekEnd;
-      if (visEnd.difference(visStart).inDays + 1 >= 2) return true;
-      weekStart = weekStart.add(const Duration(days: 7));
-    }
-    return false;
   }
 
   // ─── 공통 네비게이션 ──────────────────────────────────────────────────────────
@@ -1449,7 +1421,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                 ],
               ),
             ),
-            const AdBanner(),
             // 날짜 네비게이션 — 좌측 월 이동 + 우측 '오늘' 칩
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -1520,6 +1491,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             ),
             // 뷰 토글 (월/주/일) + 멤버 필터
             _buildViewToggle(),
+            // 배너 광고 — 월/주 탭과 멤버 필터(전체) 사이.
+            const AdBanner(),
             _buildMemberFilter(),
             // 본문 — 월/주/일 뷰 전환
             Expanded(
@@ -1828,6 +1801,9 @@ class _DayDetailBottomSheet extends StatelessWidget {
                             _buildTimelineItem(sorted[index]),
                       ),
               ),
+              // 시트 하단 고정 배너 광고.
+              const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
+              SizedBox(height: MediaQuery.of(context).padding.bottom),
             ],
           ),
         );
