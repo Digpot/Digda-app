@@ -266,19 +266,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                     ],
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: imageUrl != null && imageUrl.isNotEmpty
-                      ? Image.network(
-                          imageUrl,
-                          width: 64,
-                          height: 64,
-                          cacheWidth: 128,
-                          cacheHeight: 128,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _avatarFallback(initial),
-                        )
-                      : _avatarFallback(initial),
+                  // ClipOval 로 명시적 원형 클립 — Container 의 BoxShape.circle
+                  // 클립이 일부 환경에서 팔각형으로 렌더되는 현상을 피한다.
+                  child: ClipOval(
+                    child: imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            width: 64,
+                            height: 64,
+                            cacheWidth: 128,
+                            cacheHeight: 128,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _avatarFallback(initial),
+                          )
+                        : _avatarFallback(initial),
+                  ),
                 ),
                 Positioned(
                   right: 0,
