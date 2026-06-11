@@ -384,14 +384,23 @@ class ShopSection {
 }
 
 class CharacterShop {
-  CharacterShop({required this.coin, required this.sections});
+  CharacterShop({
+    required this.coin,
+    required this.sections,
+    this.adRewardRemaining,
+  });
 
   final int coin;
   final List<ShopSection> sections;
 
+  /// 오늘 광고 보상으로 더 받을 수 있는 남은 횟수. null 이면 서버가 안 내려준 것(=알 수 없음,
+  /// 버튼은 활성 유지). 0 이면 한도 소진으로 버튼 비활성.
+  final int? adRewardRemaining;
+
   factory CharacterShop.fromJson(Map<String, dynamic> json) {
     return CharacterShop(
       coin: (json['coin'] as num? ?? 0).toInt(),
+      adRewardRemaining: (json['adRewardRemaining'] as num?)?.toInt(),
       sections: ((json['sections'] as List?) ?? const [])
           .map((e) => ShopSection.fromJson((e as Map).cast<String, dynamic>()))
           .toList(),

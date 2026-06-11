@@ -149,28 +149,52 @@ class _GroupListScreenState extends State<GroupListScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 6),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '내 그룹방',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 20,
-                      height: 1.3,
-                      color: AppColors.gray900,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          '내 그룹방',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 24,
+                            height: 1.25,
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          '함께 기록하는 우리 공간',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  const NotificationBellIcon(),
+                  const SizedBox(height: 4),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: NotificationBellIcon(),
+                  ),
                   const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pushNamed('/my-page'),
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      size: 22,
-                      color: AppColors.gray700,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pushNamed('/my-page'),
+                      child: const Icon(
+                        Icons.settings_outlined,
+                        size: 22,
+                        color: AppColors.gray700,
+                      ),
                     ),
                   ),
                 ],
@@ -254,29 +278,42 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                     ),
                                   );
                                 }),
-                              const SizedBox(height: 8),
+                              SizedBox(height: groups.isEmpty ? 8 : 4),
                               GestureDetector(
                                 onTap: () async {
                                   await Navigator.of(context)
                                       .pushNamed('/create-diary');
                                   _refresh();
                                 },
-                                child: const Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.06),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.30),
+                                      width: 1.4,
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
-                                        Icons.add_circle_outline,
-                                        size: 18,
+                                        Icons.add_rounded,
+                                        size: 20,
                                         color: AppColors.primary,
                                       ),
-                                      SizedBox(width: 6),
+                                      SizedBox(width: 7),
                                       Text(
                                         '새 그룹방 추가',
                                         style: TextStyle(
                                           fontFamily: 'Inter',
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
                                           color: AppColors.primary,
                                         ),
                                       ),
@@ -321,31 +358,42 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 80),
+      padding: const EdgeInsets.fromLTRB(0, 64, 0, 24),
       child: Column(
         children: [
-          Icon(
-            Icons.note_alt_outlined,
-            size: 56,
-            color: AppColors.gray300,
+          Container(
+            width: 96,
+            height: 96,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_stories_rounded,
+              size: 44,
+              color: AppColors.primary,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           const Text(
             '아직 그룹방이 없어요',
             style: TextStyle(
               fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: AppColors.gray700,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: AppColors.gray800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           const Text(
-            '새 그룹방을 만들거나 초대 코드로 참여해보세요',
+            '새 그룹방을 만들거나\n초대 코드로 참여해보세요',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
               fontSize: 13,
+              height: 1.5,
               color: AppColors.gray400,
             ),
           ),
