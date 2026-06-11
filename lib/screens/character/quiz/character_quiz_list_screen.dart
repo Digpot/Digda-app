@@ -565,30 +565,9 @@ class _QuizCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: List.generate(quiz.options.length, (i) {
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.gray200),
-                ),
-                child: Text(
-                  '${i + 1}. ${quiz.options[i]}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12,
-                    color: AppColors.gray700,
-                  ),
-                ),
-              );
-            }),
-          ),
+          // 선택지는 항상 한 줄에 2개씩(2×2) 배치한다. Wrap 은 너비에 따라
+          // 3+1 처럼 들쭉날쭉해져 균형이 안 맞아 고정 2열 그리드로 둔다.
+          _OptionGrid(options: quiz.options),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
@@ -615,6 +594,55 @@ class _QuizCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// 퀴즈 선택지 2×2 그리드 — 한 줄에 2개씩, 셀 폭은 동일하게 나눠 갖는다.
+/// 텍스트가 길면 셀 안에서 말줄임(…)으로 처리해 줄바꿈 없이 균형을 유지.
+class _OptionGrid extends StatelessWidget {
+  const _OptionGrid({required this.options});
+  final List<String> options;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget cell(int i) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.gray200),
+        ),
+        child: Text(
+          '${i + 1}. ${options[i]}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 12,
+            color: AppColors.gray700,
+          ),
+        ),
+      );
+    }
+
+    final rows = <Widget>[];
+    for (int i = 0; i < options.length; i += 2) {
+      final hasRight = i + 1 < options.length;
+      rows.add(Padding(
+        padding: EdgeInsets.only(bottom: i + 2 < options.length ? 6 : 0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: cell(i)),
+            const SizedBox(width: 6),
+            hasRight ? Expanded(child: cell(i + 1)) : const Expanded(child: SizedBox()),
+          ],
+        ),
+      ));
+    }
+    return Column(children: rows);
   }
 }
 

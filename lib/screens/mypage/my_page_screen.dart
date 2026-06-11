@@ -102,86 +102,92 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildProfileSection(context, profile),
+                    _buildProfileCard(context, profile),
                     const SizedBox(height: 24),
                     _buildSectionLabel('그룹방 관리'),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.menu_outlined,
-                      label: '그룹방 목록 보기',
-                      onTap: () =>
-                          Navigator.of(context).pushNamed('/group-list'),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.keyboard_outlined,
-                      label: '초대 코드 입력',
-                      onTap: () => _showCodeInputSheet(context),
-                    ),
-                    const SizedBox(height: 16),
+                    _buildMenuGroup([
+                      _menuRow(
+                        icon: Icons.groups_rounded,
+                        iconColor: AppColors.primary,
+                        label: '그룹방 목록 보기',
+                        onTap: () =>
+                            Navigator.of(context).pushNamed('/group-list'),
+                      ),
+                      _menuRow(
+                        icon: Icons.vpn_key_rounded,
+                        iconColor: AppColors.blue,
+                        label: '초대 코드 입력',
+                        onTap: () => _showCodeInputSheet(context),
+                      ),
+                    ]),
+                    const SizedBox(height: 20),
                     _buildSectionLabel('설정'),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.notifications_outlined,
-                      label: '알림 설정',
-                      onTap: () => Navigator.of(context)
-                          .pushNamed('/notification-settings'),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.lock_outline,
-                      label: '개인정보 관리',
-                      onTap: () => Navigator.of(context)
-                          .pushNamed('/privacy-settings'),
-                    ),
-                    const SizedBox(height: 16),
+                    _buildMenuGroup([
+                      _menuRow(
+                        icon: Icons.notifications_rounded,
+                        iconColor: const Color(0xFFFBBF24),
+                        label: '알림 설정',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed('/notification-settings'),
+                      ),
+                      _menuRow(
+                        icon: Icons.lock_rounded,
+                        iconColor: AppColors.green,
+                        label: '개인정보 관리',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed('/privacy-settings'),
+                      ),
+                    ]),
+                    const SizedBox(height: 20),
                     _buildSectionLabel('기타'),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.menu_book_outlined,
-                      label: '앱 사용 가이드',
-                      onTap: () => Navigator.of(context)
-                          .pushNamed('/app-guide', arguments: true),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.description_outlined,
-                      label: '이용약관',
-                      onTap: () => Navigator.of(context)
-                          .pushNamed('/terms-detail', arguments: 'terms'),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.shield_outlined,
-                      label: '개인정보처리방침',
-                      onTap: () => _openPrivacyPolicy(context),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.info_outline,
-                      label: '앱 정보',
-                      trailing: const Text(
-                        'v1.0.0',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 14,
-                          color: AppColors.gray400,
+                    _buildMenuGroup([
+                      _menuRow(
+                        icon: Icons.menu_book_rounded,
+                        iconColor: AppColors.purple,
+                        label: '앱 사용 가이드',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed('/app-guide', arguments: true),
+                      ),
+                      _menuRow(
+                        icon: Icons.description_rounded,
+                        iconColor: AppColors.gray500,
+                        label: '이용약관',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed('/terms-detail', arguments: 'terms'),
+                      ),
+                      _menuRow(
+                        icon: Icons.shield_rounded,
+                        iconColor: AppColors.gray500,
+                        label: '개인정보처리방침',
+                        onTap: () => _openPrivacyPolicy(context),
+                      ),
+                      _menuRow(
+                        icon: Icons.info_rounded,
+                        iconColor: AppColors.gray400,
+                        label: '앱 정보',
+                        onTap: () {},
+                        trailing: const Text(
+                          'v1.0.0',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 13,
+                            color: AppColors.gray400,
+                          ),
                         ),
                       ),
-                      onTap: () {},
-                    ),
-                    if (_appConfig.showFeedback)
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.feedback_outlined,
-                        label: '피드백 받기',
-                        onTap: () => _openFeedback(context),
-                      ),
-                    const SizedBox(height: 40),
+                      if (_appConfig.showFeedback)
+                        _menuRow(
+                          icon: Icons.favorite_rounded,
+                          iconColor: AppColors.primary,
+                          label: '피드백 받기',
+                          onTap: () => _openFeedback(context),
+                        ),
+                    ]),
                   ],
                 ),
               ),
@@ -223,12 +229,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  Widget _buildProfileSection(BuildContext context, UserProfile? profile) {
+  Widget _buildProfileCard(BuildContext context, UserProfile? profile) {
     final name = profile?.name ?? '';
     final imageUrl = profile?.profileImage;
     final initial = name.isNotEmpty ? name[0] : '';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF1ED), Color(0xFFFDF5FB)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.gray100),
+      ),
       child: Row(
         children: [
           GestureDetector(
@@ -239,8 +255,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
+                    color: AppColors.white,
                     shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.gray900.withValues(alpha: 0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: imageUrl != null && imageUrl.isNotEmpty
@@ -248,6 +272,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           imageUrl,
                           width: 64,
                           height: 64,
+                          cacheWidth: 128,
+                          cacheHeight: 128,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
                               _avatarFallback(initial),
@@ -379,54 +405,90 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Widget _buildSectionLabel(String label) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
       child: Text(
         label,
         style: const TextStyle(
           fontFamily: 'Inter',
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w700,
           fontSize: 13,
-          color: AppColors.gray400,
+          color: AppColors.gray500,
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context, {
+  /// 한 섹션의 메뉴 행들을 하나의 카드로 묶고 행 사이에 얇은 구분선을 넣는다.
+  Widget _buildMenuGroup(List<Widget> rows) {
+    final children = <Widget>[];
+    for (int i = 0; i < rows.length; i++) {
+      children.add(rows[i]);
+      if (i != rows.length - 1) {
+        children.add(const Divider(
+          height: 1,
+          thickness: 1,
+          indent: 62,
+          color: AppColors.gray50,
+        ));
+      }
+    }
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  /// 카드 안의 메뉴 한 줄 — 소프트 컬러 아이콘 칩 + 라벨 + 우측(셰브론/커스텀).
+  Widget _menuRow({
     required IconData icon,
+    required Color iconColor,
     required String label,
     required VoidCallback onTap,
     Widget? trailing,
-    Color? labelColor,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        color: AppColors.white,
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: labelColor ?? AppColors.gray700),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
-                  fontSize: 15,
-                  color: labelColor ?? AppColors.gray900,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 19, color: iconColor),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: AppColors.gray900,
+                  ),
                 ),
               ),
-            ),
-            trailing ??
-                const Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: AppColors.gray400,
-                ),
-          ],
+              trailing ??
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: AppColors.gray300,
+                  ),
+            ],
+          ),
         ),
       ),
     );

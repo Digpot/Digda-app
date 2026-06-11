@@ -822,7 +822,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     // 멀티데이 — 주 고정 레인이라 같은 주 안 인접 날들은 같은 행 → 막대가 이어진다.
     // 구간(run)은 일정의 시작/끝일 또는 주 경계(일/토)에서만 끊긴다.
     // 따라서 토→일로 넘어가면 토에서 한 번 끊기고 일에서 새 구간이 시작돼 제목이
-    // 두 줄(주마다 1번)에 표시된다.
+    // 주마다 한 번씩 표시된다.
     final bool isSunday = day.weekday == DateTime.sunday;
     final bool isSaturday = day.weekday == DateTime.saturday;
     final bool runStart = schedule.isStartDay(day) || isSunday;

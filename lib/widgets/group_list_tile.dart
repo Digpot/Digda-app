@@ -48,8 +48,15 @@ class GroupListTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.gray100, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.gray900.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -63,6 +70,9 @@ class GroupListTile extends StatelessWidget {
                       key: ValueKey(thumbnailImageUrl),
                       width: 56,
                       height: 56,
+                      // 56px 표시인데 원본(수 MB)을 그대로 디코드하지 않도록 2x 로 캡.
+                      cacheWidth: 112,
+                      cacheHeight: 112,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const GroupDefaultAvatar(
                         size: 56,

@@ -26,14 +26,14 @@ class TermsAgreementScreen extends StatefulWidget {
 class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
   bool _checkAll = false;
   bool _submitting = false;
-  List<bool> _checks = [false, false, false, false, false];
+  List<bool> _checks = [false, false, false, false];
 
-  bool get _allRequiredChecked => _checks[0] && _checks[1] && _checks[2];
+  bool get _allRequiredChecked => _checks[0] && _checks[1];
 
   void _toggleAll(bool? value) {
     setState(() {
       _checkAll = value ?? false;
-      _checks = List.filled(5, _checkAll);
+      _checks = List.filled(_items.length, _checkAll);
     });
   }
 
@@ -51,9 +51,10 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
       await Di.authSession.agreeTerms(TermsAgreement(
         termsOfService: _checks[0],
         privacyPolicy: _checks[1],
-        ageConfirmation: _checks[2],
-        marketingConsent: _checks[3],
-        pushConsent: _checks[4],
+        // 만 14세 확인 항목은 제거됨 — 서버 NOT NULL 컬럼 호환을 위해 true 전송.
+        ageConfirmation: true,
+        marketingConsent: _checks[2],
+        pushConsent: _checks[3],
       ));
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/app-guide');
@@ -83,12 +84,6 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
       description: '수집: 이름·이메일·프로필 사진 / 목적: 회원 식별·서비스 제공 / 보유: 탈퇴 시까지',
       isRequired: true,
       detailType: 'privacy',
-    ),
-    _ConsentItem(
-      label: '만 14세 이상입니다',
-      description: '만 14세 미만은 이용이 제한됩니다',
-      isRequired: true,
-      detailType: null,
     ),
     _ConsentItem(
       label: '마케팅 정보 수신 동의',
@@ -145,7 +140,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                       const SizedBox(height: 16),
                       for (int i = 0; i < _items.length; i++) ...[
                         _buildCheckItem(i, _items[i]),
-                        if (i == 2)
+                        if (i == 1)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Container(

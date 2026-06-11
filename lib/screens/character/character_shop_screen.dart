@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/ads/ad_service.dart';
 import '../../core/di.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/error_message.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
@@ -429,6 +430,12 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     if (_adLoading) return;
     final groupId = _activeGroupId;
     if (groupId == null) return;
+    // 하루 한도를 이미 채웠으면 광고를 띄우지 않고 안내만(서버도 막지만 UX 선제 차단).
+    final remaining = _shop?.adRewardRemaining;
+    if (remaining != null && remaining <= 0) {
+      _showAdLimitDialog();
+      return;
+    }
     setState(() => _adLoading = true);
     try {
       final watched = await AdService.showRewarded();
@@ -450,29 +457,131 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _adLoading = false);
+      // 하루 한도 초과(429)는 못생긴 오류창 대신 친근한 안내 팝업으로.
+      if (e is ApiException && e.code == 'AD_REWARD_LIMIT_EXCEEDED') {
+        await _load(); // 남은 횟수 0 으로 동기화 → 버튼도 비활성
+        if (!mounted) return;
+        _showAdLimitDialog();
+        return;
+      }
       showErrorDialog(context, errorMessageOf(e));
     }
   }
 
+  /// 하루 광고 보상 한도 소진 안내 — 디그팟 톤의 카드형 팝업(원형 그라데이션 아이콘).
+  void _showAdLimitDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFC24B), Color(0xFFFF8A5B)],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.bedtime_rounded,
+                    size: 32, color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '오늘은 여기까지예요',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: AppColors.gray900,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '광고 보상은 하루 5번까지 받을 수 있어요.\n내일 다시 코인을 모아보세요 🪙',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: AppColors.gray700,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    '확인',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAdRewardButton() {
+    final remaining = _shop?.adRewardRemaining;
+    final soldOut = remaining != null && remaining <= 0;
+
+    final String subtitle = soldOut
+        ? '내일 다시 받을 수 있어요'
+        : (remaining != null
+            ? '오늘 $remaining번 더 받을 수 있어요'
+            : '짧은 광고 시청하고 코인 적립');
+
     return GestureDetector(
-      onTap: _adLoading ? null : _watchAdForCoins,
+      onTap: (_adLoading || soldOut) ? null : _watchAdForCoins,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFFC24B), Color(0xFFFF8A5B)],
+            colors: soldOut
+                ? const [Color(0xFFCBD2DA), Color(0xFFAEB6C0)]
+                : const [Color(0xFFFFC24B), Color(0xFFFF8A5B)],
           ),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF8A5B).withValues(alpha: 0.28),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: soldOut
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFFFF8A5B).withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Row(
           children: [
@@ -484,27 +593,30 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
                 color: Colors.white.withValues(alpha: 0.22),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.play_arrow_rounded,
-                  size: 22, color: Colors.white),
+              child: Icon(
+                soldOut ? Icons.check_rounded : Icons.play_arrow_rounded,
+                size: 22,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(width: 11),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '광고 보고 코인 받기',
-                    style: TextStyle(
+                    soldOut ? '오늘 광고 보상을 다 받았어요' : '광고 보고 코인 받기',
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w800,
                       fontSize: 14.5,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    '짧은 광고 시청하고 코인 적립',
-                    style: TextStyle(
+                    subtitle,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w500,
                       fontSize: 11.5,
@@ -514,15 +626,21 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
                 ],
               ),
             ),
-            _adLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.chevron_right_rounded,
-                    size: 22, color: Colors.white),
+            if (_adLoading)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            else
+              Icon(
+                soldOut
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
+                size: 22,
+                color: Colors.white,
+              ),
           ],
         ),
       ),
@@ -690,8 +808,9 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     }
 
     final hasEquipped = section.items.any((it) => it.equipped);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
+      // 마지막 아이템이 탭 영역 바닥에 딱 붙어 답답해 보이지 않도록 아래 여백을 넉넉히.
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 28),
       children: [
         if (hasEquipped && type != ShopItemType.skin)
           Padding(
