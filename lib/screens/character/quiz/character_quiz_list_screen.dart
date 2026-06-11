@@ -605,7 +605,9 @@ class _OptionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 인덱스가 범위를 벗어나면(홀수 개) 빈 칸으로 자리만 채워 2열 균형을 유지.
     Widget cell(int i) {
+      if (i >= options.length) return const SizedBox.shrink();
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -627,22 +629,24 @@ class _OptionGrid extends StatelessWidget {
       );
     }
 
+    // 한 줄에 2개씩. Row 에 CrossAxisAlignment.stretch 를 주면 높이 무제약인
+    // ListView 안에서 세로 제약이 깨져 둘째 줄이 사라지므로 쓰지 않는다.
     final rows = <Widget>[];
     for (int i = 0; i < options.length; i += 2) {
-      final hasRight = i + 1 < options.length;
-      rows.add(Padding(
-        padding: EdgeInsets.only(bottom: i + 2 < options.length ? 6 : 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: cell(i)),
-            const SizedBox(width: 6),
-            hasRight ? Expanded(child: cell(i + 1)) : const Expanded(child: SizedBox()),
-          ],
-        ),
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: 6));
+      rows.add(Row(
+        children: [
+          Expanded(child: cell(i)),
+          const SizedBox(width: 6),
+          Expanded(child: cell(i + 1)),
+        ],
       ));
     }
-    return Column(children: rows);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
   }
 }
 
