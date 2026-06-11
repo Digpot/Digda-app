@@ -808,9 +808,10 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     }
 
     final hasEquipped = section.items.any((it) => it.equipped);
-    return ListView(
-      // 마지막 아이템이 탭 영역 바닥에 딱 붙어 답답해 보이지 않도록 아래 여백을 넉넉히.
-      padding: const EdgeInsets.fromLTRB(0, 4, 0, 28),
+    // 바깥 ListView 의 자식으로 인라인되므로 자체 스크롤(ListView) 을 두면 중첩
+    // 스크롤로 화면이 깨진다. 높이를 콘텐츠에 맞추는 Column 으로 펼친다.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasEquipped && type != ShopItemType.skin)
           Padding(
