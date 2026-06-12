@@ -42,10 +42,6 @@ class MapRegion {
   final Offset labelCenter;
 }
 
-/// 남한 시군구 path 를 아래로 내려 위쪽에 북한 밴드 공간을 확보하는 높이(viewBox 단위).
-/// 북한은 색칠 대상이 아닌 "업데이트 예정" 장식 레이어라 이 밴드 안에만 그린다.
-const double kNorthKoreaBand = 520;
-
 /// 북한 "업데이트 예정" 레이어 — 색칠/진행률/칭호와 무관한 순수 장식.
 /// 실루엣(outline) + 시·군 느낌의 분할선(dividers)을 남한과 같은 점토 톤으로 그린다.
 class NorthKoreaLayer {

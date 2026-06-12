@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_drawing/path_drawing.dart';
 
 import 'korea_map_models.dart';
+import 'north_korea_geometry.dart';
 
 /// `assets/map/korea_sigungu.json` 을 한 번 로드/파싱해 [KoreaMapData] 로 캐시한다.
 ///
@@ -53,63 +54,21 @@ class KoreaMapLoader {
     );
   }
 
-  /// 북한 "업데이트 예정" 장식 레이어(하드코딩).
+  /// 북한 "업데이트 예정" 장식 레이어.
   ///
-  /// 행정 경계 데이터가 없어 docs/north_korea.png 를 참고해 실루엣과 시·군 느낌의
-  /// 분할선을 손으로 근사했다(정밀 좌표 아님). 색칠/칭호와 무관한 장식이라 근사로 충분.
-  /// 좌표계: 남한과 같은 x[0..W], 위쪽 밴드 y[0..kNorthKoreaBand](아래=DMZ 접합).
+  /// 좌표는 tool/mapgen/nk_gen.mjs 가 남한 지도와 **동일한 투영**으로 실제
+  /// 경위도(압록강·두만강 국경, 동·서해안)를 베이크한 생성 코드
+  /// (north_korea_geometry.dart). 남쪽 변은 남한 데이터의 실제 북쪽 경계를
+  /// 추출해 그 밑으로 파묻어 두므로 남한 위에 빈틈없이 붙는다.
   static NorthKoreaLayer _buildNorthKorea() {
-    // 외곽 실루엣 — 북서(신의주)→북부 국경→북동(라선)→동해안 남하→DMZ→서해안.
-    const outlinePts = <Offset>[
-      Offset(150, 150), Offset(225, 120), Offset(300, 95), Offset(370, 78),
-      Offset(430, 60), Offset(495, 40), Offset(560, 60), Offset(595, 100),
-      Offset(560, 150), Offset(515, 215), Offset(470, 285), Offset(430, 350),
-      Offset(395, 410), Offset(355, 470), Offset(310, 500), Offset(270, 492),
-      Offset(255, 445), Offset(205, 458), Offset(180, 410), Offset(220, 372),
-      Offset(165, 335), Offset(205, 295), Offset(150, 255), Offset(190, 210),
-      Offset(140, 175),
-    ];
-
-    // 시·군 느낌의 분할선들 — 실루엣에 클립해 갈라보이게.
-    const dividerPts = <List<Offset>>[
-      [Offset(120, 150), Offset(260, 128), Offset(400, 108), Offset(560, 95)],
-      [Offset(130, 225), Offset(280, 205), Offset(430, 190), Offset(560, 170)],
-      [Offset(150, 300), Offset(300, 288), Offset(430, 275), Offset(540, 255)],
-      [Offset(175, 375), Offset(300, 378), Offset(410, 368)],
-      [Offset(370, 75), Offset(360, 180), Offset(370, 300), Offset(380, 430)],
-      [Offset(235, 130), Offset(245, 255), Offset(265, 400)],
-      [Offset(500, 90), Offset(475, 200), Offset(450, 330)],
-      [Offset(180, 190), Offset(300, 170)],
-      [Offset(420, 150), Offset(540, 130)],
-      [Offset(300, 250), Offset(440, 235)],
-      [Offset(250, 330), Offset(380, 320)],
-      [Offset(330, 400), Offset(430, 390)],
-      [Offset(210, 420), Offset(300, 470)],
-      [Offset(150, 260), Offset(230, 250)],
-    ];
-
     return NorthKoreaLayer(
-      outline: _smoothClosed(outlinePts),
-      dividers: [for (final line in dividerPts) _polyline(line)],
-      labelCenter: const Offset(360, 250),
+      outline: _closedPoly(kNkOutline),
+      dividers: [for (final line in kNkDividers) _polyline(line)],
+      labelCenter: kNkLabelCenter,
     );
   }
 
-  /// 점들을 중점 경유 2차 베지어로 이어 매끄러운 닫힌 path(점토 실루엣) 생성.
-  static Path _smoothClosed(List<Offset> pts) {
-    final n = pts.length;
-    Offset mid(Offset a, Offset b) =>
-        Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
-    final path = Path();
-    final start = mid(pts[n - 1], pts[0]);
-    path.moveTo(start.dx, start.dy);
-    for (var i = 0; i < n; i++) {
-      final next = mid(pts[i], pts[(i + 1) % n]);
-      path.quadraticBezierTo(pts[i].dx, pts[i].dy, next.dx, next.dy);
-    }
-    path.close();
-    return path;
-  }
+  static Path _closedPoly(List<Offset> pts) => _polyline(pts)..close();
 
   static Path _polyline(List<Offset> pts) {
     final path = Path()..moveTo(pts.first.dx, pts.first.dy);
