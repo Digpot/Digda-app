@@ -66,6 +66,10 @@ class KoreaBasePainter extends CustomPainter {
       KoreaMapTokens.coral,
     );
 
+    // 0) 북한 "업데이트 예정" 레이어 — 무조건 맨 뒤(가장 먼저)에 그린다.
+    final nk = data.northKorea;
+    if (nk != null) _paintNorthKorea(canvas, nk, warmShader);
+
     // 1) Ambient shadow — 합친 실루엣 1회 블러(250회 개별 블러 대비 대폭 절감).
     final ambient = Paint()
       ..color = KoreaMapTokens.ambientShadow
@@ -142,6 +146,90 @@ class KoreaBasePainter extends CustomPainter {
     }
 
     canvas.restore();
+  }
+
+  /// 북한 장식 레이어 — 남한과 같은 점토 톤이되 살짝 가라앉혀(예정) 그리고,
+  /// 시·군 느낌의 분할선을 실루엣에 클립해 올린 뒤 "업데이트 예정" 배지를 항상 띄운다.
+  void _paintNorthKorea(Canvas canvas, NorthKoreaLayer nk, ui.Gradient warm) {
+    // ambient
+    canvas.save();
+    canvas.translate(0, 12);
+    canvas.drawPath(
+      nk.outline,
+      Paint()
+        ..color = KoreaMapTokens.ambientShadow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.restore();
+    // side wall(두께)
+    canvas.save();
+    canvas.translate(0, 7);
+    canvas.drawPath(nk.outline, Paint()..color = KoreaMapTokens.sideWall);
+    canvas.restore();
+    // top face — 빈 지도와 같은 웜/슬레이트 + '예정'을 위해 흰 베일로 살짝 띄움.
+    canvas.drawPath(nk.outline, Paint()..shader = warm);
+    canvas.drawPath(nk.outline, Paint()..color = const Color(0x40FFFFFF));
+    // 시·군 분할선 — 실루엣 안쪽으로만.
+    final grooveHi = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5
+      ..color = KoreaMapTokens.grooveHi;
+    final grooveLo = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = KoreaMapTokens.grooveLo;
+    canvas.save();
+    canvas.clipPath(nk.outline);
+    for (final d in nk.dividers) {
+      canvas.drawPath(d, grooveHi);
+      canvas.drawPath(d, grooveLo);
+    }
+    canvas.restore();
+    // 외곽선
+    canvas.drawPath(nk.outline, grooveLo);
+    // "업데이트 예정" 배지 — 무조건 노출.
+    _paintPendingBadge(canvas, nk.labelCenter);
+  }
+
+  void _paintPendingBadge(Canvas canvas, Offset center) {
+    const text = '업데이트 예정';
+    final tp = TextPainter(
+      text: const TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          height: 1.0,
+          color: Color(0xFF5B6677),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    const padH = 18.0;
+    const padV = 11.0;
+    final rect = Rect.fromCenter(
+      center: center,
+      width: tp.width + padH * 2,
+      height: tp.height + padV * 2,
+    );
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(22));
+    // 그림자 + 흰 알약
+    canvas.drawRRect(
+      rrect.shift(const Offset(0, 3)),
+      Paint()
+        ..color = const Color(0x33000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
+    canvas.drawRRect(rrect, Paint()..color = Colors.white);
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = const Color(0xFFD7DEE8),
+    );
+    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
   }
 
   @override

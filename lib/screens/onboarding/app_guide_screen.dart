@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../theme/colors.dart';
 import '../../features/character/models/character_models.dart';
@@ -774,7 +776,7 @@ class _CalendarIllo extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 05 · 발자취 — 점토 지도(채운 지역 강조) + 발자국·칭호 배지
+// 05 · 발자취 — 한반도 지도(채운 지역 강조 + 위치 핀) + 발자국·칭호 배지
 // ─────────────────────────────────────────────────────────────
 class _FootprintIllo extends StatelessWidget {
   final Color accent;
@@ -786,10 +788,10 @@ class _FootprintIllo extends StatelessWidget {
       clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
-        // 점토 지도 카드 — 둥근 권역 블록을 쌓아 우리나라 실루엣을 연상.
+        // 한반도 지도 카드 — 실제 반도 실루엣에 다녀온 지역을 코랄로 채운다.
         Container(
           width: 210,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
           decoration: BoxDecoration(
             color: AppColors.white,
             borderRadius: BorderRadius.circular(24),
@@ -801,70 +803,25 @@ class _FootprintIllo extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _region(56, 40, true),
-                  const SizedBox(width: 8),
-                  _region(40, 40, false),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _region(40, 46, false),
-                  const SizedBox(width: 8),
-                  // 가운데 채운 지역 위에 위치 핀.
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      _region(56, 46, true),
-                      Positioned(
-                        top: -14,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                            border:
-                                Border.all(color: AppColors.white, width: 2),
-                          ),
-                          child: const Icon(Icons.place_rounded,
-                              size: 14, color: AppColors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _region(48, 38, false),
-                  const SizedBox(width: 8),
-                  _region(44, 38, true),
-                ],
-              ),
-            ],
+          child: SizedBox(
+            width: 150,
+            height: 196,
+            child: CustomPaint(
+              painter: _PeninsulaPainter(accent),
+            ),
           ),
         ),
         // 발자국 — 지도를 가로지르는 동선.
         Positioned(
-          top: 18,
-          left: 30,
+          top: 16,
+          left: 26,
           child: Text('👣',
               style: TextStyle(
                   fontSize: 18, color: accent.withValues(alpha: 0.9))),
         ),
         const Positioned(
-          bottom: 30,
-          right: 28,
+          bottom: 34,
+          right: 24,
           child: Text('👣', style: TextStyle(fontSize: 16)),
         ),
         // 칭호 배지 — "한 권역을 다 채우면 칭호".
@@ -904,18 +861,117 @@ class _FootprintIllo extends StatelessWidget {
       ],
     );
   }
+}
 
-  /// 지도 권역 블록 — [filled] 이면 accent 로 채운(=방문) 지역.
-  Widget _region(double w, double h, bool filled) {
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        color: filled ? accent.withValues(alpha: 0.85) : accent.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(13),
-      ),
+/// 한반도 실루엣을 그리는 페인터 — 부드러운 반도 윤곽 + 다녀온 지역(코랄) + 위치 핀.
+/// 온보딩 장식용이라 행정 경계가 아니라 양식화된 실루엣으로, 앱 코랄 톤에 맞춰 재조명.
+class _PeninsulaPainter extends CustomPainter {
+  _PeninsulaPainter(this.accent);
+
+  final Color accent;
+
+  // 정규화 박스(100×130, y는 아래로). 한반도를 단순화한 윤곽 점들.
+  static const List<Offset> _outline = [
+    Offset(38, 6), Offset(52, 2), Offset(66, 5), Offset(82, 9),
+    Offset(89, 20), Offset(80, 30), Offset(76, 45), Offset(72, 61),
+    Offset(70, 77), Offset(64, 89), Offset(54, 94), Offset(46, 89),
+    Offset(40, 99), Offset(32, 91), Offset(35, 77), Offset(26, 67),
+    Offset(33, 57), Offset(24, 47), Offset(31, 36), Offset(22, 26),
+    Offset(30, 15),
+  ];
+
+  // 다녀온(채워진) 지역 중심 — 정규화 좌표.
+  static const List<Offset> _filled = [
+    Offset(52, 42), Offset(45, 66), Offset(59, 80),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 100, size.height / 130);
+    final ox = (size.width - 100 * s) / 2;
+    final oy = (size.height - 130 * s) / 2;
+    Offset p(Offset n) => Offset(ox + n.dx * s, oy + n.dy * s);
+
+    // 1) 윤곽 점들을 중점 경유 2차 베지어로 이어 매끄러운 반도 path 생성.
+    final pts = _outline.map(p).toList();
+    final n = pts.length;
+    Offset mid(Offset a, Offset b) => Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    final path = Path();
+    path.moveTo(mid(pts[n - 1], pts[0]).dx, mid(pts[n - 1], pts[0]).dy);
+    for (var i = 0; i < n; i++) {
+      final c = pts[i];
+      final next = mid(pts[i], pts[(i + 1) % n]);
+      path.quadraticBezierTo(c.dx, c.dy, next.dx, next.dy);
+    }
+    path.close();
+
+    // 2) 반도 채움(은은한 그라데이션) + 윤곽선.
+    final bounds = path.getBounds();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            accent.withValues(alpha: 0.20),
+            accent.withValues(alpha: 0.10),
+          ],
+        ).createShader(bounds),
     );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2 * s
+        ..strokeJoin = StrokeJoin.round
+        ..color = accent.withValues(alpha: 0.40),
+    );
+
+    // 3) 다녀온 지역 — 반도 안쪽을 코랄 원으로 또렷이 채운다.
+    final fillPaint = Paint()..color = accent.withValues(alpha: 0.85);
+    for (final f in _filled) {
+      canvas.drawCircle(p(f), 9 * s, fillPaint);
+    }
+
+    // 4) 첫 채운 지역 위에 위치 핀.
+    _drawPin(canvas, p(const Offset(52, 42)), s);
   }
+
+  void _drawPin(Canvas canvas, Offset anchor, double s) {
+    final r = 8 * s;
+    final center = Offset(anchor.dx, anchor.dy - r * 1.7);
+    final tip = Offset(anchor.dx, anchor.dy + r * 0.4);
+
+    // 그림자
+    canvas.drawCircle(
+      center.translate(0, 2 * s),
+      r,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.16)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 * s),
+    );
+
+    // 물방울(원 + 아래 꼭지) 핀.
+    final pin = Path()..addOval(Rect.fromCircle(center: center, radius: r));
+    pin.moveTo(tip.dx, tip.dy);
+    pin.lineTo(center.dx - r * 0.72, center.dy + r * 0.72);
+    pin.lineTo(center.dx + r * 0.72, center.dy + r * 0.72);
+    pin.close();
+    canvas.drawPath(pin, Paint()..color = accent);
+    canvas.drawPath(
+      pin,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2 * s
+        ..strokeJoin = StrokeJoin.round
+        ..color = AppColors.white,
+    );
+    canvas.drawCircle(center, r * 0.4, Paint()..color = AppColors.white);
+  }
+
+  @override
+  bool shouldRepaint(_PeninsulaPainter old) => old.accent != accent;
 }
 
 // ─────────────────────────────────────────────────────────────

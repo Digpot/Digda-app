@@ -42,17 +42,47 @@ class MapRegion {
   final Offset labelCenter;
 }
 
+/// 남한 시군구 path 를 아래로 내려 위쪽에 북한 밴드 공간을 확보하는 높이(viewBox 단위).
+/// 북한은 색칠 대상이 아닌 "업데이트 예정" 장식 레이어라 이 밴드 안에만 그린다.
+const double kNorthKoreaBand = 520;
+
+/// 북한 "업데이트 예정" 레이어 — 색칠/진행률/칭호와 무관한 순수 장식.
+/// 실루엣(outline) + 시·군 느낌의 분할선(dividers)을 남한과 같은 점토 톤으로 그린다.
+class NorthKoreaLayer {
+  NorthKoreaLayer({
+    required this.outline,
+    required this.dividers,
+    required this.labelCenter,
+  }) : bounds = outline.getBounds();
+
+  /// 북한 외곽 실루엣.
+  final Path outline;
+
+  /// 시·군 경계를 흉내 내는 내부 분할선들(실루엣에 클립해 그린다).
+  final List<Path> dividers;
+
+  /// "업데이트 예정" 배지를 띄울 중심.
+  final Offset labelCenter;
+
+  /// 탭 선택 시 줌인용 bounds.
+  final Rect bounds;
+}
+
 /// 시그니처 지도 전체 데이터.
 class KoreaMapData {
   KoreaMapData({
     required this.width,
     required this.height,
     required this.regions,
+    this.northKorea,
   });
 
   final double width;
   final double height;
   final List<MapRegion> regions;
+
+  /// 북한 장식 레이어(없을 수도 있음). 색칠 집계엔 절대 포함하지 않는다.
+  final NorthKoreaLayer? northKorea;
 
   /// 색칠 키 → 그 키에 속한 조각들.
   late final Map<String, List<MapRegion>> byKey = () {
