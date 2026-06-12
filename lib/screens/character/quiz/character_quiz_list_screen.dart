@@ -588,7 +588,9 @@ class _QuizCard extends StatelessWidget {
                     const Icon(Icons.person_rounded,
                         size: 14, color: AppColors.gray400),
                     const SizedBox(width: 4),
-                    Flexible(
+                    // 작성자명이 남는 가로 공간을 모두 차지하게 해 '다시 풀기' 칩을
+                    // 카드 오른쪽 끝에 딱 붙여 정렬한다(Flexible+Spacer 의 어중간한 틈 제거).
+                    Expanded(
                       child: Text(
                         quiz.authorName,
                         maxLines: 1,
@@ -601,7 +603,7 @@ class _QuizCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),

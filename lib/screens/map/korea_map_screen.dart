@@ -38,7 +38,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     '경북': Color(0xFFA98BF0),
     '경남': Color(0xFF8B6BE0),
     '제주': Color(0xFFF47BB4),
+    '북한': Color(0xFF94A3B8), // 업데이트 예정 — 무채색 슬레이트
   };
+
+  /// 북한 탭/포커스 식별자(색칠 버킷이 아닌 장식 전용).
+  static const String _nkGroup = '북한';
 
   KoreaMapData? _data;
   Map<String, int> _counts = const {};
@@ -291,6 +295,12 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       _animateTo(Matrix4.identity());
       return;
     }
+    // 북한(업데이트 예정) — 색칠 버킷이 아니라 장식 레이어 bounds 로 줌인.
+    if (group == _nkGroup) {
+      final nk = _data?.northKorea;
+      if (nk != null) _animateTo(_matrixForViewBounds(nk.bounds, maxZoom: 2.2));
+      return;
+    }
     final vb = _groupBounds(group);
     final target = vb == null ? null : _matrixForViewBounds(vb);
     if (target != null) _animateTo(target);
@@ -338,8 +348,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
 
   /// 탭/패널에 보이는 권역 표시 이름. 데이터 키 '광역시' 버킷은 서울(특별시)·세종
   /// (특별자치시)도 포함하므로 표시만 '대도시'로 바로잡는다(키는 그대로).
-  static String _groupDisplayName(String group) =>
-      group == '광역시' ? '대도시' : group;
+  static String _groupDisplayName(String group) => group == '광역시'
+      ? '대도시'
+      : group == _nkGroup
+          ? '북한 (예정)'
+          : group;
 
   /// '대도시' 칩에서 앞쪽에 고정할 도시 순서(서울 → 인천 → 부산).
   static const List<String> _metroLeadOrder = ['서울', '인천', '부산'];
@@ -616,9 +629,11 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     return Column(
       children: [
         _buildTabs(data),
-        // 전체 탭이면 전국 요약, 도 탭이면 그 도의 진행률 카드만 — 위쪽을 가볍게.
+        // 전체 탭이면 전국 요약, 북한 탭이면 예정 안내, 도 탭이면 진행률 카드.
         if (_focusGroup == null)
           _buildSummary()
+        else if (_focusGroup == _nkGroup)
+          _buildNorthKoreaStrip()
         else
           _buildRegionStrip(data),
         // 점토 지도가 따뜻한 무대 위에 놓인 듯 보이도록 방사형 배경 + 라운드 프레임.
@@ -714,7 +729,12 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     final present = KoreaMapData.focusGroupOrder
         .where(data.keyFocusGroup.values.contains)
         .toList();
-    final tabs = <String?>[null, ...present];
+    final tabs = <String?>[
+      null,
+      ...present,
+      // 북한은 무조건 맨 뒤.
+      if (data.northKorea != null) _nkGroup,
+    ];
     // 정확히 2줄로 — 절반씩 나눠 각 줄을 가로 스크롤(넘치면)로. 세로로 퍼지지 않게.
     final half = (tabs.length / 2).ceil();
     final row1 = tabs.sublist(0, half);
@@ -798,6 +818,69 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 북한 탭 — 색칠 대상이 아니라 "업데이트 예정" 안내 카드만 보여준다.
+  Widget _buildNorthKoreaStrip() {
+    const accent = Color(0xFF94A3B8);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.hourglass_top_rounded,
+                size: 19, color: accent),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '북한 · 업데이트 예정',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  '곧 북한 지역도 발자취에 담을 수 있어요',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1052,12 +1135,15 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     final data = _data!;
     final key = _selectedKey;
     if (key == null) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
+      final hint = _focusGroup == _nkGroup
+          ? '북한 지역은 준비 중이에요 · 업데이트 예정'
+          : '지역을 눌러 우리가 남긴 기록을 확인해 보세요';
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         child: Text(
-          '지역을 눌러 우리가 남긴 기록을 확인해 보세요',
+          hint,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 12,
             color: AppColors.gray400,
