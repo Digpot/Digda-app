@@ -191,14 +191,23 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
             color: AppColors.gray900,
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
+        titleSpacing: 0,
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreate,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 2,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          '퀴즈 만들기',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
       ),
       body: _buildBody(),
     );
@@ -502,94 +511,126 @@ class _QuizCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.gray50,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-          Row(
-            children: [
-              _CategoryChip(quiz.categoryDisplayName),
-              const SizedBox(width: 8),
-              _ExpChip(quiz.expMultiplier),
-              if (quiz.imageUrl != null) ...[
-                const SizedBox(width: 8),
-                const _ImageBadge(),
-              ],
-              const Spacer(),
-              Text(
-                quiz.authorName,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
-                  fontSize: 12,
-                  color: AppColors.gray500,
-                ),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray100),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.gray900.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(height: 10),
-          if (quiz.imageUrl != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.network(
-                  quiz.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: AppColors.gray100,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.broken_image_outlined,
-                        color: AppColors.gray400, size: 28),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _CategoryChip(quiz.categoryDisplayName),
+                    const SizedBox(width: 6),
+                    _ExpChip(quiz.expMultiplier),
+                    if (quiz.imageUrl != null) ...[
+                      const SizedBox(width: 6),
+                      const _ImageBadge(),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (quiz.imageUrl != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.network(
+                        quiz.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.gray100,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.broken_image_outlined,
+                              color: AppColors.gray400, size: 28),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-          Text(
-            quiz.question,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              height: 1.4,
-              color: AppColors.gray900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          // 선택지는 항상 한 줄에 2개씩(2×2) 배치한다. Wrap 은 너비에 따라
-          // 3+1 처럼 들쭉날쭉해져 균형이 안 맞아 고정 2열 그리드로 둔다.
-          _OptionGrid(options: quiz.options),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
+                  const SizedBox(height: 12),
+                ],
                 Text(
-                  '다시 풀기',
-                  style: TextStyle(
+                  quiz.question,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    color: AppColors.primary,
+                    fontSize: 16,
+                    height: 1.4,
+                    color: AppColors.gray900,
                   ),
                 ),
-                SizedBox(width: 2),
-                Icon(Icons.chevron_right_rounded,
-                    size: 16, color: AppColors.primary),
+                const SizedBox(height: 12),
+                // 선택지는 항상 한 줄에 2개씩(2×2) 배치한다. Wrap 은 너비에 따라
+                // 3+1 처럼 들쭉날쭉해져 균형이 안 맞아 고정 2열 그리드로 둔다.
+                _OptionGrid(options: quiz.options),
+                const SizedBox(height: 14),
+                Container(height: 1, color: AppColors.gray50),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.person_rounded,
+                        size: 14, color: AppColors.gray400),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        quiz.authorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.replay_rounded,
+                              size: 14, color: AppColors.primary),
+                          SizedBox(width: 4),
+                          Text(
+                            '다시 풀기',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-          ),
-            ],
           ),
         ),
       ),
@@ -609,22 +650,37 @@ class _OptionGrid extends StatelessWidget {
     Widget cell(int i) {
       if (i >= options.length) return const SizedBox.shrink();
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
         decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.gray200),
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          '${i + 1}. ${options[i]}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            fontSize: 12,
-            color: AppColors.gray700,
-          ),
+        child: Row(
+          children: [
+            Text(
+              '${i + 1}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                color: AppColors.gray400,
+              ),
+            ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                options[i],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                  color: AppColors.gray700,
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
