@@ -4,7 +4,7 @@ import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 
 /// 페이지별 일러스트 종류.
-enum _Illo { welcome, invite, diary, calendar, mochi }
+enum _Illo { welcome, invite, diary, calendar, footprint, mochi }
 
 class AppGuideScreen extends StatefulWidget {
   /// true면 마이페이지에서 다시 보기로 진입 (뒤로가기만)
@@ -59,10 +59,18 @@ class _AppGuideScreenState extends State<AppGuideScreen> {
       body: '모임·기념일을 하나의 캘린더에 모아\n다 같이 챙길 수 있어요',
     ),
     _GuidePageData(
+      illo: _Illo.footprint,
+      accent: Color(0xFF14B8A6),
+      accentBg: Color(0xFFF0FDFA),
+      eyebrow: 'STEP 4',
+      title: '발자취를 지도에 남겨요',
+      body: '장소와 함께 일기를 쓰면 그 지역이\n지도에 채워지고, 다 채우면 칭호를 받아요',
+    ),
+    _GuidePageData(
       illo: _Illo.mochi,
       accent: Color(0xFFA78BFA),
       accentBg: Color(0xFFF5F3FF),
-      eyebrow: 'STEP 4',
+      eyebrow: 'STEP 5',
       title: '퀴즈 풀고 모찌를 키워요',
       body: '함께 퀴즈를 풀수록\n우리 그룹 모찌가 무럭무럭 자라요',
       cta: '디그팟 시작하기',
@@ -330,6 +338,8 @@ class _IllustrationCard extends StatelessWidget {
         return _DiaryIllo(accent: data.accent);
       case _Illo.calendar:
         return _CalendarIllo(accent: data.accent);
+      case _Illo.footprint:
+        return _FootprintIllo(accent: data.accent);
       case _Illo.mochi:
         return _MochiLevelUpIllo(data: data);
     }
@@ -764,7 +774,152 @@ class _CalendarIllo extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 05 · 퀴즈·모찌 — 모찌(레벨업 ✨) + 퀴즈/Lv 카드
+// 05 · 발자취 — 점토 지도(채운 지역 강조) + 발자국·칭호 배지
+// ─────────────────────────────────────────────────────────────
+class _FootprintIllo extends StatelessWidget {
+  final Color accent;
+  const _FootprintIllo({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        // 점토 지도 카드 — 둥근 권역 블록을 쌓아 우리나라 실루엣을 연상.
+        Container(
+          width: 210,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.16),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _region(56, 40, true),
+                  const SizedBox(width: 8),
+                  _region(40, 40, false),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _region(40, 46, false),
+                  const SizedBox(width: 8),
+                  // 가운데 채운 지역 위에 위치 핀.
+                  Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      _region(56, 46, true),
+                      Positioned(
+                        top: -14,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                            border:
+                                Border.all(color: AppColors.white, width: 2),
+                          ),
+                          child: const Icon(Icons.place_rounded,
+                              size: 14, color: AppColors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _region(48, 38, false),
+                  const SizedBox(width: 8),
+                  _region(44, 38, true),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // 발자국 — 지도를 가로지르는 동선.
+        Positioned(
+          top: 18,
+          left: 30,
+          child: Text('👣',
+              style: TextStyle(
+                  fontSize: 18, color: accent.withValues(alpha: 0.9))),
+        ),
+        const Positioned(
+          bottom: 30,
+          right: 28,
+          child: Text('👣', style: TextStyle(fontSize: 16)),
+        ),
+        // 칭호 배지 — "한 권역을 다 채우면 칭호".
+        Positioned(
+          bottom: -6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.22),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.workspace_premium_rounded, size: 18, color: accent),
+                const SizedBox(width: 6),
+                Text(
+                  '여행가 칭호 획득!',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: accent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 지도 권역 블록 — [filled] 이면 accent 로 채운(=방문) 지역.
+  Widget _region(double w, double h, bool filled) {
+    return Container(
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: filled ? accent.withValues(alpha: 0.85) : accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(13),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 06 · 퀴즈·모찌 — 모찌(레벨업 ✨) + 퀴즈/Lv 카드
 // ─────────────────────────────────────────────────────────────
 class _MochiLevelUpIllo extends StatelessWidget {
   final _GuidePageData data;

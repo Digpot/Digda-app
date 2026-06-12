@@ -110,6 +110,8 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
+              _buildBadge(),
+              const SizedBox(height: 20),
               const Text(
                 '서비스 이용을 위해',
                 style: AppTextStyles.heading2,
@@ -118,7 +120,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                 '약관에 동의해주세요',
                 style: AppTextStyles.heading2,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               const Text(
                 '필수 항목 동의 후 서비스를 시작할 수 있어요.\n선택 항목은 거부해도 서비스 이용에 제한이 없습니다.',
                 style: TextStyle(
@@ -129,33 +131,15 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                   color: AppColors.gray500,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               _buildCheckAll(),
-              const SizedBox(height: 8),
+              const SizedBox(height: 20),
               Expanded(
                 child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
-                      for (int i = 0; i < _items.length; i++) ...[
-                        _buildCheckItem(i, _items[i]),
-                        if (i == 1)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Container(
-                              height: 1,
-                              color: AppColors.gray100,
-                            ),
-                          )
-                        else
-                          const SizedBox(height: 16),
-                      ],
-                    ],
-                  ),
+                  child: _buildItemsCard(),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Center(
                 child: PrimaryButton(
                   text: _submitting ? '처리 중...' : '동의하고 시작하기',
@@ -171,61 +155,125 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
     );
   }
 
+  /// 상단 이모지 배지 — 따뜻한 첫인상.
+  Widget _buildBadge() {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      alignment: Alignment.center,
+      child: const Text('📝', style: TextStyle(fontSize: 28)),
+    );
+  }
+
+  /// 원형 커스텀 체크 인디케이터.
+  Widget _buildCheckCircle(bool checked, {double size = 24}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: checked ? AppColors.primary : AppColors.white,
+        border: Border.all(
+          color: checked ? AppColors.primary : AppColors.gray200,
+          width: 1.5,
+        ),
+      ),
+      child: checked
+          ? const Icon(Icons.check, size: 15, color: AppColors.white)
+          : null,
+    );
+  }
+
   Widget _buildCheckAll() {
     return GestureDetector(
       onTap: () => _toggleAll(!_checkAll),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: AppColors.gray50,
-          borderRadius: BorderRadius.circular(12),
+          color: _checkAll
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : AppColors.gray50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _checkAll
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : Colors.transparent,
+            width: 1.5,
+          ),
         ),
         child: Row(
           children: [
-            const SizedBox(width: 16),
-            Icon(
-              _checkAll ? Icons.check_box : Icons.check_box_outline_blank,
-              size: 22,
-              color: _checkAll ? AppColors.primary : AppColors.gray300,
-            ),
-            const SizedBox(width: 12),
+            _buildCheckCircle(_checkAll, size: 26),
+            const SizedBox(width: 14),
             const Expanded(
-              child: Text(
-                '전체 동의 (선택 항목 포함)',
-                style: AppTextStyles.title,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('전체 동의', style: AppTextStyles.heading6),
+                  SizedBox(height: 3),
+                  Text(
+                    '선택 항목을 포함해 모두 동의합니다',
+                    style: AppTextStyles.captionLarge,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 16),
           ],
         ),
       ),
     );
   }
 
+  /// 동의 항목들을 하나의 둥근 카드로 묶고 구분선으로 나눈다.
+  Widget _buildItemsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray100, width: 1),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < _items.length; i++) ...[
+            _buildCheckItem(i, _items[i]),
+            if (i != _items.length - 1)
+              const Divider(
+                height: 1,
+                thickness: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppColors.gray50,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildCheckItem(int index, _ConsentItem item) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
             onTap: () => _toggleItem(index, !_checks[index]),
+            behavior: HitTestBehavior.opaque,
             child: Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Icon(
-                _checks[index]
-                    ? Icons.check_box
-                    : Icons.check_box_outline_blank,
-                size: 22,
-                color:
-                    _checks[index] ? AppColors.primary : AppColors.gray300,
-              ),
+              padding: const EdgeInsets.only(top: 1),
+              child: _buildCheckCircle(_checks[index]),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: GestureDetector(
               onTap: () => _toggleItem(index, !_checks[index]),
+              behavior: HitTestBehavior.opaque,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -234,7 +282,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                       Flexible(
                         child: Text(
                           item.label,
-                          style: AppTextStyles.bodyMedium.copyWith(
+                          style: AppTextStyles.bodyMediumBold.copyWith(
                             color: AppColors.gray900,
                           ),
                         ),
@@ -242,16 +290,16 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: item.isRequired
                               ? AppColors.primary.withValues(alpha: 0.1)
                               : AppColors.gray100,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           item.isRequired ? '필수' : '선택',
-                          style: AppTextStyles.tiny.copyWith(
+                          style: AppTextStyles.tinyBold.copyWith(
                             color: item.isRequired
                                 ? AppColors.primary
                                 : AppColors.gray500,
@@ -260,7 +308,7 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     item.description,
                     style: const TextStyle(
@@ -282,11 +330,12 @@ class _TermsAgreementScreenState extends State<TermsAgreementScreen> {
                 Navigator.of(context)
                     .pushNamed('/terms-detail', arguments: item.detailType);
               },
+              behavior: HitTestBehavior.opaque,
               child: const Padding(
-                padding: EdgeInsets.only(top: 2),
+                padding: EdgeInsets.only(top: 2, left: 4),
                 child: Icon(
                   Icons.chevron_right,
-                  size: 18,
+                  size: 20,
                   color: AppColors.gray400,
                 ),
               ),

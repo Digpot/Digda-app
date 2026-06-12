@@ -164,7 +164,8 @@ class _CharacterQuizCreateScreenState extends State<CharacterQuizCreateScreen> {
             color: AppColors.gray900,
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
+        titleSpacing: 0,
         actions: [
           TextButton(
             onPressed: (_valid && !_submitting) ? _submit : null,
