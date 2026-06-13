@@ -27,6 +27,7 @@ import 'screens/title/title_collection_screen.dart';
 import 'screens/mypage/edit_profile_screen.dart';
 import 'screens/mypage/notification_settings_screen.dart';
 import 'screens/mypage/privacy_settings_screen.dart';
+import 'screens/mypage/blocked_users_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/todo/todo_list_screen.dart';
 import 'screens/legal/terms_detail_screen.dart';
@@ -146,6 +147,10 @@ class AppRouter {
         return MaterialPageRoute(
             settings: settings,
             builder: (_) => const PrivacySettingsScreen());
+      case '/blocked-users':
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const BlockedUsersScreen());
       case '/notifications':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const NotificationsScreen());

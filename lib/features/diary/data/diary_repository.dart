@@ -20,6 +20,9 @@ class DiaryRepository {
     _calendarCache.clear();
   }
 
+  /// 신고/차단/숨김으로 일기 가시성이 바뀐 뒤 목록·캘린더를 강제 갱신하기 위한 공개 진입점.
+  void invalidateCaches() => _invalidate();
+
   /// 7-1. 일기 목록 (월 필터/페이지네이션). 캐시 우선, [forceRefresh] 로 강제 갱신.
   Future<DiaryListResult> list(
     String groupRoomId, {

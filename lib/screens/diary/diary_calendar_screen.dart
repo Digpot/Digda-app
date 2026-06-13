@@ -493,6 +493,44 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
       );
     }
 
+    // 차단/신고로 숨겨진 날 — 슬롯은 채워진 상태로 두되(중복 작성 방지) 내용은 가린다.
+    if (hasDiary && entry.hidden) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.gray100,
+            borderRadius: BorderRadius.circular(10),
+            border: today
+                ? Border.all(color: AppColors.primary, width: 2)
+                : null,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                top: 3,
+                left: 5,
+                child: Text(
+                  '${day.day}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ),
+              const Center(
+                child: Icon(Icons.visibility_off_outlined,
+                    size: 18, color: AppColors.gray400),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     // 일기 있는 날 — 사진/기분 타일.
     if (hasDiary) {
       return ClipRRect(

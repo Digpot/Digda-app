@@ -5,13 +5,16 @@ import 'package:intl/intl.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/diary/diary_window.dart';
 import '../../features/diary/models/diary_models.dart';
+import '../../features/report/models/report_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/diary_paper.dart';
 import '../../widgets/photo_view_screen.dart';
+import '../../widgets/report_block_actions.dart';
 import 'diary_delete_sheet.dart';
 
 /// 일기 상세 — docs/re/reDiary_read.png 스펙 기반 리뉴얼.
@@ -204,6 +207,24 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 _openDeleteSheet();
               }
             : null,
+        onReport: _isMine
+            ? null
+            : () {
+                _closeMoreMenu();
+                _onReport();
+              },
+        onHide: _isMine
+            ? null
+            : () {
+                _closeMoreMenu();
+                _onHide();
+              },
+        onBlock: _isMine
+            ? null
+            : () {
+                _closeMoreMenu();
+                _onBlock();
+              },
       );
     });
     _moreMenuEntry = entry;
@@ -252,6 +273,88 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     if (detail == null) return false;
     final myId = Di.userSession.profile?.id;
     return myId != null && detail.diary.createdBy.id == myId;
+  }
+
+  /// 신고/숨김/차단 성공 후 — 캐시를 비우고 상세를 다시 불러온다.
+  /// 서버가 hidden=true 로 내려주므로 본문이 플레이스홀더로 바뀌고, 캘린더는 슬롯을 유지한다.
+  void _afterHidden() {
+    Di.diaryRepository.invalidateCaches();
+    if (mounted) _load();
+  }
+
+  Future<void> _onReport() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final ok = await showReportSheet(
+      context,
+      targetType: ReportTargetType.diary,
+      targetId: detail.diary.id,
+      groupRoomId: Di.activeGroup.groupRoomId,
+    );
+    if (ok) _afterHidden();
+  }
+
+  Future<void> _onHide() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final ok = await hideContentAction(
+      context,
+      type: HideTargetType.diary,
+      targetId: detail.diary.id,
+      noun: '일기',
+    );
+    if (ok) _afterHidden();
+  }
+
+  Future<void> _onBlock() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final ok = await confirmBlockUser(
+      context,
+      userId: detail.diary.createdBy.id,
+      userName: detail.diary.createdBy.name,
+    );
+    if (ok) _afterHidden();
+  }
+
+  /// 댓글 더보기 — 신고/숨기기/작성자 차단. 성공 시 상세 재로드.
+  Future<void> _onCommentAction(CommentEntity comment) async {
+    final myId = Di.userSession.profile?.id;
+    final isMine = myId != null && comment.createdBy.id == myId;
+    if (isMine) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CommentActionSheet(authorName: comment.createdBy.name),
+    );
+    if (!mounted || action == null) return;
+    bool ok = false;
+    switch (action) {
+      case 'report':
+        ok = await showReportSheet(
+          context,
+          targetType: ReportTargetType.comment,
+          targetId: comment.id,
+          groupRoomId: Di.activeGroup.groupRoomId,
+        );
+        break;
+      case 'hide':
+        ok = await hideContentAction(
+          context,
+          type: HideTargetType.comment,
+          targetId: comment.id,
+          noun: '댓글',
+        );
+        break;
+      case 'block':
+        ok = await confirmBlockUser(
+          context,
+          userId: comment.createdBy.id,
+          userName: comment.createdBy.name,
+        );
+        break;
+    }
+    if (ok) _afterHidden();
   }
 
   @override
@@ -317,6 +420,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   Widget _buildContent(BuildContext context) {
     final diary = _detail!.diary;
+    if (diary.hidden) return _buildHiddenDiary(diary);
     final mediaQuery = MediaQuery.of(context);
     final heroHeight = mediaQuery.size.height * 0.45;
 
@@ -349,6 +453,49 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         ),
         _buildCommentBar(),
       ],
+    );
+  }
+
+  /// 차단/신고로 숨겨진 일기 — 본문 대신 안내 화면.
+  Widget _buildHiddenDiary(Diary diary) {
+    return SafeArea(
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 20, color: _ink),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.visibility_off_outlined,
+                        size: 48, color: _muted),
+                    const SizedBox(height: 16),
+                    Text(
+                      hiddenReasonMessage(diary.hiddenReason, noun: '일기'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: _sub,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -781,6 +928,14 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     );
   }
 
+  /// 댓글 더보기 버튼 콜백 — 내 댓글이거나 이미 숨겨진 댓글이면 노출하지 않는다.
+  VoidCallback? _commentMoreFor(CommentEntity c) {
+    if (c.hidden) return null;
+    final myId = Di.userSession.profile?.id;
+    if (myId != null && c.createdBy.id == myId) return null;
+    return () => _onCommentAction(c);
+  }
+
   Widget _buildCommentSection() {
     final comments = _detail?.comments ?? const [];
     return Column(
@@ -813,7 +968,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           for (final c in comments)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: _CommentRow(comment: c),
+              child: _CommentRow(comment: c, onMore: _commentMoreFor(c)),
             ),
       ],
     );
@@ -1129,11 +1284,15 @@ class _ReactionPill extends StatelessWidget {
 }
 
 class _CommentRow extends StatelessWidget {
-  const _CommentRow({required this.comment});
+  const _CommentRow({required this.comment, this.onMore});
   final CommentEntity comment;
+
+  /// 더보기(⋯) 탭 — 신고/숨기기/차단. null 이면 버튼을 숨긴다(내 댓글/이미 숨김).
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
+    if (comment.hidden) return _buildHidden();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1197,7 +1356,44 @@ class _CommentRow extends StatelessWidget {
             ],
           ),
         ),
+        if (onMore != null)
+          IconButton(
+            onPressed: onMore,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.more_horiz,
+                size: 18, color: Color(0xFF8B95A1)),
+          ),
       ],
+    );
+  }
+
+  /// 차단/신고로 숨겨진 댓글 — 본문 대신 회색 안내 문구.
+  Widget _buildHidden() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F7F9),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.visibility_off_outlined,
+              size: 16, color: Color(0xFF8B95A1)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hiddenReasonMessage(comment.hiddenReason, noun: '댓글'),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: Color(0xFF8B95A1),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1211,6 +1407,66 @@ class _CommentRow extends StatelessWidget {
   }
 }
 
+/// 댓글 더보기 액션 시트 — 신고/숨기기/작성자 차단. 선택 시 코드 문자열로 pop.
+class _CommentActionSheet extends StatelessWidget {
+  const _CommentActionSheet({required this.authorName});
+  final String authorName;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    Widget row(IconData icon, String label, String value, {Color? color}) {
+      return InkWell(
+        onTap: () => Navigator.of(context).pop(value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: color ?? const Color(0xFF4E5968)),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: color ?? const Color(0xFF191F28),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(top: 12, bottom: 8 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          row(Icons.visibility_off_outlined, '이 댓글 숨기기', 'hide'),
+          row(Icons.flag_outlined, '신고하기', 'report'),
+          row(Icons.block_outlined, "'$authorName' 님 차단하기", 'block',
+              color: const Color(0xFFFF6B6B)),
+        ],
+      ),
+    );
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // More menu (popover)
 // ──────────────────────────────────────────────────────────────────────
@@ -1220,10 +1476,16 @@ class _MoreMenuOverlay extends StatelessWidget {
     required this.onClose,
     this.onEdit,
     this.onDelete,
+    this.onReport,
+    this.onHide,
+    this.onBlock,
   });
   final VoidCallback onClose;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
+  final VoidCallback? onHide;
+  final VoidCallback? onBlock;
 
   @override
   Widget build(BuildContext context) {
@@ -1281,6 +1543,27 @@ class _MoreMenuOverlay extends StatelessWidget {
                         labelColor: const Color(0xFFFF6B6B),
                         iconBg: const Color(0xFFFFEDED),
                         onTap: onDelete!,
+                      ),
+                    if (onHide != null)
+                      _MoreMenuRow(
+                        icon: Icons.visibility_off_outlined,
+                        label: '이 일기 숨기기',
+                        onTap: onHide!,
+                      ),
+                    if (onReport != null)
+                      _MoreMenuRow(
+                        icon: Icons.flag_outlined,
+                        label: '신고하기',
+                        onTap: onReport!,
+                      ),
+                    if (onBlock != null)
+                      _MoreMenuRow(
+                        icon: Icons.block_outlined,
+                        label: '작성자 차단하기',
+                        iconColor: const Color(0xFFFF6B6B),
+                        labelColor: const Color(0xFFFF6B6B),
+                        iconBg: const Color(0xFFFFEDED),
+                        onTap: onBlock!,
                       ),
                   ],
                 ),
