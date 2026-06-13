@@ -11,6 +11,7 @@ import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/diary_paper.dart';
+import '../../widgets/photo_view_screen.dart';
 import 'diary_delete_sheet.dart';
 
 /// 일기 상세 — docs/re/reDiary_read.png 스펙 기반 리뉴얼.
@@ -365,15 +366,23 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             controller: _photoController,
             itemCount: urls.length,
             onPageChanged: (i) => setState(() => _heroIndex = i),
-            itemBuilder: (_, index) => Image.network(
-              urls[index],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              errorBuilder: (_, __, ___) => Container(
-                color: _chipBg,
-                alignment: Alignment.center,
-                child: const Icon(Icons.broken_image_outlined,
-                    size: 36, color: _muted),
+            itemBuilder: (_, index) => GestureDetector(
+              // 탭하면 잘리지 않은 원본 사진을 전체화면으로 띄운다(핀치 줌·스와이프).
+              onTap: () => openPhotoViewer(
+                context,
+                images: urls,
+                initialIndex: index,
+              ),
+              child: Image.network(
+                urls[index],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (_, __, ___) => Container(
+                  color: _chipBg,
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.broken_image_outlined,
+                      size: 36, color: _muted),
+                ),
               ),
             ),
           ),
@@ -416,6 +425,38 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 ),
               ),
             ),
+          // "원본 보기" 힌트 — 사진이 잘려 보이는 hero 에서 탭하면 확대됨을 알린다.
+          Positioned(
+            left: 16,
+            bottom: 56,
+            child: IgnorePointer(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.zoom_out_map_rounded,
+                        size: 13, color: AppColors.white),
+                    SizedBox(width: 5),
+                    Text(
+                      '원본 보기',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

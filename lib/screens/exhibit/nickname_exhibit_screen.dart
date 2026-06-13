@@ -1,15 +1,15 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/exhibit/models/exhibit_models.dart';
 import '../../theme/colors.dart';
+import '../../widgets/photo_view_screen.dart';
 
 /// 디그다 역대 별명 전시관.
 /// 접근 권한이 허용된 사용자만 모찌 화면 하단 버튼으로 진입한다.
-/// 별명 카드를 한 줄 3개 그리드로 보여주고, 탭하면 플립되어 별명의 역사를 보여준다.
+/// 별명 카드를 한 줄 3개 그리드로 보여주고, 탭하면 사진이 전체화면으로 확대되며
+/// 하단에 별명과 그 역사가 캡션으로 함께 표시된다.
 class NicknameExhibitScreen extends StatefulWidget {
   const NicknameExhibitScreen({super.key});
 
@@ -115,113 +115,88 @@ class _NicknameExhibitScreenState extends State<NicknameExhibitScreen> {
         ),
         itemCount: items.length,
         itemBuilder: (_, i) =>
-            _FlipCard(key: ValueKey(items[i].id), exhibit: items[i]),
+            _ExhibitCard(key: ValueKey(items[i].id), exhibit: items[i]),
       ),
     );
   }
 }
 
-/// 탭하면 Y축으로 뒤집히는 카드. 앞면=이미지+별명, 뒷면=별명 역사.
-class _FlipCard extends StatefulWidget {
-  const _FlipCard({super.key, required this.exhibit});
+/// 별명 카드. 탭하면 사진을 전체화면으로 확대하고 하단에 별명·역사를 함께 보여준다.
+class _ExhibitCard extends StatelessWidget {
+  const _ExhibitCard({super.key, required this.exhibit});
   final NicknameExhibit exhibit;
 
-  @override
-  State<_FlipCard> createState() => _FlipCardState();
-}
-
-class _FlipCardState extends State<_FlipCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 450),
-  );
-  bool _showingBack = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _flip() {
-    if (_showingBack) {
-      _controller.reverse();
-    } else {
-      _controller.forward();
-    }
-    _showingBack = !_showingBack;
+  void _open(BuildContext context) {
+    final url = exhibit.imageUrl;
+    if (url == null || url.isEmpty) return;
+    openPhotoViewer(
+      context,
+      images: [url],
+      title: exhibit.nickname,
+      description: exhibit.history.isEmpty ? null : exhibit.history,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = exhibit.imageUrl != null && exhibit.imageUrl!.isNotEmpty;
     return GestureDetector(
-      onTap: _flip,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final angle = _controller.value * math.pi;
-          // 절반을 넘기면 뒷면을 보여준다(뒷면은 다시 180° 돌려 거울반전 방지).
-          final isBack = angle > math.pi / 2;
-          final transform = Matrix4.identity()
-            ..setEntry(3, 2, 0.0015) // 원근감
-            ..rotateY(angle);
-          return Transform(
-            alignment: Alignment.center,
-            transform: transform,
-            child: isBack
-                ? Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    child: _CardBack(exhibit: widget.exhibit),
-                  )
-                : _CardFront(exhibit: widget.exhibit),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CardFront extends StatelessWidget {
-  const _CardFront({required this.exhibit});
-  final NicknameExhibit exhibit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _image()),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            child: Text(
-              exhibit.nickname,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: AppColors.gray900,
+      onTap: hasImage ? () => _open(context) : null,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _image(),
+                  if (hasImage)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.40),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.zoom_out_map_rounded,
+                            size: 13, color: Colors.white),
+                      ),
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: Text(
+                exhibit.nickname,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: AppColors.gray900,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -256,62 +231,6 @@ class _CardFront extends StatelessWidget {
         alignment: Alignment.center,
         child: const Icon(Icons.broken_image_outlined,
             size: 28, color: AppColors.gray400),
-      ),
-    );
-  }
-}
-
-class _CardBack extends StatelessWidget {
-  const _CardBack({required this.exhibit});
-  final NicknameExhibit exhibit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            exhibit.nickname,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Divider(height: 1, color: Colors.white24),
-          const SizedBox(height: 6),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Text(
-                exhibit.history.isEmpty ? '설명이 없어요.' : exhibit.history,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
-                  fontSize: 10.5,
-                  height: 1.5,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
