@@ -141,6 +141,15 @@ class _GroupListScreenState extends State<GroupListScreen> {
     showInviteCodeSheet(context, code.code);
   }
 
+  /// 그룹방 개수 제한 안내. 1인당 최대 6개까지만 만들거나 참여할 수 있고,
+  /// 6개를 채우면 새 그룹방 생성·초대 수락이 막힌다는 점을 카드형 팝업으로 알린다.
+  void _showGroupLimitGuide() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => const _GroupLimitGuideDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,21 +189,26 @@ class _GroupListScreenState extends State<GroupListScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: NotificationBellIcon(),
-                  ),
-                  const SizedBox(width: 16),
+                  // 헤더 액션은 한 Row 안에서 세로 중앙으로 맞춰 벨·안내·설정 아이콘이
+                  // 동일한 baseline 에 정렬되도록 한다(이전엔 벨만 살짝 아래로 처졌음).
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pushNamed('/my-page'),
-                      child: const Icon(
-                        Icons.settings_outlined,
-                        size: 22,
-                        color: AppColors.gray700,
-                      ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const NotificationBellIcon(),
+                        const SizedBox(width: 14),
+                        _HeaderIconButton(
+                          icon: Icons.help_outline_rounded,
+                          onTap: _showGroupLimitGuide,
+                        ),
+                        const SizedBox(width: 14),
+                        _HeaderIconButton(
+                          icon: Icons.settings_outlined,
+                          onTap: () =>
+                              Navigator.of(context).pushNamed('/my-page'),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -399,6 +413,181 @@ class _EmptyState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 헤더 우측 액션 아이콘. 알림 벨(28×28)과 같은 박스에 아이콘을 중앙 정렬해
+/// 벨·안내·설정이 동일한 세로 중심선에 맞도록 한다.
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(
+      radius: 22,
+      onTap: onTap,
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: Icon(icon, size: 24, color: AppColors.gray700),
+      ),
+    );
+  }
+}
+
+/// 그룹방 개수 제한 안내 팝업.
+class _GroupLimitGuideDialog extends StatelessWidget {
+  const _GroupLimitGuideDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.groups_rounded,
+                size: 34,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '그룹방 안내',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: AppColors.gray900,
+              ),
+            ),
+            const SizedBox(height: 14),
+            // "최대 6개" 강조 배지
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text(
+                    '1인당 최대 6개',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const _GuideRow(
+              icon: Icons.add_home_outlined,
+              text: '그룹방은 한 사람당 최대 6개까지 만들거나\n참여할 수 있어요.',
+            ),
+            const SizedBox(height: 12),
+            const _GuideRow(
+              icon: Icons.mail_lock_outlined,
+              text: '이미 6개를 채웠다면 새 그룹방을 만들거나\n초대를 받을 수 없어요.',
+            ),
+            const SizedBox(height: 12),
+            const _GuideRow(
+              icon: Icons.logout_rounded,
+              text: '다른 그룹방에서 나가면 다시 만들거나\n참여할 수 있어요.',
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  '알겠어요',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideRow extends StatelessWidget {
+  const _GuideRow({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 13.5,
+                height: 1.45,
+                color: AppColors.gray700,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
