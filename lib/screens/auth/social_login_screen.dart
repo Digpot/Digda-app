@@ -44,10 +44,22 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
 
   void _showError(Object e) {
     String message = '로그인 중 문제가 발생했습니다.';
+    ApiException? api;
     if (e is DioException && e.error is ApiException) {
-      message = (e.error as ApiException).message;
+      api = e.error as ApiException;
     } else if (e is ApiException) {
-      message = e.message;
+      api = e;
+    }
+    if (api != null) message = api.message;
+
+    // 이메일 중복으로 가입이 막힌 경우 전용 안내 — 기존 소셜 계정으로 로그인하도록 유도.
+    if (api?.code == 'DUPLICATE_EMAIL') {
+      showErrorDialog(
+        context,
+        '이미 같은 이메일을 사용하는 계정이 있어요.\n기존에 가입했던 소셜 계정으로 로그인해 주세요.',
+        title: '이미 가입된 이메일이에요',
+      );
+      return;
     }
     showErrorDialog(context, message);
   }
@@ -146,14 +158,16 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
                   ),
                   onPressed: _busy ? null : () => _signIn(SocialProvider.naver),
                 ),
-                const SizedBox(height: 12),
-                _SocialButton(
-                  text: 'Apple로 시작하기',
-                  backgroundColor: AppColors.appleBlack,
-                  textColor: AppColors.white,
-                  icon: const Icon(Icons.apple, size: 20, color: AppColors.white),
-                  onPressed: _busy ? null : () => _signIn(SocialProvider.apple),
-                ),
+                // 안드로이드 전용 빌드라 Apple 로그인 버튼은 비활성화(주석 처리).
+                // iOS 배포 시 아래 블록을 다시 살리면 된다.
+                // const SizedBox(height: 12),
+                // _SocialButton(
+                //   text: 'Apple로 시작하기',
+                //   backgroundColor: AppColors.appleBlack,
+                //   textColor: AppColors.white,
+                //   icon: const Icon(Icons.apple, size: 20, color: AppColors.white),
+                //   onPressed: _busy ? null : () => _signIn(SocialProvider.apple),
+                // ),
                 const SizedBox(height: 48),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
