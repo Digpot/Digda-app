@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/di.dart';
+import '../../features/block/models/block_models.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/center_title_header.dart';
@@ -130,17 +131,23 @@ class _RegionDiaryListScreenState extends State<RegionDiaryListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          d.title,
-                          style: const TextStyle(
+                          d.hidden
+                              ? hiddenReasonMessage(d.hiddenReason, noun: '일기')
+                              : d.title,
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
-                            color: AppColors.gray900,
+                            color: d.hidden
+                                ? AppColors.gray500
+                                : AppColors.gray900,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${_fmtDate(d.date)}${d.location != null && d.location!.isNotEmpty ? ' · ${d.location}' : ''}',
+                          d.hidden
+                              ? _fmtDate(d.date)
+                              : '${_fmtDate(d.date)}${d.location != null && d.location!.isNotEmpty ? ' · ${d.location}' : ''}',
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
@@ -150,7 +157,9 @@ class _RegionDiaryListScreenState extends State<RegionDiaryListScreen> {
                       ],
                     ),
                   ),
-                  if (d.thumbnailUrl != null && d.thumbnailUrl!.isNotEmpty) ...[
+                  if (!d.hidden &&
+                      d.thumbnailUrl != null &&
+                      d.thumbnailUrl!.isNotEmpty) ...[
                     const SizedBox(width: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),

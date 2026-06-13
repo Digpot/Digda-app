@@ -81,4 +81,7 @@ class ScheduleRepository {
     );
     _listCache.clear();
   }
+
+  /// 신고/차단/숨김으로 일정 가시성이 바뀐 뒤 목록을 강제 갱신하기 위한 공개 진입점.
+  void invalidateCaches() => _listCache.clear();
 }

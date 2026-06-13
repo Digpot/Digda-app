@@ -24,6 +24,8 @@ class Schedule {
     required this.createdBy,
     required this.commentCount,
     required this.createdAt,
+    this.hidden = false,
+    this.hiddenReason,
   });
 
   final String id;
@@ -39,10 +41,14 @@ class Schedule {
   final int commentCount;
   final DateTime createdAt;
 
+  /// 차단/신고로 내게 숨겨진 일정. 목록에선 보통 제외되며 상세 직접 접근 방어용.
+  final bool hidden;
+  final String? hiddenReason;
+
   factory Schedule.fromJson(Map<String, dynamic> json) {
     return Schedule(
       id: json['id'].toString(),
-      title: json['title'] as String,
+      title: json['title'] as String? ?? '',
       color: json['color'] as String,
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
@@ -56,6 +62,8 @@ class Schedule {
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
       commentCount: (json['commentCount'] as num? ?? 0).toInt(),
       createdAt: _parseUtc(json['createdAt'] as String),
+      hidden: json['hidden'] as bool? ?? false,
+      hiddenReason: json['hiddenReason'] as String?,
     );
   }
 }

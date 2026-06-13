@@ -20,6 +20,8 @@ import '../features/character/data/character_repository.dart';
 import '../features/exhibit/data/exhibit_repository.dart';
 import '../features/title/data/title_repository.dart';
 import '../features/app_config/data/app_config_repository.dart';
+import '../features/report/data/report_repository.dart';
+import '../features/block/data/block_repository.dart';
 
 /// 외부 의존성 주입 프레임워크 없이 단일 인스턴스를 공유하기 위한 가벼운 로케이터.
 class Di {
@@ -44,6 +46,8 @@ class Di {
   static late final ExhibitRepository exhibitRepository;
   static late final TitleRepository titleRepository;
   static late final AppConfigRepository appConfigRepository;
+  static late final ReportRepository reportRepository;
+  static late final BlockRepository blockRepository;
   static late final AuthSession authSession;
   static late final UserSession userSession;
   static late final ActiveGroupSession activeGroup;
@@ -69,6 +73,8 @@ class Di {
     exhibitRepository = ExhibitRepository(apiClient: apiClient);
     titleRepository = TitleRepository(apiClient: apiClient);
     appConfigRepository = AppConfigRepository(apiClient: apiClient);
+    reportRepository = ReportRepository(apiClient: apiClient);
+    blockRepository = BlockRepository(apiClient: apiClient);
     authSession = AuthSession(
       repository: authRepository,
       api: apiClient,

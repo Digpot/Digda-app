@@ -71,6 +71,8 @@ class DiarySummary {
     required this.likeCount,
     required this.likedByMe,
     required this.createdAt,
+    this.hidden = false,
+    this.hiddenReason,
   });
 
   final String id;
@@ -90,10 +92,16 @@ class DiarySummary {
   final bool likedByMe;
   final DateTime createdAt;
 
+  /// 차단/신고로 내게 숨겨진 일기. true 면 본문 필드는 비어 있고 플레이스홀더로 표시한다.
+  final bool hidden;
+
+  /// 숨김 사유 코드 — BLOCKED_USER / REPORTED / HIDDEN.
+  final String? hiddenReason;
+
   factory DiarySummary.fromJson(Map<String, dynamic> json) {
     return DiarySummary(
       id: json['id'].toString(),
-      title: json['title'] as String,
+      title: json['title'] as String? ?? '',
       date: _parseUtc(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
@@ -109,6 +117,8 @@ class DiarySummary {
       likeCount: (json['likeCount'] as num? ?? 0).toInt(),
       likedByMe: json['likedByMe'] as bool? ?? false,
       createdAt: _parseUtc(json['createdAt'] as String),
+      hidden: json['hidden'] as bool? ?? false,
+      hiddenReason: json['hiddenReason'] as String?,
     );
   }
 }
@@ -121,6 +131,8 @@ class DiaryCalendarEntry {
     this.thumbnailUrl,
     required this.mood,
     required this.count,
+    this.hidden = false,
+    this.hiddenReason,
   });
 
   final DateTime date; // 로컬 날짜(자정)
@@ -128,6 +140,10 @@ class DiaryCalendarEntry {
   final String? thumbnailUrl;
   final int mood; // 0 행복 / 1 평온 / 2 슬픔 / 3 화남 / 4 피곤
   final int count; // 그날 작성된 일기 편수
+
+  /// 차단/신고로 숨겨진 대표 일기. 슬롯(count)은 유지되어 "하루 1편" 자리는 채워진 것으로 본다.
+  final bool hidden;
+  final String? hiddenReason;
 
   factory DiaryCalendarEntry.fromJson(Map<String, dynamic> json) {
     final d = _parseUtc(json['date'] as String).toLocal();
@@ -137,6 +153,8 @@ class DiaryCalendarEntry {
       thumbnailUrl: json['thumbnailUrl'] as String?,
       mood: (json['mood'] as num? ?? 0).toInt(),
       count: (json['count'] as num? ?? 1).toInt(),
+      hidden: json['hidden'] as bool? ?? false,
+      hiddenReason: json['hiddenReason'] as String?,
     );
   }
 }
@@ -280,6 +298,8 @@ class Diary {
     required this.likeCount,
     required this.likedByMe,
     required this.reactions,
+    this.hidden = false,
+    this.hiddenReason,
   });
 
   final String id;
@@ -300,11 +320,15 @@ class Diary {
   final bool likedByMe;
   final List<DiaryReactionSummary> reactions;
 
+  /// 차단/신고로 내게 숨겨진 일기. true 면 title/content/imageUrls 는 비어 있다.
+  final bool hidden;
+  final String? hiddenReason;
+
   factory Diary.fromJson(Map<String, dynamic> json) {
     return Diary(
       id: json['id'].toString(),
-      title: json['title'] as String,
-      content: json['content'] as String,
+      title: json['title'] as String? ?? '',
+      content: json['content'] as String? ?? '',
       date: _parseUtc(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
@@ -325,6 +349,8 @@ class Diary {
           .map((e) =>
               DiaryReactionSummary.fromJson(e as Map<String, dynamic>))
           .toList(),
+      hidden: json['hidden'] as bool? ?? false,
+      hiddenReason: json['hiddenReason'] as String?,
     );
   }
 }

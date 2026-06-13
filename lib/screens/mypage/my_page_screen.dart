@@ -141,6 +141,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         onTap: () => Navigator.of(context)
                             .pushNamed('/privacy-settings'),
                       ),
+                      _menuRow(
+                        icon: Icons.block_rounded,
+                        iconColor: AppColors.primary,
+                        label: '차단 사용자 관리',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed('/blocked-users'),
+                      ),
                     ]),
                     const SizedBox(height: 20),
                     _buildSectionLabel('기타'),

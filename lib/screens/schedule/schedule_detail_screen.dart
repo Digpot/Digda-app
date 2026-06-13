@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
+import '../../features/report/models/report_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/report_block_actions.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   const ScheduleDetailScreen({super.key});
@@ -169,6 +172,97 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         ],
       ),
     );
+  }
+
+  bool get _isMine {
+    final by = _detail?.schedule.createdBy.id;
+    final myId = Di.userSession.profile?.id;
+    return by != null && myId != null && by == myId;
+  }
+
+  /// 신고/숨김/차단 후 — 목록 캐시를 비우고 일정 화면을 닫는다(일정은 목록에서 제외됨).
+  void _afterHidden() {
+    Di.scheduleRepository.invalidateCaches();
+    if (mounted) Navigator.of(context).maybePop();
+  }
+
+  Future<void> _onReportSchedule() async {
+    setState(() => _showMenu = false);
+    final s = _detail?.schedule;
+    if (s == null) return;
+    final ok = await showReportSheet(
+      context,
+      targetType: ReportTargetType.schedule,
+      targetId: s.id,
+      groupRoomId: Di.activeGroup.groupRoomId,
+    );
+    if (ok) _afterHidden();
+  }
+
+  Future<void> _onHideSchedule() async {
+    setState(() => _showMenu = false);
+    final s = _detail?.schedule;
+    if (s == null) return;
+    final ok = await hideContentAction(
+      context,
+      type: HideTargetType.schedule,
+      targetId: s.id,
+      noun: '일정',
+    );
+    if (ok) _afterHidden();
+  }
+
+  Future<void> _onBlockScheduleAuthor() async {
+    setState(() => _showMenu = false);
+    final s = _detail?.schedule;
+    if (s == null) return;
+    final ok = await confirmBlockUser(
+      context,
+      userId: s.createdBy.id,
+      userName: s.createdBy.name,
+    );
+    if (ok) _afterHidden();
+  }
+
+  /// 일정 댓글 더보기 — 신고/숨기기/작성자 차단. 성공 시 상세 재로드.
+  Future<void> _onCommentAction(CommentEntity comment) async {
+    final myId = Di.userSession.profile?.id;
+    if (myId != null && comment.createdBy.id == myId) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ScheduleCommentActionSheet(
+        authorName: comment.createdBy.name,
+      ),
+    );
+    if (!mounted || action == null) return;
+    bool ok = false;
+    switch (action) {
+      case 'report':
+        ok = await showReportSheet(
+          context,
+          targetType: ReportTargetType.comment,
+          targetId: comment.id,
+          groupRoomId: Di.activeGroup.groupRoomId,
+        );
+        break;
+      case 'hide':
+        ok = await hideContentAction(
+          context,
+          type: HideTargetType.comment,
+          targetId: comment.id,
+          noun: '댓글',
+        );
+        break;
+      case 'block':
+        ok = await confirmBlockUser(
+          context,
+          userId: comment.createdBy.id,
+          userName: comment.createdBy.name,
+        );
+        break;
+    }
+    if (ok && mounted) _load();
   }
 
   Color _parseHex(String hex) {
@@ -669,6 +763,36 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   }
 
   Widget _buildCommentItem(CommentEntity c, Color avatarColor) {
+    if (c.hidden) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.visibility_off_outlined,
+                size: 16, color: AppColors.gray500),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                hiddenReasonMessage(c.hiddenReason, noun: '댓글'),
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: AppColors.gray500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final myId = Di.userSession.profile?.id;
+    final canModerate = myId == null || c.createdBy.id != myId;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -729,6 +853,13 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             ],
           ),
         ),
+        if (canModerate)
+          IconButton(
+            onPressed: () => _onCommentAction(c),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.more_horiz,
+                size: 18, color: AppColors.gray400),
+          ),
       ],
     );
   }
@@ -775,6 +906,33 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               iconBg: const Color(0xFFFFEDED),
               onTap: _onDeleteTap,
             ),
+            if (!_isMine) ...[
+              const Divider(
+                height: 8,
+                thickness: 1,
+                color: Color(0xFFF2F4F6),
+                indent: 8,
+                endIndent: 8,
+              ),
+              _MoreMenuRow(
+                icon: Icons.visibility_off_outlined,
+                label: '이 일정 숨기기',
+                onTap: _onHideSchedule,
+              ),
+              _MoreMenuRow(
+                icon: Icons.flag_outlined,
+                label: '신고하기',
+                onTap: _onReportSchedule,
+              ),
+              _MoreMenuRow(
+                icon: Icons.block_outlined,
+                label: '작성자 차단하기',
+                iconColor: const Color(0xFFFF6B6B),
+                labelColor: const Color(0xFFFF6B6B),
+                iconBg: const Color(0xFFFFEDED),
+                onTap: _onBlockScheduleAuthor,
+              ),
+            ],
           ],
         ),
       ),
@@ -898,6 +1056,66 @@ class _MoreMenuRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 일정 댓글 더보기 액션 시트 — 신고/숨기기/작성자 차단. 선택 시 코드 문자열로 pop.
+class _ScheduleCommentActionSheet extends StatelessWidget {
+  const _ScheduleCommentActionSheet({required this.authorName});
+  final String authorName;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    Widget row(IconData icon, String label, String value, {Color? color}) {
+      return InkWell(
+        onTap: () => Navigator.of(context).pop(value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: color ?? AppColors.gray700),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: color ?? AppColors.gray900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(top: 12, bottom: 8 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          row(Icons.visibility_off_outlined, '이 댓글 숨기기', 'hide'),
+          row(Icons.flag_outlined, '신고하기', 'report'),
+          row(Icons.block_outlined, "'$authorName' 님 차단하기", 'block',
+              color: AppColors.primary),
+        ],
       ),
     );
   }
