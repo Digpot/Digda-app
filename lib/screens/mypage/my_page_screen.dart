@@ -11,7 +11,7 @@ import '../../features/app_config/models/app_config.dart';
 
 /// 디그팟 개인정보처리방침 호스팅 URL.
 const String _privacyPolicyUrl =
-    'https://datediary.github.io/Digda-app/privacy-policy.html';
+    'https://digpot.github.io/Digda-app/privacy-policy.html';
 
 
 class MyPageScreen extends StatefulWidget {
