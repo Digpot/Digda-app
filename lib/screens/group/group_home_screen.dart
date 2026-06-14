@@ -14,6 +14,7 @@ import '../../widgets/group_default_avatar.dart';
 import '../../widgets/invite_code_sheet.dart';
 import '../../widgets/notice_banner.dart';
 import '../../widgets/notification_bell_icon.dart';
+import '../../widgets/restriction_notice.dart';
 
 /// 그룹 홈 — '대시보드' 리디자인.
 ///
@@ -767,75 +768,9 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
 
   /// 이용 제한 계정일 때 홈 대신 노출하는 안내 — 마이페이지로만 이동 가능.
   Widget _buildRestrictedBlock() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.lock_outline_rounded,
-                  size: 36, color: AppColors.primary),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '서비스 이용이 제한된 계정이에요',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: AppColors.gray900,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              '회원님의 계정은 현재 서비스 이용이 제한되어\n마이페이지만 사용할 수 있어요.\n자세한 내용은 고객센터로 문의해주세요.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                fontSize: 13.5,
-                height: 1.5,
-                color: AppColors.gray700,
-              ),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context)
-                    .pushNamed('/my-page')
-                    .then((_) => _load()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  '마이페이지로 이동',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return RestrictionNotice(
+      onGoMyPage: () =>
+          Navigator.of(context).pushNamed('/my-page').then((_) => _load()),
     );
   }
 

@@ -8,6 +8,7 @@ import '../../widgets/app_dialog.dart';
 import '../../widgets/group_list_tile.dart';
 import '../../widgets/invite_code_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
+import '../../widgets/restriction_notice.dart';
 
 class GroupListScreen extends StatefulWidget {
   const GroupListScreen({super.key});
@@ -22,10 +23,25 @@ class _GroupListScreenState extends State<GroupListScreen> {
   /// 서버 스케줄러(최대 5분 주기) 가 실제 삭제하기 전에도 UX 상 자연스럽게 사라지게 한다.
   final Set<String> _expiredIds = <String>{};
 
+  /// 서비스 이용 제한 계정이면 그룹 리스트 대신 안내 화면을 보여준다(마이페이지만 허용).
+  bool _restricted = false;
+
   @override
   void initState() {
     super.initState();
     _future = Di.groupRoomRepository.myList();
+    _checkRestriction();
+  }
+
+  /// 이용 제한 여부를 최신 프로필로 확인. 제한되면 리스트 대신 안내 화면으로 전환.
+  Future<void> _checkRestriction() async {
+    if (Di.userSession.profile?.restricted == true) {
+      setState(() => _restricted = true);
+    }
+    try {
+      final me = await Di.userSession.refresh();
+      if (mounted) setState(() => _restricted = me.restricted);
+    } catch (_) {/* 갱신 실패는 기존 캐시 유지 */}
   }
 
   Future<void> _refresh() async {
@@ -196,13 +212,16 @@ class _GroupListScreenState extends State<GroupListScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const NotificationBellIcon(),
-                        const SizedBox(width: 14),
-                        _HeaderIconButton(
-                          icon: Icons.help_outline_rounded,
-                          onTap: _showGroupLimitGuide,
-                        ),
-                        const SizedBox(width: 14),
+                        // 이용 제한 계정은 마이페이지(설정)만 접근 — 벨/안내 아이콘 숨김.
+                        if (!_restricted) ...[
+                          const NotificationBellIcon(),
+                          const SizedBox(width: 14),
+                          _HeaderIconButton(
+                            icon: Icons.help_outline_rounded,
+                            onTap: _showGroupLimitGuide,
+                          ),
+                          const SizedBox(width: 14),
+                        ],
                         _HeaderIconButton(
                           icon: Icons.settings_outlined,
                           onTap: () =>
@@ -215,9 +234,14 @@ class _GroupListScreenState extends State<GroupListScreen> {
               ),
             ),
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: FutureBuilder<List<GroupRoomListItem>>(
+              child: _restricted
+                  ? RestrictionNotice(
+                      onGoMyPage: () =>
+                          Navigator.of(context).pushNamed('/my-page'),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: FutureBuilder<List<GroupRoomListItem>>(
                   future: _future,
                   builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
