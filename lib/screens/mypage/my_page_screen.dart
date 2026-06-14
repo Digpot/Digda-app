@@ -153,6 +153,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     _buildSectionLabel('기타'),
                     _buildMenuGroup([
                       _menuRow(
+                        icon: Icons.headset_mic_rounded,
+                        iconColor: AppColors.blue,
+                        label: '고객센터',
+                        onTap: () =>
+                            Navigator.of(context).pushNamed('/support'),
+                      ),
+                      _menuRow(
                         icon: Icons.menu_book_rounded,
                         iconColor: AppColors.purple,
                         label: '앱 사용 가이드',
