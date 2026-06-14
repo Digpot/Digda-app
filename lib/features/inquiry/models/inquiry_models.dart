@@ -14,6 +14,7 @@ class Inquiry {
     required this.id,
     required this.content,
     required this.status,
+    this.answer,
     required this.createdAt,
     this.answeredAt,
   });
@@ -23,6 +24,9 @@ class Inquiry {
 
   /// 'PENDING'(접수) | 'ANSWERED'(답변 완료).
   final String status;
+
+  /// 어드민 답변 내용(미답변이면 null).
+  final String? answer;
   final DateTime createdAt;
   final DateTime? answeredAt;
 
@@ -33,6 +37,7 @@ class Inquiry {
       id: json['id'].toString(),
       content: json['content'] as String? ?? '',
       status: json['status'] as String? ?? 'PENDING',
+      answer: json['answer'] as String?,
       createdAt: _parseUtc(json['createdAt'] as String),
       answeredAt: json['answeredAt'] != null
           ? _parseUtc(json['answeredAt'] as String)

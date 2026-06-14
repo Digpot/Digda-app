@@ -328,6 +328,63 @@ class _SupportScreenState extends State<SupportScreen> {
               color: AppColors.gray800,
             ),
           ),
+          if (answered && inquiry.answer != null && inquiry.answer!.isNotEmpty)
+            _buildAnswer(inquiry),
+        ],
+      ),
+    );
+  }
+
+  /// 어드민 답변 — 문의 카드 하단에 구분선 + 강조 박스로 표시.
+  Widget _buildAnswer(Inquiry inquiry) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.support_agent_rounded,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              const Text(
+                '디그팟 답변',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: AppColors.primary,
+                ),
+              ),
+              const Spacer(),
+              if (inquiry.answeredAt != null)
+                Text(
+                  _formatDate(inquiry.answeredAt!.toLocal()),
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 11,
+                    color: AppColors.gray400,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            inquiry.answer!,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 14,
+              height: 1.5,
+              color: AppColors.gray800,
+            ),
+          ),
         ],
       ),
     );
