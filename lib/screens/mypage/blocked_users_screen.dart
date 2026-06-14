@@ -43,6 +43,20 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     }
   }
 
+  /// 차단 해제 — 실수 방지를 위해 확인 팝업을 먼저 띄우고, 확인 시에만 해제한다.
+  void _confirmUnblock(BlockedUser user) {
+    if (_working.contains(user.userId)) return;
+    showConfirmDialog(
+      context,
+      title: '차단을 해제할까요?',
+      message:
+          "'${user.name}' 님의 차단을 해제하면\n이 사용자의 일기·댓글·일정이 다시 보이게 돼요.",
+      confirmLabel: '차단 해제',
+      cancelLabel: '취소',
+      onConfirm: () => _unblock(user),
+    );
+  }
+
   Future<void> _unblock(BlockedUser user) async {
     if (_working.contains(user.userId)) return;
     setState(() => _working.add(user.userId));
@@ -189,7 +203,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
             ),
           ),
           TextButton(
-            onPressed: busy ? null : () => _unblock(user),
+            onPressed: busy ? null : () => _confirmUnblock(user),
             style: TextButton.styleFrom(
               backgroundColor: AppColors.gray100,
               shape: RoundedRectangleBorder(
