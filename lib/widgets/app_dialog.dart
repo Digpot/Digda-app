@@ -317,7 +317,9 @@ void showRestrictionDialog(BuildContext context) {
   );
 }
 
-void showInfoDialog(
+/// 안내/완료 카드 다이얼로그. 반환된 Future 는 사용자가 '확인'으로 닫을 때 완료된다.
+/// (신고/차단 등 — 안내를 본 뒤에 화면 pop·재로드를 이어가야 할 때 await 한다.)
+Future<void> showInfoDialog(
   BuildContext context,
   String title,
   String message, {
@@ -325,7 +327,7 @@ void showInfoDialog(
 }) {
   // 일기 작성 완료 팝업과 동일한 카드형 디자인 — 원형 아이콘 + 굵은 제목 + 가운데
   // 정렬 본문 + 풀폭 기본 버튼. 앱 전반의 안내/완료 메시지가 같은 톤을 공유한다.
-  showDialog<void>(
+  return showDialog<void>(
     context: context,
     builder: (ctx) => Dialog(
       backgroundColor: AppColors.white,

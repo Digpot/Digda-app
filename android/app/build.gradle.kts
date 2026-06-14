@@ -19,6 +19,16 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// android/admob.properties(git 제외) 에서 실제 AdMob 앱 ID 를 로드한다.
+// 파일이 없으면 구글 공식 "테스트" 앱 ID 로 폴백해 빌드가 깨지지 않게 한다.
+val admobProperties = Properties()
+val admobPropertiesFile = rootProject.file("admob.properties")
+if (admobPropertiesFile.exists()) {
+    admobProperties.load(FileInputStream(admobPropertiesFile))
+}
+val admobAppId = (admobProperties["admobAppId"] as String?)
+    ?: "ca-app-pub-3940256099942544~3347511713"
+
 android {
     namespace = "com.digda.app"
     // google_mobile_ads(AdMob)·Android 14 대응으로 compileSdk 34 이상을 보장한다.
@@ -43,6 +53,8 @@ android {
         targetSdk = maxOf(flutter.targetSdkVersion, 34)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // AndroidManifest 의 ${admobAppId} 치환값. 실제 앱 ID 는 admob.properties 에서 주입.
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {

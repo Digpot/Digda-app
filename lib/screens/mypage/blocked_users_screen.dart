@@ -62,6 +62,10 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     setState(() => _working.add(user.userId));
     try {
       await Di.blockRepository.unblockUser(user.userId);
+      // 차단 해제 즉시 일기·일정 목록/캘린더에 다시 보이도록 콘텐츠 캐시를 비운다.
+      // (안 비우면 캐시된 '필터링된' 목록이 남아 실시간으로 복구되지 않는다.)
+      Di.diaryRepository.invalidateCaches();
+      Di.scheduleRepository.invalidateCaches();
       if (!mounted) return;
       setState(() {
         _users = _users.where((u) => u.userId != user.userId).toList();

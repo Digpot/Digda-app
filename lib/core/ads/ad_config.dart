@@ -2,17 +2,23 @@ import 'dart:io';
 
 /// AdMob 광고 단위 ID 모음.
 ///
-/// **현재는 전부 구글 공식 "테스트" 광고 단위 ID 라 실제 노출/수익이 없다.**
-/// 출시 전 AdMob 콘솔에서 발급한 실제 광고 단위 ID 로 `_prod*` 값을 채우고
-/// [useTestAds] 를 false 로 바꾸면 실제 광고가 나간다.
-/// (네이티브 앱 ID 도 AndroidManifest.xml / ios Info.plist 에서 함께 교체할 것.)
+/// 실제(prod) 광고 단위 ID 는 **레포에 커밋하지 않는다.** 빌드 시
+/// `--dart-define-from-file=admob.local.json` 으로 주입하며(파일은 .gitignore),
+/// 주입값이 없으면 구글 공식 "테스트" 광고 단위 ID 로 안전하게 폴백한다.
+///
+/// 네이티브 앱 ID(`ca-app-pub-...~...`) 는 Dart 가 아니라
+/// AndroidManifest( `android/admob.properties` manifestPlaceholder ) /
+/// ios Info.plist 에서 교체한다.
+///
+/// admob.local.json 예시(레포 루트, git 제외):
+/// {
+///   "ADMOB_BANNER_ANDROID": "ca-app-pub-XXXX/YYYY",
+///   "ADMOB_REWARDED_ANDROID": "ca-app-pub-XXXX/ZZZZ"
+/// }
 class AdConfig {
   AdConfig._();
 
-  /// true 면 항상 테스트 광고. 실제 단위 ID 를 넣기 전까지는 true 로 둔다.
-  static const bool useTestAds = true;
-
-  // ── 구글 공식 테스트 광고 단위 ID ──
+  // ── 구글 공식 테스트 광고 단위 ID (폴백) ──
   static const String _testBannerAndroid =
       'ca-app-pub-3940256099942544/6300978111';
   static const String _testBannerIos =
@@ -22,37 +28,21 @@ class AdConfig {
   static const String _testRewardedIos =
       'ca-app-pub-3940256099942544/1712485313';
 
-  // ── 실제 광고 단위 ID (출시 전 교체) ──
-  static const String _prodBannerAndroid = '';
-  static const String _prodBannerIos = '';
-  static const String _prodRewardedAndroid = '';
-  static const String _prodRewardedIos = '';
+  // ── 실제 광고 단위 ID — 빌드 시 dart-define 으로 주입(레포 미커밋) ──
+  // iOS 는 아직 실제 ID 미발급 → 테스트 유지(Android 만 교체).
+  static const String _prodBannerAndroid =
+      String.fromEnvironment('ADMOB_BANNER_ANDROID');
+  static const String _prodRewardedAndroid =
+      String.fromEnvironment('ADMOB_REWARDED_ANDROID');
 
-  static String get bannerUnitId => _pick(
-        _testBannerAndroid,
-        _testBannerIos,
-        _prodBannerAndroid,
-        _prodBannerIos,
-      );
+  static String get bannerUnitId =>
+      Platform.isAndroid ? _orTest(_prodBannerAndroid, _testBannerAndroid) : _testBannerIos;
 
-  static String get rewardedUnitId => _pick(
-        _testRewardedAndroid,
-        _testRewardedIos,
-        _prodRewardedAndroid,
-        _prodRewardedIos,
-      );
+  static String get rewardedUnitId => Platform.isAndroid
+      ? _orTest(_prodRewardedAndroid, _testRewardedAndroid)
+      : _testRewardedIos;
 
-  static String _pick(
-    String testAndroid,
-    String testIos,
-    String prodAndroid,
-    String prodIos,
-  ) {
-    final android = Platform.isAndroid;
-    if (useTestAds) return android ? testAndroid : testIos;
-    final prod = android ? prodAndroid : prodIos;
-    // 실제 ID 가 비어 있으면 안전하게 테스트 ID 폴백.
-    if (prod.isEmpty) return android ? testAndroid : testIos;
-    return prod;
-  }
+  /// 실제 ID 가 주입돼 있으면 그것을, 비어 있으면 테스트 ID 를 쓴다.
+  static String _orTest(String prod, String test) =>
+      prod.isNotEmpty ? prod : test;
 }

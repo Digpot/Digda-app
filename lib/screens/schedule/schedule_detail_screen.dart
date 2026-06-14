@@ -279,6 +279,8 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 차단/신고로 숨겨진 일정은 댓글 입력·광고를 감춰 안내 화면만 남긴다.
+    final isHidden = _detail?.schedule.hidden ?? false;
     return Scaffold(
       backgroundColor: AppColors.white,
       resizeToAvoidBottomInset: true,
@@ -294,10 +296,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               children: [
                 _buildHeader(),
                 Expanded(child: _buildBody()),
-                // 배너 광고 — 스크롤 밖, 댓글바 바로 위 고정.
-                // (스크롤 안에 두면 내용이 짧을 때 화면 중간에 떠 버린다)
-                const AdBanner(padding: EdgeInsets.only(top: 8)),
-                _buildBottomCommentBar(),
+                if (!isHidden) ...[
+                  // 배너 광고 — 스크롤 밖, 댓글바 바로 위 고정.
+                  // (스크롤 안에 두면 내용이 짧을 때 화면 중간에 떠 버린다)
+                  const AdBanner(padding: EdgeInsets.only(top: 8)),
+                  _buildBottomCommentBar(),
+                ],
               ],
             ),
             if (_showMenu) ...[
@@ -341,7 +345,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             ),
           ),
           const Spacer(),
-          if (_detail != null)
+          if (_detail != null && !(_detail!.schedule.hidden))
             GestureDetector(
               onTap: () => setState(() => _showMenu = !_showMenu),
               child: const Padding(
@@ -402,6 +406,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     }
     final detail = _detail!;
     final schedule = detail.schedule;
+    // 차단/신고로 숨겨진 일정 — 본문(제목·시간·참여자) 대신 안내만 보여준다.
+    // (목록에선 서버가 제외하지만, 알림 딥링크·캐시 등으로 직접 들어온 경우 방어)
+    if (schedule.hidden) return _buildHiddenSchedule(schedule);
     final accent = _parseHex(schedule.color);
     String timeLabel;
     if (schedule.allDay) {
@@ -503,6 +510,33 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           _buildComments(detail),
           const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  /// 차단/신고로 숨겨진 일정 — 일기 상세와 같은 톤의 안내 화면.
+  Widget _buildHiddenSchedule(Schedule schedule) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.visibility_off_outlined,
+                size: 48, color: AppColors.gray400),
+            const SizedBox(height: 16),
+            Text(
+              hiddenReasonMessage(schedule.hiddenReason, noun: '일정'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: AppColors.gray700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
