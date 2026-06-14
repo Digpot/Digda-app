@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
@@ -7,6 +8,7 @@ import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 
 /// 마이페이지 — 고객센터. 문의 작성(하루 2건 제한은 서버에서 강제) + 내 문의 목록.
+/// 헤더 우측 아이콘으로 비로그인 계정/데이터 삭제 요청 웹페이지(어드민)로 이동한다.
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
 
@@ -15,6 +17,10 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
+  /// 비로그인 계정/데이터 삭제 요청 페이지(디그팟 어드민 웹).
+  static const String _deletionRequestUrl =
+      'https://digda-admin.vercel.app/deletion-request';
+
   final TextEditingController _controller = TextEditingController();
   bool _submitting = false;
   bool _loading = true;
@@ -47,6 +53,14 @@ class _SupportScreenState extends State<SupportScreen> {
       setState(() => _error = errorMessageOf(e));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openDeletionRequest() async {
+    final uri = Uri.parse(_deletionRequestUrl);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      showErrorDialog(context, '페이지를 열 수 없어요. 잠시 후 다시 시도해주세요.');
     }
   }
 
@@ -102,6 +116,17 @@ class _SupportScreenState extends State<SupportScreen> {
                       fontWeight: FontWeight.w700,
                       fontSize: 20,
                       color: AppColors.gray900,
+                    ),
+                  ),
+                  const Spacer(),
+                  // 비로그인 계정/데이터 삭제 요청 웹페이지로 이동.
+                  GestureDetector(
+                    onTap: _openDeletionRequest,
+                    behavior: HitTestBehavior.opaque,
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.manage_accounts_outlined,
+                          size: 24, color: AppColors.gray700),
                     ),
                   ),
                 ],
