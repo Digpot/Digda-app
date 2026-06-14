@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# AdMob 실제 앱 ID (절대 커밋 금지 — 테스트 ID 로 폴백)
+admob.properties

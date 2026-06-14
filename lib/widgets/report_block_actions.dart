@@ -26,6 +26,62 @@ Future<bool> showReportSheet(
   if (reason == null) return false;
   if (!context.mounted) return false;
 
+  // 제출 전 마지막 확인 — 허위/장난 신고에 대한 책임을 한 번 더 고지한다.
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppColors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text(
+        '정말 신고할까요?',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 17,
+          color: AppColors.gray900,
+        ),
+      ),
+      content: const Text(
+        '허위·악의적 신고를 반복하면 신고자 본인이\n이용 제한 등 불이익을 받을 수 있어요.\n신중하게 신고해주세요.',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w400,
+          fontSize: 14,
+          height: 1.5,
+          color: AppColors.gray700,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text(
+            '취소',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: AppColors.gray500,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text(
+            '신고하기',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return false;
+  if (!context.mounted) return false;
+
   try {
     await Di.reportRepository.submit(
       targetType: targetType,
@@ -33,8 +89,12 @@ Future<bool> showReportSheet(
       reason: reason,
       groupRoomId: groupRoomId,
     );
+    // 신고하면 해당 콘텐츠가 회원에게 즉시 숨겨지므로 목록·캘린더 캐시를 비운다.
+    _invalidateContentCaches();
     if (context.mounted) {
-      showInfoDialog(
+      // 안내를 사용자가 확인으로 닫을 때까지 기다린 뒤 true 를 돌려준다.
+      // (호출부가 곧바로 화면을 pop 하면 이 안내 팝업이 대신 닫혀 흐름이 끊긴다.)
+      await showInfoDialog(
         context,
         '신고를 접수했어요',
         '검토 후 조치할게요.\n신고한 콘텐츠는 회원님께 숨김 처리됐어요.',
@@ -45,6 +105,13 @@ Future<bool> showReportSheet(
     if (context.mounted) showErrorDialog(context, errorMessageOf(e));
     return false;
   }
+}
+
+/// 차단/신고/숨김으로 가시성이 바뀐 직후 일기·일정 목록 캐시를 모두 비운다.
+/// 어느 화면에서 차단해도(일기/일정/댓글) 다른 탭이 즉시 갱신되도록 한곳에서 처리한다.
+void _invalidateContentCaches() {
+  Di.diaryRepository.invalidateCaches();
+  Di.scheduleRepository.invalidateCaches();
 }
 
 /// 사용자 차단 확인 다이얼로그 → 차단. 성공 시 true.
@@ -109,8 +176,12 @@ Future<bool> confirmBlockUser(
 
   try {
     await Di.blockRepository.blockUser(userId);
+    // 차단 즉시 일기·일정 목록/캘린더에서 사라지도록 모든 콘텐츠 캐시를 비운다.
+    _invalidateContentCaches();
     if (context.mounted) {
-      showInfoDialog(context, '차단했어요', "'$userName' 님의 콘텐츠가 더 이상 보이지 않아요.");
+      // 안내를 사용자가 닫을 때까지 기다린 뒤 true 반환 — 호출부의 화면 pop 과 충돌 방지.
+      await showInfoDialog(
+        context, '차단했어요', "'$userName' 님의 콘텐츠가 더 이상 보이지 않아요.");
     }
     return true;
   } catch (e) {

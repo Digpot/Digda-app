@@ -47,6 +47,12 @@ app.*.map.json
 # env
 .env
 
+# AdMob 실제 광고 단위 ID (절대 커밋 금지 — --dart-define-from-file 로 주입)
+admob.local.json
+
+# 빌드 산출물 APK
+*.apk
+
 # Firebase
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
