@@ -199,19 +199,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     if (ok) _afterHidden();
   }
 
-  Future<void> _onHideSchedule() async {
-    setState(() => _showMenu = false);
-    final s = _detail?.schedule;
-    if (s == null) return;
-    final ok = await hideContentAction(
-      context,
-      type: HideTargetType.schedule,
-      targetId: s.id,
-      noun: '일정',
-    );
-    if (ok) _afterHidden();
-  }
-
   Future<void> _onBlockScheduleAuthor() async {
     setState(() => _showMenu = false);
     final s = _detail?.schedule;
@@ -244,14 +231,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           targetType: ReportTargetType.comment,
           targetId: comment.id,
           groupRoomId: Di.activeGroup.groupRoomId,
-        );
-        break;
-      case 'hide':
-        ok = await hideContentAction(
-          context,
-          type: HideTargetType.comment,
-          targetId: comment.id,
-          noun: '댓글',
         );
         break;
       case 'block':
@@ -915,11 +894,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                 endIndent: 8,
               ),
               _MoreMenuRow(
-                icon: Icons.visibility_off_outlined,
-                label: '이 일정 숨기기',
-                onTap: _onHideSchedule,
-              ),
-              _MoreMenuRow(
                 icon: Icons.flag_outlined,
                 label: '신고하기',
                 onTap: _onReportSchedule,
@@ -1111,7 +1085,6 @@ class _ScheduleCommentActionSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          row(Icons.visibility_off_outlined, '이 댓글 숨기기', 'hide'),
           row(Icons.flag_outlined, '신고하기', 'report'),
           row(Icons.block_outlined, "'$authorName' 님 차단하기", 'block',
               color: AppColors.primary),

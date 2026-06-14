@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../core/di.dart';
 import '../core/network/error_message.dart';
-import '../features/block/models/block_models.dart';
 import '../features/report/models/report_models.dart';
 import '../theme/colors.dart';
 import 'app_dialog.dart';
@@ -112,25 +111,6 @@ Future<bool> confirmBlockUser(
     await Di.blockRepository.blockUser(userId);
     if (context.mounted) {
       showInfoDialog(context, '차단했어요', "'$userName' 님의 콘텐츠가 더 이상 보이지 않아요.");
-    }
-    return true;
-  } catch (e) {
-    if (context.mounted) showErrorDialog(context, errorMessageOf(e));
-    return false;
-  }
-}
-
-/// 개별 콘텐츠 숨기기. 성공 시 true.
-Future<bool> hideContentAction(
-  BuildContext context, {
-  required HideTargetType type,
-  required String targetId,
-  String noun = '콘텐츠',
-}) async {
-  try {
-    await Di.blockRepository.hideContent(type, targetId);
-    if (context.mounted) {
-      showInfoDialog(context, '숨겼어요', '이 $noun(이/가) 더 이상 보이지 않아요.');
     }
     return true;
   } catch (e) {

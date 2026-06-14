@@ -305,6 +305,18 @@ void showLimitDialog(
   );
 }
 
+/// 서비스 이용 제한 안내 — 어드민이 제한한 계정에서 마이페이지 외 기능 접근 시.
+/// showLimitDialog 의 "막혔어요" 톤을 공유하되 자물쇠 아이콘 + 고객센터 안내 문구.
+void showRestrictionDialog(BuildContext context) {
+  showLimitDialog(
+    context,
+    title: '서비스 이용이 제한된 계정이에요',
+    message:
+        '회원님의 계정은 현재 서비스 이용이 제한되어\n마이페이지만 사용할 수 있어요.\n자세한 내용은 고객센터로 문의해주세요.',
+    icon: Icons.lock_outline_rounded,
+  );
+}
+
 void showInfoDialog(
   BuildContext context,
   String title,

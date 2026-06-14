@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../core/di.dart';
 import '../theme/colors.dart';
+import 'app_dialog.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -10,6 +12,16 @@ class AppBottomNavBar extends StatelessWidget {
     required this.currentIndex,
     this.onTap,
   });
+
+  /// 이용 제한 계정은 메인 탭(홈/일정/일기/모찌)으로 이동할 수 없다 — 마이페이지만 허용.
+  /// 막힌 경우 안내 팝업을 띄우고 true 를 반환한다.
+  bool _blockedByRestriction(BuildContext context) {
+    if (Di.userSession.profile?.restricted == true) {
+      showRestrictionDialog(context);
+      return true;
+    }
+    return false;
+  }
 
   void _navigate(BuildContext context, int index) {
     if (currentIndex == index) return;
@@ -56,6 +68,7 @@ class AppBottomNavBar extends StatelessWidget {
     final IconData icon = isSelected ? activeIcon : inactiveIcon;
     return GestureDetector(
       onTap: () {
+        if (currentIndex != index && _blockedByRestriction(context)) return;
         if (onTap != null) {
           onTap!.call(index);
         } else {

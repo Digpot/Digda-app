@@ -213,12 +213,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 _closeMoreMenu();
                 _onReport();
               },
-        onHide: _isMine
-            ? null
-            : () {
-                _closeMoreMenu();
-                _onHide();
-              },
         onBlock: _isMine
             ? null
             : () {
@@ -294,18 +288,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     if (ok) _afterHidden();
   }
 
-  Future<void> _onHide() async {
-    final detail = _detail;
-    if (detail == null) return;
-    final ok = await hideContentAction(
-      context,
-      type: HideTargetType.diary,
-      targetId: detail.diary.id,
-      noun: '일기',
-    );
-    if (ok) _afterHidden();
-  }
-
   Future<void> _onBlock() async {
     final detail = _detail;
     if (detail == null) return;
@@ -336,14 +318,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           targetType: ReportTargetType.comment,
           targetId: comment.id,
           groupRoomId: Di.activeGroup.groupRoomId,
-        );
-        break;
-      case 'hide':
-        ok = await hideContentAction(
-          context,
-          type: HideTargetType.comment,
-          targetId: comment.id,
-          noun: '댓글',
         );
         break;
       case 'block':
@@ -760,13 +734,12 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             onTap: () => Navigator.of(context).pop(),
           ),
           const Spacer(),
-          // 일기는 작성자 본인만 수정/삭제 가능 — 메뉴에 그 두 항목뿐이므로
-          // 내 일기가 아니면 점 3개 메뉴 버튼 자체를 숨긴다.
-          if (_isMine)
-            _CircleIconButton(
-              icon: Icons.more_horiz_rounded,
-              onTap: _openMoreMenu,
-            ),
+          // 더보기(⋯) 메뉴 — 내 일기면 수정/삭제, 남의 일기면 신고/작성자 차단.
+          // 남의 일기에도 신고·차단을 할 수 있어야 하므로 항상 노출한다.
+          _CircleIconButton(
+            icon: Icons.more_horiz_rounded,
+            onTap: _openMoreMenu,
+          ),
         ],
       ),
     );
@@ -1457,7 +1430,6 @@ class _CommentActionSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          row(Icons.visibility_off_outlined, '이 댓글 숨기기', 'hide'),
           row(Icons.flag_outlined, '신고하기', 'report'),
           row(Icons.block_outlined, "'$authorName' 님 차단하기", 'block',
               color: const Color(0xFFFF6B6B)),
@@ -1477,14 +1449,12 @@ class _MoreMenuOverlay extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onReport,
-    this.onHide,
     this.onBlock,
   });
   final VoidCallback onClose;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onReport;
-  final VoidCallback? onHide;
   final VoidCallback? onBlock;
 
   @override
@@ -1543,12 +1513,6 @@ class _MoreMenuOverlay extends StatelessWidget {
                         labelColor: const Color(0xFFFF6B6B),
                         iconBg: const Color(0xFFFFEDED),
                         onTap: onDelete!,
-                      ),
-                    if (onHide != null)
-                      _MoreMenuRow(
-                        icon: Icons.visibility_off_outlined,
-                        label: '이 일기 숨기기',
-                        onTap: onHide!,
                       ),
                     if (onReport != null)
                       _MoreMenuRow(
