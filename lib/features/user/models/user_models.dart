@@ -7,6 +7,7 @@ class UserProfile {
     this.profileImage,
     required this.provider,
     this.createdAt,
+    this.restricted = false,
   });
 
   final String id;
@@ -15,6 +16,9 @@ class UserProfile {
   final String? profileImage;
   final String provider;
   final DateTime? createdAt;
+
+  /// 서비스 이용 제한 여부 — true 면 마이페이지 외 기능을 막는다(어드민 설정).
+  final bool restricted;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
@@ -26,6 +30,7 @@ class UserProfile {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
+      restricted: json['restricted'] as bool? ?? false,
     );
   }
 
@@ -41,6 +46,7 @@ class UserProfile {
       profileImage: profileImage ?? this.profileImage,
       provider: provider,
       createdAt: createdAt,
+      restricted: restricted,
     );
   }
 }

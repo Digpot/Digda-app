@@ -44,6 +44,8 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   ];
 
   GroupHomeData? _home;
+  /// 내가 차단한 사용자 ID 집합 — 그룹원 표시에서 '차단됨' 배지로 쓴다.
+  Set<String> _blockedUserIds = const {};
   List<AppNotification> _activity = const [];
   /// 최근 소식 노출 개수 — 최초 5개, '더보기' 시 10개씩 증가.
   int _activityVisible = 5;
@@ -51,6 +53,8 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   String? _errorMessage;
   /// 활성 그룹이 삭제 예정이어서 홈을 그릴 수 없는 상태. true 면 복구 안내 화면을 보여준다.
   bool _deleteScheduledBlock = false;
+  /// 서비스 이용 제한 계정이면 홈 대신 안내 화면(마이페이지만 허용)을 보여준다.
+  bool _restrictedBlock = false;
   /// 오늘 날짜 일기가 이미 있는지 — 그룹홈에서 '일기 쓰기' 중복 작성을 막는 데 쓴다.
   bool _todayHasDiary = false;
   /// 앱 운영 설정(대공지 등). best-effort 로 받아 배너 노출에 사용.
@@ -69,6 +73,16 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     } catch (_) {/* 설정 조회 실패는 화면에 영향 없음 */}
   }
 
+  /// 차단 목록을 받아 그룹원 표시에서 '차단됨' 마킹에 쓴다. 실패는 무시(마킹만 빠짐).
+  Future<void> _loadBlockedUsers() async {
+    try {
+      final blocked = await Di.blockRepository.listBlockedUsers();
+      if (mounted) {
+        setState(() => _blockedUserIds = blocked.map((b) => b.userId).toSet());
+      }
+    } catch (_) {/* 차단 목록 조회 실패는 화면에 영향 없음 */}
+  }
+
   Future<void> _load() async {
     final activeId = Di.activeGroup.groupRoomId;
     if (activeId == null) {
@@ -82,8 +96,24 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       _loading = true;
       _errorMessage = null;
       _deleteScheduledBlock = false;
+      _restrictedBlock = false;
     });
     _loadAppConfig(); // 대공지 배너 (best-effort, 비동기)
+    _loadBlockedUsers(); // 차단 목록 (best-effort, 비동기)
+
+    // 이용 제한 상태를 최신으로 — 제한되면 곧바로 안내 화면으로 막는다.
+    try {
+      final me = await Di.userSession.refresh();
+      if (me.restricted) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _restrictedBlock = true;
+        });
+        return;
+      }
+    } catch (_) {/* 프로필 갱신 실패는 무시(기존 캐시로 진행) */}
+    if (!mounted) return;
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -372,6 +402,121 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     );
   }
 
+  /// 그룹 멤버 목록 시트 — 전체 멤버를 이름과 함께 보여주고, 내가 차단한 멤버는
+  /// '차단됨' 배지로 표시한다(목록에서 빼지 않고 그대로 노출).
+  void _openMemberSheet(ActiveGroupSummary group) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.gray200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '그룹 멤버 (${group.memberCount}명)',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.gray900,
+                  ),
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                itemCount: group.members.length,
+                itemBuilder: (_, i) {
+                  final m = group.members[i];
+                  final blocked =
+                      m.userId != null && _blockedUserIds.contains(m.userId);
+                  final color = _avatarColors[i % _avatarColors.length];
+                  return ListTile(
+                    leading: Opacity(
+                      opacity: blocked ? 0.4 : 1,
+                      child: _MemberSheetAvatar(member: m, color: color),
+                    ),
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            m.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color:
+                                  blocked ? AppColors.gray400 : AppColors.gray900,
+                            ),
+                          ),
+                        ),
+                        if (m.role == 'owner') ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.workspace_premium_rounded,
+                              size: 16, color: Color(0xFFC89A00)),
+                        ],
+                        if (blocked) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              '차단됨',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    subtitle: blocked
+                        ? const Text(
+                            '차단한 멤버예요. 마이페이지에서 해제할 수 있어요.',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              color: AppColors.gray400,
+                            ),
+                          )
+                        : null,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 초대 코드 발급 — 방장만. 서버에서 새 6자리 코드를 재발급받아 그룹 리스트와
   /// 동일한 바텀시트로 노출한다. (예전엔 코드 없이 /code-generate 로 이동해 '------'
   /// 만 떴고, 비방장에게도 버튼이 보였다.)
@@ -439,7 +584,10 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.white,
       bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
-      floatingActionButton: (_loading || _errorMessage != null || _deleteScheduledBlock)
+      floatingActionButton: (_loading ||
+              _errorMessage != null ||
+              _deleteScheduledBlock ||
+              _restrictedBlock)
           ? null
           : FloatingActionButton(
               onPressed: _openCreateSheet,
@@ -451,11 +599,13 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _deleteScheduledBlock
-                ? _buildDeleteScheduledBlock()
-                : _errorMessage != null
-                    ? _buildError()
-                    : _buildBody(),
+            : _restrictedBlock
+                ? _buildRestrictedBlock()
+                : _deleteScheduledBlock
+                    ? _buildDeleteScheduledBlock()
+                    : _errorMessage != null
+                        ? _buildError()
+                        : _buildBody(),
       ),
     );
   }
@@ -486,8 +636,10 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
           _ActiveGroupCard(
             group: group,
             avatarColors: _avatarColors,
+            blockedUserIds: _blockedUserIds,
             onSwitch: _openGroupSwitcher,
             onNextEvent: () => _go('/schedule'),
+            onMembers: () => _openMemberSheet(group),
           ),
           const SizedBox(height: 24),
           const _SectionTitle('빠른 작업'),
@@ -609,6 +761,80 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// 이용 제한 계정일 때 홈 대신 노출하는 안내 — 마이페이지로만 이동 가능.
+  Widget _buildRestrictedBlock() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_outline_rounded,
+                  size: 36, color: AppColors.primary),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '서비스 이용이 제한된 계정이에요',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: AppColors.gray900,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              '회원님의 계정은 현재 서비스 이용이 제한되어\n마이페이지만 사용할 수 있어요.\n자세한 내용은 고객센터로 문의해주세요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 13.5,
+                height: 1.5,
+                color: AppColors.gray700,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context)
+                    .pushNamed('/my-page')
+                    .then((_) => _load()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  '마이페이지로 이동',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -885,14 +1111,21 @@ class _ActiveGroupCard extends StatelessWidget {
   const _ActiveGroupCard({
     required this.group,
     required this.avatarColors,
+    required this.blockedUserIds,
     required this.onSwitch,
     required this.onNextEvent,
+    required this.onMembers,
   });
 
   final ActiveGroupSummary group;
   final List<Color> avatarColors;
+  final Set<String> blockedUserIds;
   final VoidCallback onSwitch;
   final VoidCallback onNextEvent;
+  final VoidCallback onMembers;
+
+  bool _isBlocked(MembershipSummary m) =>
+      m.userId != null && blockedUserIds.contains(m.userId);
 
   @override
   Widget build(BuildContext context) {
@@ -975,49 +1208,65 @@ class _ActiveGroupCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              for (var i = 0; i < shownMembers.length; i++)
-                Padding(
-                  padding: EdgeInsets.only(right: i == shownMembers.length - 1 ? 0 : 6),
-                  child: _Avatar(
-                    member: shownMembers[i],
-                    color: avatarColors[i % avatarColors.length],
-                  ),
-                ),
-              if (extra > 0) ...[
-                const SizedBox(width: 6),
-                Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
-                  child: Text(
-                    '+$extra',
+          // 멤버 줄 — 탭하면 전체 멤버 목록 시트(차단 멤버는 '차단됨' 표시)를 연다.
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onMembers,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  for (var i = 0; i < shownMembers.length; i++)
+                    Padding(
+                      padding: EdgeInsets.only(
+                          right: i == shownMembers.length - 1 ? 0 : 6),
+                      child: Opacity(
+                        opacity: _isBlocked(shownMembers[i]) ? 0.4 : 1,
+                        child: _Avatar(
+                          member: shownMembers[i],
+                          color: avatarColors[i % avatarColors.length],
+                          blocked: _isBlocked(shownMembers[i]),
+                        ),
+                      ),
+                    ),
+                  if (extra > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: Text(
+                        '+$extra',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 10),
+                  Text(
+                    '${group.memberCount}명 함께',
                     style: const TextStyle(
                       fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                       color: Colors.white,
                     ),
                   ),
-                ),
-              ],
-              const SizedBox(width: 10),
-              Text(
-                '${group.memberCount}명 함께',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: Colors.white,
-                ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 18, color: Colors.white70),
+                ],
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 14),
           _NextEventTile(event: group.nextEvent, onTap: onNextEvent),
@@ -1028,14 +1277,19 @@ class _ActiveGroupCard extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.member, required this.color});
+  const _Avatar({
+    required this.member,
+    required this.color,
+    this.blocked = false,
+  });
   final MembershipSummary member;
   final Color color;
+  final bool blocked;
 
   @override
   Widget build(BuildContext context) {
     final img = member.profileImage;
-    return Container(
+    final avatar = Container(
       width: 34,
       height: 34,
       decoration: BoxDecoration(
@@ -1053,6 +1307,28 @@ class _Avatar extends StatelessWidget {
               )
             : _fallback(),
       ),
+    );
+    if (!blocked) return avatar;
+    // 차단된 멤버 — 작은 차단 배지를 우하단에 겹쳐 표시한다.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        avatar,
+        Positioned(
+          right: -2,
+          bottom: -2,
+          child: Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 1.2),
+            ),
+            child: const Icon(Icons.block, size: 8, color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1073,6 +1349,47 @@ class _Avatar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 멤버 목록 시트용 원형 아바타(44px). 프로필 이미지 없으면 이니셜 표시.
+class _MemberSheetAvatar extends StatelessWidget {
+  const _MemberSheetAvatar({required this.member, required this.color});
+  final MembershipSummary member;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final img = member.profileImage;
+    final initial = member.name.isNotEmpty ? member.name.substring(0, 1) : '?';
+    return Container(
+      width: 44,
+      height: 44,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.2),
+      ),
+      child: (img != null && img.isNotEmpty)
+          ? Image.network(
+              img,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _fallback(initial),
+            )
+          : _fallback(initial),
+    );
+  }
+
+  Widget _fallback(String initial) => Center(
+        child: Text(
+          initial,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: color,
+          ),
+        ),
+      );
 }
 
 class _NextEventTile extends StatelessWidget {
