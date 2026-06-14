@@ -192,8 +192,13 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       );
       if (!mounted) return;
       setState(() {
+        // 차단/신고로 숨겨진 일정(hidden)은 캘린더에 아예 그리지 않는다.
+        // (서버가 목록에서 제외하지만, 구버전/캐시로 hidden 항목이 내려와도 방어)
         // 최신 생성 일정이 위에 표시되도록 createdAt 내림차순 정렬
-        _allSchedules = list.map(_Schedule.fromApi).toList()
+        _allSchedules = list
+            .where((s) => !s.hidden)
+            .map(_Schedule.fromApi)
+            .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _applyMemberFilter();
       });
