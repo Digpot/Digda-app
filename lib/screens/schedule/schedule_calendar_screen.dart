@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:world_holidays/world_holidays.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/membership/models/membership_models.dart';
 import '../../features/schedule/models/schedule_models.dart' as api;
@@ -29,6 +30,10 @@ class _Schedule {
   /// 공휴일 의사(pseudo) 일정 여부 — true 면 탭/상세 진입 없음, 레인엔 일반 일정과 동일 참여.
   final bool isHoliday;
 
+  /// 차단/신고로 내게 숨겨진 일정. true 면 제목·참여자는 마스킹되고 '차단된 사용자'로 표시한다.
+  final bool isHidden;
+  final String? hiddenReason;
+
   /// 타임라인 정렬 키 — 종일/다일은 -1(상단), 시간 일정은 0~1439(분).
   final int sortMinutes;
 
@@ -46,6 +51,8 @@ class _Schedule {
     required this.createdAt,
     this.allDay = true,
     this.isHoliday = false,
+    this.isHidden = false,
+    this.hiddenReason,
     this.sortMinutes = -1,
     this.railLabel = '종일',
   }) : end = end ?? start;
@@ -65,6 +72,23 @@ class _Schedule {
 
   /// 서버 Schedule → 화면용 _Schedule.
   factory _Schedule.fromApi(api.Schedule s) {
+    // 차단/신고로 숨겨진 일정 — 일기 캘린더처럼 슬롯은 남기되 내용은 가린다.
+    // 제목은 '차단된 사용자', 색은 회색, 참여자/시간은 비운다.
+    if (s.hidden) {
+      return _Schedule(
+        id: s.id,
+        title: '차단된 사용자',
+        color: AppColors.gray400,
+        start:
+            DateTime.utc(s.startDate.year, s.startDate.month, s.startDate.day),
+        end: DateTime.utc(s.endDate.year, s.endDate.month, s.endDate.day),
+        participants: const [],
+        createdAt: s.createdAt,
+        allDay: s.allDay,
+        isHidden: true,
+        hiddenReason: s.hiddenReason,
+      );
+    }
     final cleaned = s.color.replaceAll('#', '');
     final argb = int.tryParse('FF$cleaned', radix: 16);
     final color = argb != null ? Color(argb) : AppColors.primary;
@@ -192,13 +216,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       );
       if (!mounted) return;
       setState(() {
-        // 차단/신고로 숨겨진 일정(hidden)은 캘린더에 아예 그리지 않는다.
-        // (서버가 목록에서 제외하지만, 구버전/캐시로 hidden 항목이 내려와도 방어)
+        // 차단/신고로 숨겨진 일정(hidden)도 일기 캘린더처럼 슬롯을 남기고 '차단된 사용자'로
+        // 마스킹해 보여준다(_Schedule.fromApi 가 제목·참여자를 가린다).
         // 최신 생성 일정이 위에 표시되도록 createdAt 내림차순 정렬
-        _allSchedules = list
-            .where((s) => !s.hidden)
-            .map(_Schedule.fromApi)
-            .toList()
+        _allSchedules = list.map(_Schedule.fromApi).toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _applyMemberFilter();
       });
@@ -1247,7 +1268,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                   final results = q.isEmpty
                       ? <_Schedule>[]
                       : _allSchedules
-                          .where((s) => s.title.toLowerCase().contains(q))
+                          .where((s) =>
+                              !s.isHidden && s.title.toLowerCase().contains(q))
                           .toList();
                   return Container(
                     decoration: const BoxDecoration(
@@ -1883,6 +1905,8 @@ class _DayDetailBottomSheet extends StatelessWidget {
   }
 
   Widget _buildEventCard(_Schedule schedule) {
+    // 차단/신고로 숨겨진 일정 — 내용 대신 안내만 보여주고 상세 진입을 막는다.
+    if (schedule.isHidden) return _buildHiddenCard(schedule);
     final color = schedule.color;
     String timeText = schedule.time ?? '종일';
     if (schedule.isMultiDay) {
@@ -1958,6 +1982,35 @@ class _DayDetailBottomSheet extends StatelessWidget {
               _buildAvatarStack(schedule),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 차단/신고로 숨겨진 일정 카드 — 일기/일정 상세와 같은 톤의 안내(읽기 전용).
+  Widget _buildHiddenCard(_Schedule schedule) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.visibility_off_outlined,
+              size: 18, color: AppColors.gray400),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              hiddenReasonMessage(schedule.hiddenReason, noun: '일정'),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
