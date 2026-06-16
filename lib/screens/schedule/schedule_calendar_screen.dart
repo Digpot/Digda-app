@@ -216,10 +216,14 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       );
       if (!mounted) return;
       setState(() {
-        // 차단/신고로 숨겨진 일정(hidden)도 일기 캘린더처럼 슬롯을 남기고 '차단된 사용자'로
-        // 마스킹해 보여준다(_Schedule.fromApi 가 제목·참여자를 가린다).
+        // 차단/신고로 숨겨진 일정(hidden)은 일정 캘린더에서 '완전히 제외'한다.
+        // (일기 캘린더는 하루 1편 슬롯 유지를 위해 마스킹하지만, 일정은 슬롯을
+        //  남길 이유가 없어 아예 보이지 않게 한다 — B 가 A 를 차단하면 A 의 일정은 안 보임.)
         // 최신 생성 일정이 위에 표시되도록 createdAt 내림차순 정렬
-        _allSchedules = list.map(_Schedule.fromApi).toList()
+        _allSchedules = list
+            .where((s) => !s.hidden)
+            .map(_Schedule.fromApi)
+            .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _applyMemberFilter();
       });
