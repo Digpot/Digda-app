@@ -62,6 +62,26 @@
         <meta-data
             android:name="com.naver.sdk.clientName"
             android:value="@string/naver_client_name" />
+        <!--
+            카카오 로그인(카카오계정 웹) 리다이렉트 핸들러.
+            카톡 미설치 기기는 loginWithKakaoAccount() 가 커스텀탭으로 동의를 받은 뒤
+            kakao{네이티브앱키}://oauth 로 앱에 복귀하는데, 이 intent-filter 가 없으면
+            동의 화면에서 멈춘다(옛날 폰=카톡 미설치 다발). 액티비티 자체는
+            kakao_flutter_sdk_common 이 선언하지만 스킴 intent-filter 는 앱에서 넣어야 한다.
+            앱키는 build.gradle.kts 가 .env 의 KAKAO_NATIVE_APP_KEY 에서 주입한다.
+        -->
+        <activity
+            android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="kakao${kakaoNativeAppKey}"
+                    android:host="oauth" />
+            </intent-filter>
+        </activity>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

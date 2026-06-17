@@ -29,6 +29,18 @@ if (admobPropertiesFile.exists()) {
 val admobAppId = (admobProperties["admobAppId"] as String?)
     ?: "ca-app-pub-3940256099942544~3347511713"
 
+// 프로젝트 루트의 .env(flutter_dotenv, git 제외) 에서 카카오 네이티브 앱 키를 읽어
+// AndroidManifest 의 카카오 로그인 리다이렉트 스킴(kakao{앱키}://oauth) 에 주입한다.
+// 카톡 미설치 기기는 loginWithKakaoAccount() 가 커스텀탭으로 동의를 받은 뒤 이 스킴으로
+// 앱에 복귀하는데, 빠지면 동의 화면에서 멈춘다. 없으면 빈 값으로 폴백(빌드는 깨지지 않음).
+val kakaoNativeAppKey = rootProject.file("../.env").takeIf { it.exists() }
+    ?.readLines()
+    ?.firstOrNull { it.trimStart().startsWith("KAKAO_NATIVE_APP_KEY") }
+    ?.substringAfter("=")
+    ?.trim()
+    ?.trim('"', '\'')
+    ?: ""
+
 android {
     namespace = "com.digda.app"
     // google_mobile_ads(AdMob)·Android 14 대응으로 compileSdk 34 이상을 보장한다.
@@ -55,6 +67,8 @@ android {
         versionName = flutter.versionName
         // AndroidManifest 의 ${admobAppId} 치환값. 실제 앱 ID 는 admob.properties 에서 주입.
         manifestPlaceholders["admobAppId"] = admobAppId
+        // AndroidManifest 의 카카오 리다이렉트 스킴(kakao${kakaoNativeAppKey}://oauth) 치환값.
+        manifestPlaceholders["kakaoNativeAppKey"] = kakaoNativeAppKey
     }
 
     signingConfigs {
