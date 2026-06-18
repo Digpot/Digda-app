@@ -61,8 +61,15 @@ jobs:
       # GoogleService-Info.plist 파일 전체를 base64 로 인코딩해 시크릿에 저장:
       #   base64 -i GoogleService-Info.plist | pbcopy
       - name: Write GoogleService-Info.plist (optional)
-        if: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 != '' }}
-        run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 --decode > ios/Runner/GoogleService-Info.plist
+        env:
+          GS_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          if [ -n "$GS_PLIST_B64" ]; then
+            echo "$GS_PLIST_B64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            echo "GoogleService-Info.plist 작성 완료"
+          else
+            echo "GOOGLE_SERVICE_INFO_PLIST_BASE64 미설정 — 건너뜀"
+          fi
 
       - name: Flutter pub get
         run: flutter pub get
