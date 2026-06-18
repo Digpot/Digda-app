@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -158,16 +160,18 @@ class _SocialLoginScreenState extends State<SocialLoginScreen> {
                   ),
                   onPressed: _busy ? null : () => _signIn(SocialProvider.naver),
                 ),
-                // 안드로이드 전용 빌드라 Apple 로그인 버튼은 비활성화(주석 처리).
-                // iOS 배포 시 아래 블록을 다시 살리면 된다.
-                // const SizedBox(height: 12),
-                // _SocialButton(
-                //   text: 'Apple로 시작하기',
-                //   backgroundColor: AppColors.appleBlack,
-                //   textColor: AppColors.white,
-                //   icon: const Icon(Icons.apple, size: 20, color: AppColors.white),
-                //   onPressed: _busy ? null : () => _signIn(SocialProvider.apple),
-                // ),
+                // Apple 로그인은 iOS 에서만 노출(App Store 정책 + Android 미지원).
+                // 토큰 흐름(SignInWithApple→idToken→/auth/login)은 이미 배선되어 있다.
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  _SocialButton(
+                    text: 'Apple로 시작하기',
+                    backgroundColor: AppColors.appleBlack,
+                    textColor: AppColors.white,
+                    icon: const Icon(Icons.apple, size: 20, color: AppColors.white),
+                    onPressed: _busy ? null : () => _signIn(SocialProvider.apple),
+                  ),
+                ],
                 const SizedBox(height: 48),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
