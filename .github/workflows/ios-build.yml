@@ -1,0 +1,114 @@
+name: iOS Build
+
+# 맥 없이 GitHub(macOS 러너)에서 iOS 빌드를 돌리기 위한 워크플로.
+#
+# 1단계(지금 바로 가능): flutter build ios --no-codesign
+#   - Apple 개발자 계정/인증서 없이도 컴파일·플러그인 통합을 검증한다.
+#   - 필요한 시크릿: 아래 "env / Secrets.xcconfig" 그룹 (없으면 빈 값으로 빌드됨).
+#
+# 2단계(Apple 개발자 계정 발급 후): 서명 + TestFlight 업로드
+#   - 파일 맨 아래 testflight 잡의 주석을 해제하고 서명 시크릿을 추가한다.
+
+on:
+  push:
+    branches: [ios]
+  pull_request:
+    branches: [ios]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (no codesign)
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.1
+          channel: stable
+          cache: true
+
+      # ── 앱 런타임 키(.env) — flutter_dotenv 가 읽는다 ──
+      - name: Write .env
+        run: |
+          cat > .env <<EOF
+          API_BASE_URL=${{ secrets.API_BASE_URL }}
+          KAKAO_NATIVE_APP_KEY=${{ secrets.KAKAO_NATIVE_APP_KEY }}
+          KAKAO_JAVASCRIPT_APP_KEY=${{ secrets.KAKAO_JAVASCRIPT_APP_KEY }}
+          KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}
+          NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
+          NAVER_CLIENT_NAME=${{ secrets.NAVER_CLIENT_NAME }}
+          APPLE_SERVICE_ID=${{ secrets.APPLE_SERVICE_ID }}
+          APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}
+          EOF
+
+      # ── iOS 네이티브 키(Info.plist 치환용) — Secrets.xcconfig 생성 ──
+      - name: Write ios/Flutter/Secrets.xcconfig
+        run: |
+          cat > ios/Flutter/Secrets.xcconfig <<EOF
+          KAKAO_NATIVE_APP_KEY = ${{ secrets.KAKAO_NATIVE_APP_KEY }}
+          NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
+          NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
+          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          EOF
+
+      # ── (선택) Firebase iOS 설정 — 푸시/Analytics 가 필요할 때만 ──
+      # GoogleService-Info.plist 파일 전체를 base64 로 인코딩해 시크릿에 저장:
+      #   base64 -i GoogleService-Info.plist | pbcopy
+      - name: Write GoogleService-Info.plist (optional)
+        if: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 != '' }}
+        run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 --decode > ios/Runner/GoogleService-Info.plist
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload Runner.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-app
+          path: build/ios/iphoneos/Runner.app
+          if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────
+  # 2단계: 서명 + TestFlight 업로드 (Apple 개발자 계정 발급 후 활성화)
+  #
+  # 추가로 필요한 GitHub Secrets:
+  #   APPSTORE_API_KEY_ID            App Store Connect API 키 ID
+  #   APPSTORE_API_ISSUER_ID         App Store Connect Issuer ID
+  #   APPSTORE_API_PRIVATE_KEY       .p8 키 내용 (전체)
+  #   IOS_DIST_CERT_P12_BASE64       배포 인증서(.p12) base64
+  #   IOS_DIST_CERT_PASSWORD         .p12 비밀번호
+  #   IOS_PROVISIONING_PROFILE_BASE64  프로비저닝 프로파일(.mobileprovision) base64
+  #   IOS_TEAM_ID                    Apple 개발자 팀 ID
+  #
+  # 위 시크릿을 모두 등록한 뒤 아래 잡 주석을 해제하면 된다.
+  # (fastlane match / app-store-connect 액션 사용을 권장)
+  #
+  # testflight:
+  #   name: Sign & Upload to TestFlight
+  #   runs-on: macos-14
+  #   needs: build
+  #   if: github.ref == 'refs/heads/ios'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: subosito/flutter-action@v2
+  #       with:
+  #         flutter-version: 3.41.1
+  #         channel: stable
+  #         cache: true
+  #     - name: Import signing assets
+  #       run: |
+  #         # 인증서/프로파일 설치 + keychain 구성
+  #         echo "TODO: import .p12 / provisioning profile"
+  #     - name: Build & archive (signed)
+  #       run: flutter build ipa --export-options-plist=ios/ExportOptions.plist
+  #     - name: Upload to TestFlight
+  #       run: xcrun altool --upload-app -f build/ios/ipa/*.ipa --apiKey "$KEY_ID" --apiIssuer "$ISSUER"

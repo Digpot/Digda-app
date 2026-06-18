@@ -47,6 +47,9 @@ app.*.map.json
 # env
 .env
 
+# iOS 소셜로그인/서명 키 (커밋 금지 — Secrets.example.xcconfig 복사 후 채우거나 CI 가 주입)
+ios/Flutter/Secrets.xcconfig
+
 # AdMob 실제 광고 단위 ID (절대 커밋 금지 — --dart-define-from-file 로 주입)
 admob.local.json
 
