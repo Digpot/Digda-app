@@ -36,7 +36,11 @@ platform :ios do
         "-authenticationKeyID", key_id,
         "-authenticationKeyIssuerID", issuer_id,
         "-authenticationKeyPath", key_path,
-        "DEVELOPMENT_TEAM=#{team_id}"
+        "DEVELOPMENT_TEAM=#{team_id}",
+        # 프로젝트가 Release 에도 'iPhone Developer'(개발) 서명을 강제해 아카이브가
+        # 개발 프로파일을 요구한다(→"team has no devices" 에러). App Store 빌드는
+        # 배포 서명이어야 하므로 배포 ID 로 덮어써 자동 배포 프로파일을 발급받게 한다.
+        'CODE_SIGN_IDENTITY="Apple Distribution"'
       ].join(" "),
       export_options: {
         signingStyle: "automatic",
