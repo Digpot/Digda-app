@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Apple 로그인(Sign in with Apple) capability. App ID 에도 동일 capability 활성화 필요. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+	<!-- FCM 푸시. TestFlight/App Store 빌드는 production 으로 자동 승격됨. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

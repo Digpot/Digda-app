@@ -1,0 +1,199 @@
+name: iOS Build
+
+# 맥 없이 GitHub(macOS 러너)에서 iOS 빌드를 돌리기 위한 워크플로.
+#
+# 1단계(지금 바로 가능): flutter build ios --no-codesign
+#   - Apple 개발자 계정/인증서 없이도 컴파일·플러그인 통합을 검증한다.
+#   - 필요한 시크릿: 아래 "env / Secrets.xcconfig" 그룹 (없으면 빈 값으로 빌드됨).
+#
+# 2단계(자동, ios 브랜치 push 시): 서명 + TestFlight 업로드 (testflight 잡)
+#   - App Store Connect API 키로 인증서/프로파일 자동 발급·서명 → TestFlight 업로드.
+#   - 아래 시크릿이 없으면 testflight 잡은 조용히 건너뛴다(빌드는 그대로 통과).
+
+on:
+  push:
+    branches: [ios]
+  pull_request:
+    branches: [ios]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (no codesign)
+    # Firebase iOS SDK 가 Swift 6(sending 등) 를 요구 → Xcode 16 필요(macos-15).
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.1
+          channel: stable
+          cache: true
+
+      # ── 앱 런타임 키(.env) — flutter_dotenv 가 읽는다 ──
+      - name: Write .env
+        run: |
+          cat > .env <<EOF
+          API_BASE_URL=${{ secrets.API_BASE_URL }}
+          KAKAO_NATIVE_APP_KEY=${{ secrets.KAKAO_NATIVE_APP_KEY }}
+          KAKAO_JAVASCRIPT_APP_KEY=${{ secrets.KAKAO_JAVASCRIPT_APP_KEY }}
+          KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}
+          NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
+          NAVER_CLIENT_NAME=${{ secrets.NAVER_CLIENT_NAME }}
+          APPLE_SERVICE_ID=${{ secrets.APPLE_SERVICE_ID }}
+          APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}
+          EOF
+
+      # ── iOS 네이티브 키(Info.plist 치환용) — Secrets.xcconfig 생성 ──
+      - name: Write ios/Flutter/Secrets.xcconfig
+        run: |
+          cat > ios/Flutter/Secrets.xcconfig <<EOF
+          KAKAO_NATIVE_APP_KEY = ${{ secrets.KAKAO_NATIVE_APP_KEY }}
+          NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
+          NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
+          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          EOF
+
+      # ── (선택) Firebase iOS 설정 — 푸시/Analytics 가 필요할 때만 ──
+      # GoogleService-Info.plist 파일 전체를 base64 로 인코딩해 시크릿에 저장:
+      #   base64 -i GoogleService-Info.plist | pbcopy
+      - name: Write GoogleService-Info.plist (optional)
+        env:
+          GS_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          if [ -n "$GS_PLIST_B64" ]; then
+            echo "$GS_PLIST_B64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            echo "GoogleService-Info.plist 작성 완료"
+          else
+            echo "GOOGLE_SERVICE_INFO_PLIST_BASE64 미설정 — 건너뜀"
+          fi
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload Runner.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-app
+          path: build/ios/iphoneos/Runner.app
+          if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────
+  # 2단계: 서명 + TestFlight 업로드 (App Store Connect API 키 자동서명)
+  #
+  # 필요한 GitHub Secrets (없으면 이 잡은 guard 에서 조용히 건너뜀):
+  #   APPSTORE_API_KEY_ID       App Store Connect → Integrations → Keys 의 Key ID
+  #   APPSTORE_API_ISSUER_ID    같은 페이지 상단의 Issuer ID
+  #   APPSTORE_API_PRIVATE_KEY  위 키 발급 시 받은 .p8 파일 내용 전체
+  #                             (⚠️ "Sign in with Apple" 용 p8 과 다른 별도 키)
+  #   IOS_TEAM_ID               10자리 Apple 팀 ID (로그인용 TEAM_ID 와 동일값 가능)
+  testflight:
+    name: Sign & Upload to TestFlight
+    runs-on: macos-15
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ios'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 서명 시크릿이 아직 없으면 이후 스텝을 전부 건너뛴다(워크플로는 초록 유지).
+      - name: Guard — TestFlight secrets present?
+        id: guard
+        env:
+          KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+        run: |
+          if [ -n "$KEY_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::APPSTORE_API_KEY_ID 미설정 — TestFlight 업로드 건너뜀"
+          fi
+
+      - name: Select latest stable Xcode
+        if: steps.guard.outputs.ready == 'true'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Flutter
+        if: steps.guard.outputs.ready == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.1
+          channel: stable
+          cache: true
+
+      - name: Write .env
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          cat > .env <<EOF
+          API_BASE_URL=${{ secrets.API_BASE_URL }}
+          KAKAO_NATIVE_APP_KEY=${{ secrets.KAKAO_NATIVE_APP_KEY }}
+          KAKAO_JAVASCRIPT_APP_KEY=${{ secrets.KAKAO_JAVASCRIPT_APP_KEY }}
+          KAKAO_REST_API_KEY=${{ secrets.KAKAO_REST_API_KEY }}
+          NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
+          NAVER_CLIENT_NAME=${{ secrets.NAVER_CLIENT_NAME }}
+          APPLE_SERVICE_ID=${{ secrets.APPLE_SERVICE_ID }}
+          APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}
+          EOF
+
+      - name: Write ios/Flutter/Secrets.xcconfig
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          cat > ios/Flutter/Secrets.xcconfig <<EOF
+          KAKAO_NATIVE_APP_KEY = ${{ secrets.KAKAO_NATIVE_APP_KEY }}
+          NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
+          NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
+          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          EOF
+
+      - name: Write GoogleService-Info.plist (optional)
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          GS_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          if [ -n "$GS_PLIST_B64" ]; then
+            echo "$GS_PLIST_B64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          fi
+
+      - name: Flutter pub get
+        if: steps.guard.outputs.ready == 'true'
+        run: flutter pub get
+
+      # Generated.xcconfig + CocoaPods 생성 및 빌드번호 주입(=GitHub run 번호).
+      # TestFlight 는 빌드번호가 매번 증가해야 하므로 run_number 를 쓴다.
+      - name: Generate iOS config + pods
+        if: steps.guard.outputs.ready == 'true'
+        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+
+      - name: Write App Store Connect API key (.p8)
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          P8: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+        run: |
+          echo "$P8" > "$RUNNER_TEMP/AuthKey.p8"
+
+      - name: Build & upload to TestFlight (fastlane)
+        if: steps.guard.outputs.ready == 'true'
+        working-directory: ios
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: fastlane beta
