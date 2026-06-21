@@ -1,3 +1,7 @@
+# Apple 서명/로그인 개인키 — 절대 커밋 금지
+*.p8
+docs/*.p8
+
 # Miscellaneous
 *.class
 *.log
