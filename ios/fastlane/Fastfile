@@ -43,6 +43,9 @@ platform :ios do
       git_url: "https://github.com/Digpot/ios-certs.git",
       storage_mode: "git",
       readonly: false,
+      # 프로파일을 매번 재발급해 App ID 의 현재 capability(Push 등)를 항상 반영.
+      # (인증서는 재사용, 프로파일만 재생성되므로 한도 문제 없음)
+      force: true,
       keychain_name: keychain_name,
       keychain_password: keychain_password
     )
