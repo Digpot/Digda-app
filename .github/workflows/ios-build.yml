@@ -61,7 +61,7 @@ jobs:
           NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
           NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
-          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_URL_SCHEME = ${{ secrets.NAVER_URL_SCHEME }}
           EOF
 
       # ── (선택) Firebase iOS 설정 — 푸시/Analytics 가 필요할 때만 ──
@@ -159,7 +159,7 @@ jobs:
           NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
           NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
-          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_URL_SCHEME = ${{ secrets.NAVER_URL_SCHEME }}
           EOF
 
       - name: Write GoogleService-Info.plist (optional)
