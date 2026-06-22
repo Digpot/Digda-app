@@ -105,13 +105,41 @@ class AuthSession extends ChangeNotifier {
   Future<void> _registerDevice() async {
     try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission();
+      final settings = await messaging.requestPermission();
+      debugPrint('[FCM] permission=${settings.authorizationStatus}');
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('[FCM] 알림 권한 거부 — 디바이스 등록 건너뜀');
+        return;
+      }
+
+      // iOS 는 APNs 토큰이 먼저 채워져야 getToken() 이 성공한다(미수신 상태에서
+      // getToken() 호출 시 apns-token-not-set 예외). requestPermission 직후엔
+      // APNs 왕복이 끝나지 않을 수 있어 짧게 폴링하며 기다린다 — 안드로이드는
+      // APNs 단계가 없어 곧장 진행. (옛 코드가 즉시 getToken() 해서 iOS 만
+      // 조용히 실패 → 서버 devices 테이블에 iOS 행이 없던 원인.)
+      if (Platform.isIOS) {
+        String? apns;
+        for (var i = 0; i < 5; i++) {
+          apns = await messaging.getAPNSToken();
+          if (apns != null) break;
+          await Future.delayed(const Duration(seconds: 1));
+        }
+        debugPrint('[FCM] APNs token=${apns == null ? 'NULL(미수신)' : 'OK'}');
+        if (apns == null) {
+          // 스위즐링/AppDelegate 포워딩 문제일 가능성 — 명시 로그 후 중단.
+          debugPrint('[FCM] APNs 토큰 미수신 — FCM 토큰 발급 불가, 등록 중단');
+          return;
+        }
+      }
+
       final token = await messaging.getToken();
+      debugPrint('[FCM] token=${token == null ? 'NULL' : 'len=${token.length}'}');
       if (token == null) return;
 
       final platform = Platform.isIOS ? DevicePlatform.ios : DevicePlatform.android;
       final deviceId = await _deviceRepo.register(token: token, platform: platform);
       await _tokenStorage.saveDeviceId(deviceId);
+      debugPrint('[FCM] 디바이스 등록 완료 deviceId=$deviceId platform=${platform.value}');
 
       // 토큰 갱신 시 서버에 재등록 (프로세스당 한 번만 부착).
       if (!_tokenRefreshAttached) {
@@ -121,8 +149,10 @@ class AuthSession extends ChangeNotifier {
           await _tokenStorage.saveDeviceId(id);
         });
       }
-    } catch (_) {
-      // FCM 설정 미완료 시 무시 (google-services.json 등 미설치)
+    } catch (e, st) {
+      // FCM 설정 미완료/일시 오류 시 무시하되, 원인 파악용 로그는 남긴다.
+      debugPrint('[FCM] 디바이스 등록 실패: $e');
+      debugPrint('$st');
     }
   }
 
