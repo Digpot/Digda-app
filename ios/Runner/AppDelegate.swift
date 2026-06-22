@@ -27,8 +27,20 @@ import FirebaseMessaging
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
+    NSLog("[APNs] 디바이스 토큰 수신 성공 — \(deviceToken.count) bytes")
     Messaging.messaging().apnsToken = deviceToken
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+  }
+
+  // APNs 등록 실패 시 "왜" 를 남긴다. apns=NULL 의 실제 원인(네트워크 실패 /
+  // 프로파일 aps-environment 누락 / capability 미반영 등)이 여기 error 로 드러난다.
+  // 이 핸들러가 호출되면 키·서버와 무관한 "기기↔애플 등록" 자체의 실패다.
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    NSLog("[APNs] 등록 실패 — registerForRemoteNotifications error: \(error.localizedDescription)")
+    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
