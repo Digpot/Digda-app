@@ -26,6 +26,12 @@ class DeviceRepository {
   Future<void> unregister(String deviceId) async {
     await _api.delete<void>('/devices/$deviceId');
   }
+
+  /// iOS FCM 등록 실패 진단을 서버 로그로 남기기 위한 보고(윈도우 디버깅용).
+  /// 서버는 DB 저장 없이 로그만 남긴다.
+  Future<void> reportDiagnostic(String detail) async {
+    await _api.post<void>('/devices/diagnostic', body: {'detail': detail});
+  }
 }
 
 enum DevicePlatform {
