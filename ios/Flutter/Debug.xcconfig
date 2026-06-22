@@ -1,2 +1,4 @@
 #include "Generated.xcconfig"
+// AdMob iOS 앱 ID 기본값 = 구글 테스트 앱 ID. 실제 ID 는 아래 Secrets.xcconfig(CI 주입)가 덮어씀.
+ADMOB_APP_ID_IOS = ca-app-pub-3940256099942544~1458002511
 #include? "Secrets.xcconfig"

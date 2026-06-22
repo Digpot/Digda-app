@@ -71,11 +71,12 @@
 	<key>NSUserTrackingUsageDescription</key>
 	<string>회원님께 더 알맞은 광고를 보여드리기 위해 활동을 추적합니다. 허용하지 않아도 광고는 표시되며, 앱은 동일하게 이용할 수 있어요.</string>
 	<!--
-		AdMob 앱 ID. 현재는 구글 공식 "테스트" 앱 ID. 출시 전 AdMob 콘솔에서
-		발급한 실제 iOS 앱 ID(ca-app-pub-XXXX~YYYY) 로 교체할 것.
+		AdMob 앱 ID. 빌드 설정 ADMOB_APP_ID_IOS 로 치환된다.
+		기본값(Debug/Release.xcconfig)은 구글 "테스트" 앱 ID, CI 는 Secrets.xcconfig
+		(GitHub Secret ADMOB_APP_ID_IOS)로 실제 ID 를 덮어쓴다.
 	-->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>$(ADMOB_APP_ID_IOS)</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
