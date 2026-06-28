@@ -4,6 +4,14 @@ import FirebaseMessaging
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  // APNs 등록 결과를 보관해 Dart 진단/재적용에 노출한다.
+  // didRegister 가 끝내 안 불리면 둘 다 nil → "APNs 미응답", error 가 차 있으면
+  // "등록 실패(사유)" 로 서버에서 구분할 수 있다.
+  private var apnsDeviceToken: Data?
+  private var apnsError: String?
+  // Dart 와 통신할 채널을 강하게 잡아 둔다(미보유 시 즉시 해제됨).
+  private var apnsChannel: FlutterMethodChannel?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -23,11 +31,19 @@ import FirebaseMessaging
   // 닿지 않아 getAPNSToken()/getToken() 이 끝까지 null → iOS 가 /devices 등록을
   // 못 했다(안드로이드만 devices 테이블에 들어오던 원인). 여기서 명시적으로 넘겨
   // 토큰 발급을 보장한다. super 호출로 다른 플러그인 포워딩도 유지한다.
+  //
+  // 단, 이 콜백이 Dart 의 Firebase.initializeApp 완료 전에 불리면
+  // Messaging.messaging() 이 아직 구성 전이라 apnsToken 적용이 유실될 수 있다.
+  // 그래서 토큰을 보관해 두고, Dart 가 초기화 완료 후 "sync" 를 호출할 때 다시
+  // 적용한다(아래 채널 핸들러). 기기/콜드스타트 타이밍 편차로 일부 기기만
+  // apns=NULL 이 되던 레이스를 차단한다.
   override func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
     NSLog("[APNs] 디바이스 토큰 수신 성공 — \(deviceToken.count) bytes")
+    apnsDeviceToken = deviceToken
+    apnsError = nil
     Messaging.messaging().apnsToken = deviceToken
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
@@ -35,15 +51,43 @@ import FirebaseMessaging
   // APNs 등록 실패 시 "왜" 를 남긴다. apns=NULL 의 실제 원인(네트워크 실패 /
   // 프로파일 aps-environment 누락 / capability 미반영 등)이 여기 error 로 드러난다.
   // 이 핸들러가 호출되면 키·서버와 무관한 "기기↔애플 등록" 자체의 실패다.
+  // 사유를 보관해 Dart→서버 진단으로 노출한다(기기 콘솔을 못 보는 TestFlight 대응).
   override func application(
     _ application: UIApplication,
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
     NSLog("[APNs] 등록 실패 — registerForRemoteNotifications error: \(error.localizedDescription)")
+    apnsError = error.localizedDescription
     super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    // Dart 진단/재적용 채널. Dart 가 Firebase 초기화 완료 후 "sync" 를 부르면
+    // (1) 보관해 둔 APNs 토큰을 Messaging 에 다시 적용하고
+    // (2) 현재 등록 상태(hasToken / error)를 돌려준다.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "DigdaApnsDiag") {
+      let channel = FlutterMethodChannel(
+        name: "com.digda.app/apns",
+        binaryMessenger: registrar.messenger()
+      )
+      channel.setMethodCallHandler { [weak self] call, result in
+        switch call.method {
+        case "sync":
+          // Firebase 가 구성된 지금 시점에 토큰을 재적용해 유실 레이스를 차단.
+          if let token = self?.apnsDeviceToken {
+            Messaging.messaging().apnsToken = token
+          }
+          result([
+            "hasToken": self?.apnsDeviceToken != nil,
+            "error": self?.apnsError as Any,
+          ])
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+      apnsChannel = channel
+    }
   }
 }
