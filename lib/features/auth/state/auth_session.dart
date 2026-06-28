@@ -139,7 +139,7 @@ class AuthSession extends ChangeNotifier {
         // 지금 Messaging 에 재적용한다(초기화 레이스로 토큰이 유실됐던 경우 복구).
         var native = await _syncNativeApns();
         String? apns;
-        for (var i = 0; i < 15; i++) {
+        for (var i = 0; i < 30; i++) {
           apns = await messaging.getAPNSToken();
           if (apns != null) break;
           await Future.delayed(const Duration(seconds: 1));
@@ -148,7 +148,7 @@ class AuthSession extends ChangeNotifier {
         diag = '$diag apns=${apns == null ? 'NULL' : 'OK'} $native';
         debugPrint('[FCM] APNs token=${apns == null ? 'NULL(미수신)' : 'OK'} $native');
         if (apns == null) {
-          // 15초간 APNs 토큰이 끝내 안 옴. native 상태로 원인을 구분한다:
+          // 30초간 APNs 토큰이 끝내 안 옴. native 상태로 원인을 구분한다:
           //  - native=err(...) : iOS 가 APNs 등록 실패(didFail, 사유 노출)
           //  - native=미응답   : didRegister/didFail 둘 다 미호출(네트워크/프로파일 의심)
           //  - native=tokenOK  : 네이티브엔 토큰 있는데 Messaging 전파 실패(플러그인 의심)
