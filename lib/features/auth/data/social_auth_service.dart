@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
@@ -38,13 +36,8 @@ class SocialAuthService {
 
   Future<SocialCredential> _signInKakao() async {
     try {
-      // iOS 에선 카카오톡 앱전환 로그인이 우리 앱으로 되돌아오기 직전에 카카오톡
-      // 인앱 브라우저가 "경로를 찾을 수 없어요" 중간 페이지를 잠깐 띄우는 문제가
-      // 있다(로그인 자체는 완료되지만 UX 가 깨짐, 안드로이드는 정상). iOS 는
-      // ASWebAuthenticationSession 으로 자체 완결되는 카카오계정(웹) 로그인을 써서
-      // 그 중간 404 를 피한다. 안드로이드는 카톡 원탭 로그인을 그대로 유지.
-      final useTalk = !Platform.isIOS && await kakao.isKakaoTalkInstalled();
-      final token = useTalk
+      final installed = await kakao.isKakaoTalkInstalled();
+      final token = installed
           ? await kakao.UserApi.instance.loginWithKakaoTalk()
           : await kakao.UserApi.instance.loginWithKakaoAccount();
       return SocialCredential(

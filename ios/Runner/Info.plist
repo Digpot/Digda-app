@@ -57,6 +57,15 @@
 		<string>naversearchapp</string>
 		<string>naversearchthirdlogin</string>
 	</array>
+	<!-- Flutter 자동 딥링크 비활성화. 켜져 있으면 OS 가 전달한 소셜로그인 콜백 URL
+	     (kakao{앱키}://oauth?code=... / naver...://)을 Flutter 가 라우트로 변환해
+	     onGenerateRoute 로 밀어넣어, 그런 라우트가 없으니 "경로를 찾을 수 없어요"
+	     화면이 뜬다(로그인 자체는 카카오/네이버 플러그인이 openURL 로 별도 수신해
+	     정상 완료됨, 안드로이드는 카카오 SDK 전용 액티비티가 스킴을 가로채 무관).
+	     앱의 초대 딥링크(digda://invite)는 app_links 패키지가 자체 채널로 처리하므로
+	     이 값과 무관하게 계속 동작한다. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<!-- 카메라/사진 접근 사유 — image_picker 로 일기·프로필·퀴즈 사진을 찍거나 고를 때 사용 -->
