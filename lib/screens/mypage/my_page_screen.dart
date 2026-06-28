@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
@@ -24,12 +25,17 @@ class MyPageScreen extends StatefulWidget {
 class _MyPageScreenState extends State<MyPageScreen> {
   // 피드백 메뉴 노출/링크 — 어드민 설정(서버)에서 받아온다.
   AppConfig _appConfig = AppConfig.empty;
+  // 앱 버전 — pubspec(빌드)에서 동적으로 읽어 하드코딩을 피한다. 로드 전엔 빈 값.
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     Di.userSession.addListener(_onSession);
     _appConfig = Di.appConfigRepository.cachedOrEmpty;
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _appVersion = info.version);
+    }, onError: (_) {});
     // 캐시가 비어 있으면 강제 갱신, 있더라도 화면 진입 시 최신화. 실패는 화면 표시에 영향 없음.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Di.userSession.refresh().then(
@@ -184,9 +190,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         iconColor: AppColors.gray400,
                         label: '앱 정보',
                         onTap: () {},
-                        trailing: const Text(
-                          'v1.0.0',
-                          style: TextStyle(
+                        trailing: Text(
+                          _appVersion.isEmpty ? '' : 'v$_appVersion',
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w400,
                             fontSize: 13,
