@@ -40,6 +40,8 @@ dependencies:
   google_mobile_ads: ^5.2.0
   # iOS 앱 추적 투명성(ATT) 동의 — 개인화 광고용
   app_tracking_transparency: ^2.0.6
+  # 앱 버전 표기를 빌드(pubspec)에서 동적으로 읽기
+  package_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:
