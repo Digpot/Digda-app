@@ -33,7 +33,9 @@ android {
     namespace = "com.digda.app"
     // google_mobile_ads(AdMob)·Android 14 대응으로 compileSdk 34 이상을 보장한다.
     compileSdk = maxOf(flutter.compileSdkVersion, 34)
-    ndkVersion = flutter.ndkVersion
+    // flutter.ndkVersion 기본값이 로컬 미설치 버전이라 AAB 심볼 스트립이 실패
+    // ("failed to strip debug symbols") — 설치된 NDK 로 올려 고정한다.
+    ndkVersion = maxOf(flutter.ndkVersion, "28.2.13676358")
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
