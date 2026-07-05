@@ -1,0 +1,52 @@
+default_platform(:ios)
+
+# App Store Connect API 키 하나로 서명 인증서·프로비저닝 프로파일을 Xcode 가
+# 자동 생성/서명(cloud managed)하고, 빌드된 IPA 를 TestFlight 로 올린다.
+# 수동 .p12/프로파일 발급이 필요 없다.
+#
+# 필요한 환경변수 (워크플로에서 주입):
+#   APPSTORE_API_KEY_ID       App Store Connect API 키 ID
+#   APPSTORE_API_ISSUER_ID    Issuer ID
+#   APPSTORE_API_KEY_PATH     .p8 파일 경로 (워크플로가 RUNNER_TEMP 에 기록)
+#   IOS_TEAM_ID               10자리 Apple 팀 ID
+platform :ios do
+  desc "Release IPA 서명 빌드 후 TestFlight 업로드"
+  lane :beta do
+    key_id    = ENV.fetch("APPSTORE_API_KEY_ID")
+    issuer_id = ENV.fetch("APPSTORE_API_ISSUER_ID")
+    key_path  = ENV.fetch("APPSTORE_API_KEY_PATH")
+    team_id   = ENV.fetch("IOS_TEAM_ID")
+
+    api_key = app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_filepath: key_path
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      clean: true,
+      output_directory: "build",
+      # API 키로 인증해 배포 인증서/프로파일을 자동 발급·서명.
+      xcargs: [
+        "-allowProvisioningUpdates",
+        "-authenticationKeyID", key_id,
+        "-authenticationKeyIssuerID", issuer_id,
+        "-authenticationKeyPath", key_path,
+        "DEVELOPMENT_TEAM=#{team_id}"
+      ].join(" "),
+      export_options: {
+        signingStyle: "automatic",
+        teamID: team_id
+      }
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

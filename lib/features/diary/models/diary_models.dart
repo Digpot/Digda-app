@@ -2,11 +2,13 @@ import '../../common/models/common_models.dart';
 
 /// 7번 도메인(Diary) DTO 정의.
 
-DateTime _parseUtc(String s) {
+DateTime _parseServerTime(String s) {
+  // 서버(JVM TZ=Asia/Seoul)는 타임존 표기 없는 KST wall-clock 을 내려주므로,
+  // 표기 없으면 로컬(KST)로 그대로 파싱한다. 예전처럼 'Z'를 붙이면 +9시간 어긋난다.
+  // Z/오프셋이 붙은 값만 실제 시각으로 보고 toLocal 로 변환.
   if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
-    return DateTime.parse(s);
+    return DateTime.parse(s).toLocal();
   }
-  if (s.contains('T')) return DateTime.parse('${s}Z');
   return DateTime.parse(s);
 }
 
@@ -102,7 +104,7 @@ class DiarySummary {
     return DiarySummary(
       id: json['id'].toString(),
       title: json['title'] as String? ?? '',
-      date: _parseUtc(json['date'] as String).toLocal(),
+      date: _parseServerTime(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
       location: json['location'] as String?,
@@ -116,7 +118,7 @@ class DiarySummary {
       commentCount: (json['commentCount'] as num? ?? 0).toInt(),
       likeCount: (json['likeCount'] as num? ?? 0).toInt(),
       likedByMe: json['likedByMe'] as bool? ?? false,
-      createdAt: _parseUtc(json['createdAt'] as String),
+      createdAt: _parseServerTime(json['createdAt'] as String),
       hidden: json['hidden'] as bool? ?? false,
       hiddenReason: json['hiddenReason'] as String?,
     );
@@ -146,7 +148,7 @@ class DiaryCalendarEntry {
   final String? hiddenReason;
 
   factory DiaryCalendarEntry.fromJson(Map<String, dynamic> json) {
-    final d = _parseUtc(json['date'] as String).toLocal();
+    final d = _parseServerTime(json['date'] as String).toLocal();
     return DiaryCalendarEntry(
       date: DateTime(d.year, d.month, d.day),
       diaryId: json['diaryId'].toString(),
@@ -206,7 +208,7 @@ class DiaryCalendarResult {
     final rawDates = (json['dates'] as List?) ?? const [];
     final dates = rawDates.isNotEmpty
         ? rawDates.map((e) {
-            final d = _parseUtc(e as String).toLocal();
+            final d = _parseServerTime(e as String).toLocal();
             return DateTime(d.year, d.month, d.day);
           }).toList()
         : entries.map((e) => e.date).toList();
@@ -329,7 +331,7 @@ class Diary {
       id: json['id'].toString(),
       title: json['title'] as String? ?? '',
       content: json['content'] as String? ?? '',
-      date: _parseUtc(json['date'] as String).toLocal(),
+      date: _parseServerTime(json['date'] as String).toLocal(),
       weather: (json['weather'] as num).toInt(),
       mood: (json['mood'] as num).toInt(),
       location: json['location'] as String?,
@@ -341,8 +343,8 @@ class Diary {
           .toList(),
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
-      createdAt: _parseUtc(json['createdAt'] as String),
-      updatedAt: _parseUtc(json['updatedAt'] as String),
+      createdAt: _parseServerTime(json['createdAt'] as String),
+      updatedAt: _parseServerTime(json['updatedAt'] as String),
       likeCount: (json['likeCount'] as num? ?? 0).toInt(),
       likedByMe: json['likedByMe'] as bool? ?? false,
       reactions: ((json['reactions'] as List?) ?? const [])
