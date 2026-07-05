@@ -1,149 +1,2406 @@
 <!doctype html>
+<!-- 자동 생성 파일 — 손수정 금지.
+     재생성: flutter test test/tools/render_stages_generator_test.dart -->
 <html><head><meta charset="utf-8"/>
 <style>
   body { margin:0; padding:24px; background:#FFF8F8; font-family: 'Inter', sans-serif; }
+  h2 { font-size: 15px; color: #333D4B; margin: 20px 0 10px; }
   .row { display:flex; gap:16px; flex-wrap: wrap; }
   .card { width: 220px; text-align: center; }
   .card svg { width:200px; height:200px; display:block; }
+  .card.small svg { width:120px; height:120px; margin: 40px auto; }
   .label { margin-top: 6px; font-size: 13px; color: #4E5968; font-weight: 700; }
 </style>
 </head>
 <body>
+<h2>모찌 — 3D 렌더 (coral 스킨)</h2>
 <div class="row">
-
 <div class="card">
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
-  <ellipse cx="100" cy="120" rx="52" ry="58" fill="#FFFFFF"/>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c0-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8989"/>
+      <stop offset="52%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DB5C5C"/>
+    </linearGradient>
+    <radialGradient id="c0-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c0-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#853838" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#853838" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#853838" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c0-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c0-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c0-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c0-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c0-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c0-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c0-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c0-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c0-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c0-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c0-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c0-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c0-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c0-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c0-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c0-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c0-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c0-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c0-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c0-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c0-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c0-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c0-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c0-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c0-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c0-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c0-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c0-mSpot)"/>
+  <ellipse cx="100" cy="181.5" rx="44" ry="7.5" fill="url(#c0-mGround)"/>
+      <ellipse cx="100.0" cy="120.0" rx="52.0" ry="58.0" fill="url(#c0-mBody)"/>
+  
+  <ellipse cx="100.0" cy="120.0" rx="52.0" ry="58.0" fill="url(#c0-mRim)"/>
+  <ellipse cx="79.2" cy="92.2" rx="16.6" ry="10.4" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 79.2 92.2)"/>
+  <circle cx="96.9" cy="80.6" r="2.6" fill="#FFFFFF" opacity="0.75"/>
+
   <path d="M82 116 Q88 119 94 116" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
   <path d="M106 116 Q112 119 118 116" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
   <path d="M92 134 Q100 140 108 134" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-  <ellipse cx="74" cy="130" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-  <ellipse cx="126" cy="130" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-  <text x="148" y="74" font-size="22" font-weight="700" fill="#FFFFFF" opacity="0.85">Z</text>
-  <text x="162" y="92" font-size="14" font-weight="700" fill="#FFFFFF" opacity="0.7">z</text>
-  <text x="170" y="106" font-size="9" font-weight="700" fill="#FFFFFF" opacity="0.55">z</text>
+  <ellipse cx="74.0" cy="130.0" rx="6.5" ry="4.2" fill="url(#c0-mCheek)"/><ellipse cx="126.0" cy="130.0" rx="6.5" ry="4.2" fill="url(#c0-mCheek)"/>
+  <text x="148" y="74" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#FFFFFF" opacity="0.85">Z</text>
+  <text x="162" y="92" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" opacity="0.7">z</text>
+  <text x="170" y="106" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" fill="#FFFFFF" opacity="0.55">z</text>
+  
+  
 </svg>
 <div class="label">EGG · Lv 1 — 알 모찌</div>
 </div>
-
 <div class="card">
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
-  <g>
-    <path d="M100 56 Q86 48 92 64 Q98 68 100 64 Z" fill="#7CCB6B"/>
-    <path d="M100 56 Q114 48 108 64 Q102 68 100 64 Z" fill="#5BB04A"/>
-    <line x1="100" y1="66" x2="100" y2="84" stroke="#7CCB6B" stroke-width="3" stroke-linecap="round"/>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c1-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8989"/>
+      <stop offset="52%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DB5C5C"/>
+    </linearGradient>
+    <radialGradient id="c1-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c1-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#853838" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#853838" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#853838" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c1-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c1-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c1-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c1-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c1-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c1-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c1-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c1-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c1-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c1-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c1-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c1-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c1-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c1-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c1-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c1-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c1-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c1-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c1-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c1-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c1-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c1-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c1-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c1-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c1-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c1-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c1-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c1-mSpot)"/>
+  <ellipse cx="100" cy="167.5" rx="42" ry="7.5" fill="url(#c1-mGround)"/>
+    <g>
+    <path d="M100 56 Q86 48 92 64 Q98 68 100 64 Z" fill="url(#c1-mLeafL)"/>
+    <path d="M100 56 Q114 48 108 64 Q102 68 100 64 Z" fill="url(#c1-mLeafR)"/>
+    <line x1="100" y1="66" x2="100" y2="84" stroke="#6FBF5E" stroke-width="3" stroke-linecap="round"/>
+    <line x1="99" y1="68" x2="99" y2="80" stroke="#A5E793" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
   </g>
-  <ellipse cx="100" cy="124" rx="46" ry="40" fill="#FFFFFF"/>
-  <ellipse cx="88" cy="122" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-  <ellipse cx="112" cy="122" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-  <path d="M93 136 Q100 142 107 136" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-  <ellipse cx="76" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-  <ellipse cx="124" cy="132" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+    <ellipse cx="100.0" cy="124.0" rx="46.0" ry="40.0" fill="url(#c1-mBody)"/>
+  
+  <ellipse cx="100.0" cy="124.0" rx="46.0" ry="40.0" fill="url(#c1-mRim)"/>
+  <ellipse cx="81.6" cy="104.8" rx="14.7" ry="7.2" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 81.6 104.8)"/>
+  <circle cx="97.2" cy="96.8" r="2.3" fill="#FFFFFF" opacity="0.75"/>
+
+  <ellipse cx="88.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="87.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="112.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="111.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M93.0 136.0 Q100.0 142.0 107.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <ellipse cx="76.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c1-mCheek)"/><ellipse cx="124.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c1-mCheek)"/>
+  
+  
 </svg>
 <div class="label">SPROUT · Lv 3 — 새싹 모찌</div>
 </div>
-
 <div class="card">
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
-  <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="#FFE4E4"/>
-    <ellipse cx="112" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
-    <ellipse cx="136" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
-    <path d="M118 121 Q124 127 130 121" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c2-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8989"/>
+      <stop offset="52%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DB5C5C"/>
+    </linearGradient>
+    <radialGradient id="c2-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c2-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#853838" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#853838" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#853838" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c2-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c2-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c2-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c2-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c2-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c2-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c2-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c2-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c2-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c2-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c2-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c2-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c2-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c2-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c2-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c2-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c2-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c2-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c2-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c2-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c2-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c2-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c2-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c2-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c2-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c2-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c2-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c2-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c2-mGround)"/>
+    <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c2-mBody)"/>
+  
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c2-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 72)">
+          <g transform="scale(0.85)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c2-mPetalA)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c2-mPetalA)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c2-mPetalA)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c2-mPetalA)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c2-mPetalA)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c2-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c2-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c2-mCheek)"/>
   </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="#FFFFFF"/>
-    <path d="M82 70 C78 64 68 64 68 73 C68 79 75 84 82 90 C89 84 96 79 96 73 C96 64 86 64 82 70 Z" fill="#FF9FB0"/>
-    <ellipse cx="68" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-    <ellipse cx="96" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-    <path d="M74 128 Q82 135 90 128" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-  </g>
+  
+  
 </svg>
 <div class="label">BLOOM · Lv 6 — 꽃 모찌</div>
 </div>
-
 <div class="card">
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
-  <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="#FFE4E4"/>
-    <g transform="translate(124 70)">
-      <g transform="scale(0.7)">
-        <circle cx="0" cy="-6" r="5" fill="#FFB6C1"/>
-        <circle cx="6" cy="-2" r="5" fill="#FFB6C1"/>
-        <circle cx="3" cy="6" r="5" fill="#FFB6C1"/>
-        <circle cx="-3" cy="6" r="5" fill="#FFB6C1"/>
-        <circle cx="-6" cy="-2" r="5" fill="#FFB6C1"/>
-        <circle cx="0" cy="0" r="2.6" fill="#FFF8C4"/>
-      </g>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c3-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8989"/>
+      <stop offset="52%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DB5C5C"/>
+    </linearGradient>
+    <radialGradient id="c3-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c3-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#853838" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#853838" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#853838" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c3-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c3-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c3-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c3-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c3-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c3-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c3-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c3-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c3-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c3-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c3-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c3-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c3-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c3-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c3-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c3-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c3-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c3-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c3-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c3-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c3-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c3-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c3-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c3-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c3-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c3-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c3-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c3-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c3-mGround)"/>
+    <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c3-mBody)"/>
+  
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c3-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 62)">
+          <g transform="scale(1.35)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c3-mPetalA)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c3-mPetalA)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c3-mPetalA)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c3-mPetalA)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c3-mPetalA)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c3-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
     </g>
-    <ellipse cx="112" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
-    <ellipse cx="136" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
-    <path d="M118 121 Q124 127 130 121" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
-  </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="#FFFFFF"/>
-    <g transform="translate(82 72)">
-      <g transform="scale(1.0)">
-        <circle cx="0" cy="-6" r="5" fill="#FF9FB0"/>
-        <circle cx="6" cy="-2" r="5" fill="#FF9FB0"/>
-        <circle cx="3" cy="6" r="5" fill="#FF9FB0"/>
-        <circle cx="-3" cy="6" r="5" fill="#FF9FB0"/>
-        <circle cx="-6" cy="-2" r="5" fill="#FF9FB0"/>
-        <circle cx="0" cy="0" r="2.6" fill="#FFF8C4"/>
-      </g>
+    
     </g>
-    <ellipse cx="68" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-    <ellipse cx="96" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-    <path d="M74 128 Q82 135 90 128" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+    <g transform="translate(140 78)">
+          <g transform="scale(0.55)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c3-mPetalB)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c3-mPetalB)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c3-mPetalB)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c3-mPetalB)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c3-mPetalB)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c3-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <g transform="translate(60 78)">
+          <g transform="scale(0.45)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c3-mPetalC)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c3-mPetalC)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c3-mPetalC)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c3-mPetalC)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c3-mPetalC)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c3-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c3-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c3-mCheek)"/>
   </g>
+  
+  
 </svg>
 <div class="label">BLOSSOM · Lv 10 — 활짝 모찌</div>
 </div>
-
 <div class="card">
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
-  <g opacity="0.9">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c4-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8989"/>
+      <stop offset="52%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DB5C5C"/>
+    </linearGradient>
+    <radialGradient id="c4-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c4-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#853838" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#853838" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#853838" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c4-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c4-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c4-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c4-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c4-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c4-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c4-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c4-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c4-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c4-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c4-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c4-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c4-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c4-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c4-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c4-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c4-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c4-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c4-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c4-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c4-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c4-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c4-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c4-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c4-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c4-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c4-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c4-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c4-mGround)"/>
+    <g opacity="0.95">
+    <circle cx="32" cy="44" r="9" fill="url(#c4-mSparkGlow)"/>
     <circle cx="32" cy="44" r="3.4" fill="#FFF59D"/>
+    <circle cx="168" cy="58" r="7" fill="url(#c4-mSparkGlow)"/>
     <circle cx="168" cy="58" r="2.6" fill="#FFF59D"/>
+    <circle cx="40" cy="158" r="6.5" fill="url(#c4-mSparkGlow)"/>
     <circle cx="40" cy="158" r="2.4" fill="#FFF59D"/>
+    <circle cx="170" cy="148" r="8" fill="url(#c4-mSparkGlow)"/>
     <circle cx="170" cy="148" r="3" fill="#FFF59D"/>
   </g>
   <g>
-    <ellipse cx="124" cy="112" rx="42" ry="36" fill="#FFE4E4"/>
-    <ellipse cx="112" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
-    <ellipse cx="136" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
-    <path d="M118 121 Q124 127 130 121" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
-    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
-    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
-  </g>
-  <g>
-    <ellipse cx="82" cy="118" rx="48" ry="41" fill="#FFFFFF"/>
-    <g transform="translate(82 68)">
-      <path d="M-14 4 L-14 -6 L-7 0 L0 -10 L7 0 L14 -6 L14 4 Z" fill="#FCD34D" stroke="#B8860B" stroke-width="1.2" stroke-linejoin="round"/>
-      <circle cx="0" cy="-7" r="1.6" fill="#FF6B6B"/>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c4-mBody)"/>
+  
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c4-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 70)">
+        <path d="M-14 4 L-14 -6 L-7 0 L0 -10 L7 0 L14 -6 L14 4 Z" fill="url(#c4-mGold)" stroke="#B8860B" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M-14 2 L14 2 L14 4 L-14 4 Z" fill="#B8761A" opacity="0.35"/>
+  <circle cx="0" cy="-7" r="1.6" fill="url(#c4-mGemR)"/>
+  <circle cx="-0.5" cy="-7.5" r="0.5" fill="#FFFFFF" opacity="0.9"/>
+  
     </g>
-    <ellipse cx="68" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-    <ellipse cx="96" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
-    <path d="M74 128 Q82 135 90 128" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
-    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c4-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c4-mCheek)"/>
   </g>
+  
+  
 </svg>
 <div class="label">GLOW · Lv 15 — 빛나는 모찌</div>
 </div>
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c5-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8989"/>
+      <stop offset="52%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#DB5C5C"/>
+    </linearGradient>
+    <radialGradient id="c5-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c5-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#853838" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#853838" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#853838" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c5-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c5-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c5-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c5-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c5-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c5-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c5-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c5-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c5-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c5-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c5-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c5-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c5-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c5-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c5-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c5-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c5-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c5-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c5-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c5-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c5-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c5-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c5-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c5-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c5-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c5-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c5-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c5-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c5-mGround)"/>
+    <circle cx="100" cy="118" r="92" fill="url(#c5-masterHalo)"/>
+  <g opacity="0.95">
+    <path d="M30 36 L33 44 L41 44 L34.5 49 L37 57 L30 52 L23 57 L25.5 49 L19 44 L27 44 Z" fill="url(#c5-mGold)"/>
+    <path d="M170 50 L172 56 L178 56 L173 60 L175 66 L170 62.5 L165 66 L167 60 L162 56 L168 56 Z" fill="#FFF59D"/>
+    <path d="M40 160 L42 165 L47 165 L43 168 L44.5 173 L40 170 L35.5 173 L37 168 L33 165 L38 165 Z" fill="url(#c5-mGold)"/>
+    <path d="M170 152 L172 158 L178 158 L173 162 L175 168 L170 164.5 L165 168 L167 162 L162 158 L168 158 Z" fill="#FFF59D"/>
+    <circle cx="100" cy="30" r="3" fill="#FFE066"/>
+    <circle cx="14" cy="100" r="2.4" fill="#FFE066"/>
+    <circle cx="186" cy="100" r="2.4" fill="#FFE066"/>
+  </g>
+  <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c5-mBody)"/>
+  
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c5-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
 
+    <g transform="translate(100 68)">
+        <path d="M-16 4 L-16 -6 L-10 -2 L-6 -8 L0 -12 L6 -8 L10 -2 L16 -6 L16 4 Z" fill="url(#c5-mGold)" stroke="#B8860B" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M-16 1.8 L16 1.8 L16 4 L-16 4 Z" fill="#B8761A" opacity="0.35"/>
+  <circle cx="-9" cy="0" r="1.8" fill="url(#c5-mGemG)"/>
+  <circle cx="0" cy="-2" r="2.2" fill="url(#c5-mGemR)"/>
+  <circle cx="9" cy="0" r="1.8" fill="url(#c5-mGemB)"/>
+  <circle cx="-0.7" cy="-2.8" r="0.7" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M0 -16 L1.4 -13 L4.5 -13 L2 -11 L2.8 -8 L0 -10 L-2.8 -8 L-2 -11 L-4.5 -13 L-1.4 -13 Z" fill="#FFF59D" stroke="#B8860B" stroke-width="0.8"/>
+  
+    </g>
+    <g transform="translate(100 52)">
+        <path d="M0 -12 L3 -3 L12 -3 L4.5 3 L7 12 L0 7 L-7 12 L-4.5 3 L-12 -3 L-3 -3 Z" fill="url(#c5-mGold)" stroke="#B8860B" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="0" cy="-1" r="2" fill="url(#c5-mGemR)"/>
+  <circle cx="-2.6" cy="-5.4" r="1" fill="#FFFFFF" opacity="0.85"/>
+  
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c5-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c5-mCheek)"/>
+  </g>
+  
+  
+</svg>
+<div class="label">MASTER · Lv 20 — 마스터 모찌</div>
+</div>
+</div>
+<h2>모찌 — 판다 스킨</h2>
+<div class="row">
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c6-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0B5BF"/>
+      <stop offset="52%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#868C97"/>
+    </linearGradient>
+    <radialGradient id="c6-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c6-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#51555B" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#51555B" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#51555B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c6-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c6-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c6-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c6-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c6-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c6-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c6-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c6-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c6-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c6-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c6-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c6-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c6-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c6-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c6-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c6-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c6-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c6-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c6-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c6-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c6-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c6-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c6-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c6-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c6-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c6-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c6-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c6-mSpot)"/>
+  <ellipse cx="100" cy="181.5" rx="44" ry="7.5" fill="url(#c6-mGround)"/>
+      <ellipse cx="100.0" cy="120.0" rx="52.0" ry="58.0" fill="url(#c6-mBody)"/>
+  <ellipse cx="78" cy="106" rx="13" ry="10" fill="url(#c6-mPanda)"/><ellipse cx="122" cy="106" rx="13" ry="10" fill="url(#c6-mPanda)"/>
+  <ellipse cx="100.0" cy="120.0" rx="52.0" ry="58.0" fill="url(#c6-mRim)"/>
+  <ellipse cx="79.2" cy="92.2" rx="16.6" ry="10.4" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 79.2 92.2)"/>
+  <circle cx="96.9" cy="80.6" r="2.6" fill="#FFFFFF" opacity="0.75"/>
+
+  <path d="M82 116 Q88 119 94 116" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <path d="M106 116 Q112 119 118 116" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <path d="M92 134 Q100 140 108 134" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <ellipse cx="74.0" cy="130.0" rx="6.5" ry="4.2" fill="url(#c6-mCheek)"/><ellipse cx="126.0" cy="130.0" rx="6.5" ry="4.2" fill="url(#c6-mCheek)"/>
+  <text x="148" y="74" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#FFFFFF" opacity="0.85">Z</text>
+  <text x="162" y="92" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" opacity="0.7">z</text>
+  <text x="170" y="106" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" fill="#FFFFFF" opacity="0.55">z</text>
+  
+  
+</svg>
+<div class="label">EGG · Lv 1 — 알 모찌 (panda)</div>
+</div>
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c7-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0B5BF"/>
+      <stop offset="52%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#868C97"/>
+    </linearGradient>
+    <radialGradient id="c7-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c7-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#51555B" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#51555B" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#51555B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c7-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c7-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c7-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c7-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c7-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c7-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c7-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c7-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c7-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c7-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c7-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c7-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c7-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c7-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c7-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c7-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c7-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c7-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c7-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c7-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c7-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c7-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c7-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c7-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c7-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c7-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c7-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c7-mSpot)"/>
+  <ellipse cx="100" cy="167.5" rx="42" ry="7.5" fill="url(#c7-mGround)"/>
+    <g>
+    <path d="M100 56 Q86 48 92 64 Q98 68 100 64 Z" fill="url(#c7-mLeafL)"/>
+    <path d="M100 56 Q114 48 108 64 Q102 68 100 64 Z" fill="url(#c7-mLeafR)"/>
+    <line x1="100" y1="66" x2="100" y2="84" stroke="#6FBF5E" stroke-width="3" stroke-linecap="round"/>
+    <line x1="99" y1="68" x2="99" y2="80" stroke="#A5E793" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
+  </g>
+    <ellipse cx="100.0" cy="124.0" rx="46.0" ry="40.0" fill="url(#c7-mBody)"/>
+  <ellipse cx="82" cy="118" rx="9" ry="6" fill="url(#c7-mPanda)"/><ellipse cx="118" cy="118" rx="9" ry="6" fill="url(#c7-mPanda)"/>
+  <ellipse cx="100.0" cy="124.0" rx="46.0" ry="40.0" fill="url(#c7-mRim)"/>
+  <ellipse cx="81.6" cy="104.8" rx="14.7" ry="7.2" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 81.6 104.8)"/>
+  <circle cx="97.2" cy="96.8" r="2.3" fill="#FFFFFF" opacity="0.75"/>
+
+  <ellipse cx="88.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="87.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="112.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="111.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M93.0 136.0 Q100.0 142.0 107.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <ellipse cx="76.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c7-mCheek)"/><ellipse cx="124.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c7-mCheek)"/>
+  
+  
+</svg>
+<div class="label">SPROUT · Lv 3 — 새싹 모찌 (panda)</div>
+</div>
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c8-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0B5BF"/>
+      <stop offset="52%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#868C97"/>
+    </linearGradient>
+    <radialGradient id="c8-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c8-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#51555B" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#51555B" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#51555B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c8-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c8-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c8-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c8-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c8-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c8-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c8-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c8-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c8-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c8-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c8-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c8-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c8-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c8-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c8-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c8-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c8-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c8-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c8-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c8-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c8-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c8-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c8-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c8-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c8-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c8-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c8-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c8-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c8-mGround)"/>
+    <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c8-mBody)"/>
+  <ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#c8-mPanda)"/><ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#c8-mPanda)"/>
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c8-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 72)">
+          <g transform="scale(0.85)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c8-mPetalA)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c8-mPetalA)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c8-mPetalA)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c8-mPetalA)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c8-mPetalA)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c8-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c8-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c8-mCheek)"/>
+  </g>
+  
+  
+</svg>
+<div class="label">BLOOM · Lv 6 — 꽃 모찌 (panda)</div>
+</div>
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c9-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0B5BF"/>
+      <stop offset="52%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#868C97"/>
+    </linearGradient>
+    <radialGradient id="c9-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c9-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#51555B" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#51555B" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#51555B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c9-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c9-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c9-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c9-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c9-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c9-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c9-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c9-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c9-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c9-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c9-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c9-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c9-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c9-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c9-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c9-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c9-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c9-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c9-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c9-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c9-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c9-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c9-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c9-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c9-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c9-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c9-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c9-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c9-mGround)"/>
+    <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c9-mBody)"/>
+  <ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#c9-mPanda)"/><ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#c9-mPanda)"/>
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c9-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 62)">
+          <g transform="scale(1.35)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c9-mPetalA)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c9-mPetalA)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c9-mPetalA)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c9-mPetalA)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c9-mPetalA)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c9-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <g transform="translate(140 78)">
+          <g transform="scale(0.55)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c9-mPetalB)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c9-mPetalB)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c9-mPetalB)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c9-mPetalB)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c9-mPetalB)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c9-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <g transform="translate(60 78)">
+          <g transform="scale(0.45)">
+      <circle cx="0" cy="-6" r="5" fill="url(#c9-mPetalC)"/>
+      <circle cx="6" cy="-2" r="5" fill="url(#c9-mPetalC)"/>
+      <circle cx="3" cy="6" r="5" fill="url(#c9-mPetalC)"/>
+      <circle cx="-3" cy="6" r="5" fill="url(#c9-mPetalC)"/>
+      <circle cx="-6" cy="-2" r="5" fill="url(#c9-mPetalC)"/>
+      <circle cx="0" cy="0" r="2.6" fill="url(#c9-mFlowerCore)"/>
+      <circle cx="-1.5" cy="-7.5" r="1.4" fill="#FFFFFF" opacity="0.55"/>
+    </g>
+    
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c9-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c9-mCheek)"/>
+  </g>
+  
+  
+</svg>
+<div class="label">BLOSSOM · Lv 10 — 활짝 모찌 (panda)</div>
+</div>
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c10-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0B5BF"/>
+      <stop offset="52%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#868C97"/>
+    </linearGradient>
+    <radialGradient id="c10-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c10-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#51555B" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#51555B" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#51555B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c10-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c10-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c10-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c10-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c10-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c10-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c10-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c10-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c10-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c10-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c10-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c10-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c10-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c10-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c10-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c10-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c10-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c10-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c10-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c10-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c10-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c10-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c10-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c10-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c10-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c10-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c10-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c10-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c10-mGround)"/>
+    <g opacity="0.95">
+    <circle cx="32" cy="44" r="9" fill="url(#c10-mSparkGlow)"/>
+    <circle cx="32" cy="44" r="3.4" fill="#FFF59D"/>
+    <circle cx="168" cy="58" r="7" fill="url(#c10-mSparkGlow)"/>
+    <circle cx="168" cy="58" r="2.6" fill="#FFF59D"/>
+    <circle cx="40" cy="158" r="6.5" fill="url(#c10-mSparkGlow)"/>
+    <circle cx="40" cy="158" r="2.4" fill="#FFF59D"/>
+    <circle cx="170" cy="148" r="8" fill="url(#c10-mSparkGlow)"/>
+    <circle cx="170" cy="148" r="3" fill="#FFF59D"/>
+  </g>
+  <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c10-mBody)"/>
+  <ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#c10-mPanda)"/><ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#c10-mPanda)"/>
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c10-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 70)">
+        <path d="M-14 4 L-14 -6 L-7 0 L0 -10 L7 0 L14 -6 L14 4 Z" fill="url(#c10-mGold)" stroke="#B8860B" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M-14 2 L14 2 L14 4 L-14 4 Z" fill="#B8761A" opacity="0.35"/>
+  <circle cx="0" cy="-7" r="1.6" fill="url(#c10-mGemR)"/>
+  <circle cx="-0.5" cy="-7.5" r="0.5" fill="#FFFFFF" opacity="0.9"/>
+  
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c10-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c10-mCheek)"/>
+  </g>
+  
+  
+</svg>
+<div class="label">GLOW · Lv 15 — 빛나는 모찌 (panda)</div>
+</div>
+<div class="card">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c11-mBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0B5BF"/>
+      <stop offset="52%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#868C97"/>
+    </linearGradient>
+    <radialGradient id="c11-mSpot" cx="0.5" cy="0.42" r="0.58">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c11-mGround" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#51555B" stop-opacity="0.34"/>
+      <stop offset="60%" stop-color="#51555B" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#51555B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c11-mBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#FFF6F7"/>
+      <stop offset="78%" stop-color="#F5E2E8"/>
+      <stop offset="100%" stop-color="#E4C9D2"/>
+    </radialGradient>
+    <radialGradient id="c11-mRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#B9899B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#B9899B" stop-opacity="0.32"/>
+    </radialGradient>
+    <radialGradient id="c11-mCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FF8FA3" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FF8FA3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c11-mPanda" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#565656"/>
+      <stop offset="60%" stop-color="#343434"/>
+      <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <linearGradient id="c11-mLeafL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A5E793"/>
+      <stop offset="100%" stop-color="#5BB04A"/>
+    </linearGradient>
+    <linearGradient id="c11-mLeafR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECB6C"/>
+      <stop offset="100%" stop-color="#3E8C33"/>
+    </linearGradient>
+    <radialGradient id="c11-mPetalA" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFD9E1"/>
+      <stop offset="60%" stop-color="#FF9FB0"/>
+      <stop offset="100%" stop-color="#F0788F"/>
+    </radialGradient>
+    <radialGradient id="c11-mPetalB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3E9"/>
+      <stop offset="60%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#F58CA0"/>
+    </radialGradient>
+    <radialGradient id="c11-mPetalC" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="60%" stop-color="#FFC9D9"/>
+      <stop offset="100%" stop-color="#F7A6BF"/>
+    </radialGradient>
+    <radialGradient id="c11-mFlowerCore" cx="0.40" cy="0.35" r="0.80">
+      <stop offset="0%" stop-color="#FFFDE8"/>
+      <stop offset="60%" stop-color="#FFEFA8"/>
+      <stop offset="100%" stop-color="#E5BE55"/>
+    </radialGradient>
+    <linearGradient id="c11-mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF3A6"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D69A18"/>
+    </linearGradient>
+    <radialGradient id="c11-mGoldR" cx="0.38" cy="0.32" r="0.80">
+      <stop offset="0%" stop-color="#FFF8D2"/>
+      <stop offset="60%" stop-color="#FFE08A"/>
+      <stop offset="100%" stop-color="#C9A227"/>
+    </radialGradient>
+    <radialGradient id="c11-mGemR" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB3B3"/>
+      <stop offset="60%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C43333"/>
+    </radialGradient>
+    <radialGradient id="c11-mGemG" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#A9F0D3"/>
+      <stop offset="60%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#1D9A6C"/>
+    </radialGradient>
+    <radialGradient id="c11-mGemB" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#C4DCFB"/>
+      <stop offset="60%" stop-color="#7CB1F5"/>
+      <stop offset="100%" stop-color="#4478C8"/>
+    </radialGradient>
+    <radialGradient id="c11-mSparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFF59D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c11-masterHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF8C4" stop-opacity="0.75"/>
+      <stop offset="55%" stop-color="#FFE066" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="c11-aCone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#D94A4A"/>
+    </linearGradient>
+    <linearGradient id="c11-aScarf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A8CBFA"/>
+      <stop offset="100%" stop-color="#5F97E6"/>
+    </linearGradient>
+    <linearGradient id="c11-aBow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C75A7E"/>
+      <stop offset="100%" stop-color="#7E2440"/>
+    </linearGradient>
+    <linearGradient id="c11-aSunLens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4E4E4E"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <radialGradient id="c11-aHeartGlass" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FF9D9D"/>
+      <stop offset="100%" stop-color="#E14A4A"/>
+    </radialGradient>
+    <radialGradient id="c11-aBalloon" cx="0.36" cy="0.30" r="0.85">
+      <stop offset="0%" stop-color="#FFF3BC"/>
+      <stop offset="55%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D19A1E"/>
+    </radialGradient>
+    <radialGradient id="c11-aBalloonHeart" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFB1B1"/>
+      <stop offset="55%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#C13A3A"/>
+    </radialGradient>
+    <linearGradient id="c11-aChef" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E4E4EC"/>
+    </linearGradient>
+    <radialGradient id="c11-aRibbonPink" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFC6D2"/>
+      <stop offset="100%" stop-color="#F0789B"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#c11-mBg)"/>
+  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#c11-mSpot)"/>
+  <ellipse cx="100" cy="171.5" rx="42" ry="7.5" fill="url(#c11-mGround)"/>
+    <circle cx="100" cy="118" r="92" fill="url(#c11-masterHalo)"/>
+  <g opacity="0.95">
+    <path d="M30 36 L33 44 L41 44 L34.5 49 L37 57 L30 52 L23 57 L25.5 49 L19 44 L27 44 Z" fill="url(#c11-mGold)"/>
+    <path d="M170 50 L172 56 L178 56 L173 60 L175 66 L170 62.5 L165 66 L167 60 L162 56 L168 56 Z" fill="#FFF59D"/>
+    <path d="M40 160 L42 165 L47 165 L43 168 L44.5 173 L40 170 L35.5 173 L37 168 L33 165 L38 165 Z" fill="url(#c11-mGold)"/>
+    <path d="M170 152 L172 158 L178 158 L173 162 L175 168 L170 164.5 L165 168 L167 162 L162 158 L168 158 Z" fill="#FFF59D"/>
+    <circle cx="100" cy="30" r="3" fill="#FFE066"/>
+    <circle cx="14" cy="100" r="2.4" fill="#FFE066"/>
+    <circle cx="186" cy="100" r="2.4" fill="#FFE066"/>
+  </g>
+  <g>
+      <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c11-mBody)"/>
+  <ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#c11-mPanda)"/><ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#c11-mPanda)"/>
+  <ellipse cx="100.0" cy="124.0" rx="50.0" ry="44.0" fill="url(#c11-mRim)"/>
+  <ellipse cx="80.0" cy="102.9" rx="16.0" ry="7.9" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 80.0 102.9)"/>
+  <circle cx="97.0" cy="94.1" r="2.5" fill="#FFFFFF" opacity="0.75"/>
+
+    <g transform="translate(100 68)">
+        <path d="M-16 4 L-16 -6 L-10 -2 L-6 -8 L0 -12 L6 -8 L10 -2 L16 -6 L16 4 Z" fill="url(#c11-mGold)" stroke="#B8860B" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M-16 1.8 L16 1.8 L16 4 L-16 4 Z" fill="#B8761A" opacity="0.35"/>
+  <circle cx="-9" cy="0" r="1.8" fill="url(#c11-mGemG)"/>
+  <circle cx="0" cy="-2" r="2.2" fill="url(#c11-mGemR)"/>
+  <circle cx="9" cy="0" r="1.8" fill="url(#c11-mGemB)"/>
+  <circle cx="-0.7" cy="-2.8" r="0.7" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M0 -16 L1.4 -13 L4.5 -13 L2 -11 L2.8 -8 L0 -10 L-2.8 -8 L-2 -11 L-4.5 -13 L-1.4 -13 Z" fill="#FFF59D" stroke="#B8860B" stroke-width="0.8"/>
+  
+    </g>
+    <g transform="translate(100 52)">
+        <path d="M0 -12 L3 -3 L12 -3 L4.5 3 L7 12 L0 7 L-7 12 L-4.5 3 L-12 -3 L-3 -3 Z" fill="url(#c11-mGold)" stroke="#B8860B" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="0" cy="-1" r="2" fill="url(#c11-mGemR)"/>
+  <circle cx="-2.6" cy="-5.4" r="1" fill="#FFFFFF" opacity="0.85"/>
+  
+    </g>
+    <ellipse cx="86.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="85.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="114.0" cy="122.0" rx="2.8" ry="3.60" fill="#2B2B2B"/><circle cx="113.1" cy="120.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M92.0 136.0 Q100.0 142.0 108.0 136.0" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="72.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c11-mCheek)"/><ellipse cx="128.0" cy="132.0" rx="6.5" ry="4.2" fill="url(#c11-mCheek)"/>
+  </g>
+  
+  
+</svg>
+<div class="label">MASTER · Lv 20 — 마스터 모찌 (panda)</div>
+</div>
+</div>
+<h2>디코 — 3D 렌더</h2>
+<div class="row">
+<div class="card small">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="c12-dkBody" cx="0.38" cy="0.30" r="0.90">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="38%" stop-color="#FFE3EA"/>
+      <stop offset="72%" stop-color="#FFB0C1"/>
+      <stop offset="100%" stop-color="#F17C97"/>
+    </radialGradient>
+    <radialGradient id="c12-dkRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#C2405F" stop-opacity="0.35"/>
+    </radialGradient>
+    <radialGradient id="c12-dkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE2EC" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#FFE2EC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c12-dkShadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#8E2B47" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#8E2B47" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#8E2B47" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c12-dkStar" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="60%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D9A21B"/>
+    </radialGradient>
+    <radialGradient id="c12-dkStarGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE9A8" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FFE9A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c12-dkCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#E63B6E" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#E63B6E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="64" r="46" fill="url(#c12-dkGlow)"/>
+
+  <!-- 부유 구체 아래 소프트 그림자 -->
+  <ellipse cx="60" cy="108" rx="26" ry="5" fill="url(#c12-dkShadow)"/>
+
+  <!-- 머리 위 별 안테나 (골드 그라디언트 + 글로우) -->
+  <line x1="60" y1="36" x2="60" y2="22" stroke="#E63B6E" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="60" cy="16" r="13" fill="url(#c12-dkStarGlow)"/>
+  <path d="M60 6 L63 14 L72 14 L65 19 L67.5 27 L60 22 L52.5 27 L55 19 L48 14 L57 14 Z" fill="url(#c12-dkStar)" stroke="#C77B1B" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="57.5" cy="13" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+
+  <!-- 본체 — 좌상단 광원 그라디언트 + 림 셰이딩 + 스펙큘러 하이라이트 -->
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c12-dkBody)"/>
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c12-dkRim)"/>
+  <ellipse cx="45" cy="52" rx="12" ry="6.5" fill="#FFFFFF" opacity="0.65" transform="rotate(-18 45 52)"/>
+  <circle cx="57" cy="42" r="2" fill="#FFFFFF" opacity="0.75"/>
+
+  <!-- 옅은 별 무늬 (가슴) -->
+  <path d="M84 88 L85 92 L89 92 L86 94 L87 98 L84 95.5 L81 98 L82 94 L79 92 L83 92 Z" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="42" cy="88" r="2.2" fill="#FFFFFF" opacity="0.8"/>
+
+    <ellipse cx="50" cy="64" rx="2.6" ry="3.4" fill="#2B2B2B"/>
+  <circle cx="49.2" cy="62.9" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="70" cy="64" rx="2.6" ry="3.4" fill="#2B2B2B"/>
+  <circle cx="69.2" cy="62.9" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M54 78 Q60 82 66 78" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
+  
+
+  <!-- 양쪽 볼 홍조 (radial fade) -->
+  <ellipse cx="42" cy="74" rx="6" ry="4" fill="url(#c12-dkCheek)"/>
+  <ellipse cx="78" cy="74" rx="6" ry="4" fill="url(#c12-dkCheek)"/>
+</svg>
+<div class="label">DIKO — idle</div>
+</div>
+<div class="card small">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="c13-dkBody" cx="0.38" cy="0.30" r="0.90">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="38%" stop-color="#FFE3EA"/>
+      <stop offset="72%" stop-color="#FFB0C1"/>
+      <stop offset="100%" stop-color="#F17C97"/>
+    </radialGradient>
+    <radialGradient id="c13-dkRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#C2405F" stop-opacity="0.35"/>
+    </radialGradient>
+    <radialGradient id="c13-dkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE2EC" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#FFE2EC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c13-dkShadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#8E2B47" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#8E2B47" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#8E2B47" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c13-dkStar" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="60%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D9A21B"/>
+    </radialGradient>
+    <radialGradient id="c13-dkStarGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE9A8" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FFE9A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c13-dkCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#E63B6E" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#E63B6E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="64" r="46" fill="url(#c13-dkGlow)"/>
+
+  <!-- 부유 구체 아래 소프트 그림자 -->
+  <ellipse cx="60" cy="108" rx="26" ry="5" fill="url(#c13-dkShadow)"/>
+
+  <!-- 머리 위 별 안테나 (골드 그라디언트 + 글로우) -->
+  <line x1="60" y1="36" x2="60" y2="22" stroke="#E63B6E" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="60" cy="16" r="13" fill="url(#c13-dkStarGlow)"/>
+  <path d="M60 6 L63 14 L72 14 L65 19 L67.5 27 L60 22 L52.5 27 L55 19 L48 14 L57 14 Z" fill="url(#c13-dkStar)" stroke="#C77B1B" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="57.5" cy="13" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+
+  <!-- 본체 — 좌상단 광원 그라디언트 + 림 셰이딩 + 스펙큘러 하이라이트 -->
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c13-dkBody)"/>
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c13-dkRim)"/>
+  <ellipse cx="45" cy="52" rx="12" ry="6.5" fill="#FFFFFF" opacity="0.65" transform="rotate(-18 45 52)"/>
+  <circle cx="57" cy="42" r="2" fill="#FFFFFF" opacity="0.75"/>
+
+  <!-- 옅은 별 무늬 (가슴) -->
+  <path d="M84 88 L85 92 L89 92 L86 94 L87 98 L84 95.5 L81 98 L82 94 L79 92 L83 92 Z" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="42" cy="88" r="2.2" fill="#FFFFFF" opacity="0.8"/>
+
+    <path d="M46 64 Q50 60 54 64" stroke="#2B2B2B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M66 64 Q70 60 74 64" stroke="#2B2B2B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M52 78 Q60 84 68 78" stroke="#2B2B2B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  
+
+  <!-- 양쪽 볼 홍조 (radial fade) -->
+  <ellipse cx="42" cy="74" rx="6" ry="4" fill="url(#c13-dkCheek)"/>
+  <ellipse cx="78" cy="74" rx="6" ry="4" fill="url(#c13-dkCheek)"/>
+</svg>
+<div class="label">DIKO — happy</div>
+</div>
+<div class="card small">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="c14-dkBody" cx="0.38" cy="0.30" r="0.90">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="38%" stop-color="#FFE3EA"/>
+      <stop offset="72%" stop-color="#FFB0C1"/>
+      <stop offset="100%" stop-color="#F17C97"/>
+    </radialGradient>
+    <radialGradient id="c14-dkRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#C2405F" stop-opacity="0.35"/>
+    </radialGradient>
+    <radialGradient id="c14-dkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE2EC" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#FFE2EC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c14-dkShadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#8E2B47" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#8E2B47" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#8E2B47" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c14-dkStar" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="60%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D9A21B"/>
+    </radialGradient>
+    <radialGradient id="c14-dkStarGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE9A8" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FFE9A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c14-dkCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#E63B6E" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#E63B6E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="64" r="46" fill="url(#c14-dkGlow)"/>
+
+  <!-- 부유 구체 아래 소프트 그림자 -->
+  <ellipse cx="60" cy="108" rx="26" ry="5" fill="url(#c14-dkShadow)"/>
+
+  <!-- 머리 위 별 안테나 (골드 그라디언트 + 글로우) -->
+  <line x1="60" y1="36" x2="60" y2="22" stroke="#E63B6E" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="60" cy="16" r="13" fill="url(#c14-dkStarGlow)"/>
+  <path d="M60 6 L63 14 L72 14 L65 19 L67.5 27 L60 22 L52.5 27 L55 19 L48 14 L57 14 Z" fill="url(#c14-dkStar)" stroke="#C77B1B" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="57.5" cy="13" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+
+  <!-- 본체 — 좌상단 광원 그라디언트 + 림 셰이딩 + 스펙큘러 하이라이트 -->
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c14-dkBody)"/>
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c14-dkRim)"/>
+  <ellipse cx="45" cy="52" rx="12" ry="6.5" fill="#FFFFFF" opacity="0.65" transform="rotate(-18 45 52)"/>
+  <circle cx="57" cy="42" r="2" fill="#FFFFFF" opacity="0.75"/>
+
+  <!-- 옅은 별 무늬 (가슴) -->
+  <path d="M84 88 L85 92 L89 92 L86 94 L87 98 L84 95.5 L81 98 L82 94 L79 92 L83 92 Z" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="42" cy="88" r="2.2" fill="#FFFFFF" opacity="0.8"/>
+
+    <ellipse cx="50" cy="64" rx="2.4" ry="3.6" fill="#2B2B2B"/>
+  <circle cx="49.2" cy="62.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="70" cy="64" rx="2.4" ry="3.6" fill="#2B2B2B"/>
+  <circle cx="69.2" cy="62.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="60" cy="80" rx="3.2" ry="2.2" fill="#2B2B2B"/>
+  
+
+  <!-- 양쪽 볼 홍조 (radial fade) -->
+  <ellipse cx="42" cy="74" rx="6" ry="4" fill="url(#c14-dkCheek)"/>
+  <ellipse cx="78" cy="74" rx="6" ry="4" fill="url(#c14-dkCheek)"/>
+</svg>
+<div class="label">DIKO — curious</div>
+</div>
+<div class="card small">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="c15-dkBody" cx="0.38" cy="0.30" r="0.90">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="38%" stop-color="#FFE3EA"/>
+      <stop offset="72%" stop-color="#FFB0C1"/>
+      <stop offset="100%" stop-color="#F17C97"/>
+    </radialGradient>
+    <radialGradient id="c15-dkRim" cx="0.40" cy="0.32" r="0.75">
+      <stop offset="0%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="74%" stop-color="#C2405F" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#C2405F" stop-opacity="0.35"/>
+    </radialGradient>
+    <radialGradient id="c15-dkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE2EC" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#FFE2EC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c15-dkShadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#8E2B47" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#8E2B47" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#8E2B47" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c15-dkStar" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="60%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#D9A21B"/>
+    </radialGradient>
+    <radialGradient id="c15-dkStarGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE9A8" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FFE9A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c15-dkCheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#E63B6E" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#E63B6E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="64" r="46" fill="url(#c15-dkGlow)"/>
+
+  <!-- 부유 구체 아래 소프트 그림자 -->
+  <ellipse cx="60" cy="108" rx="26" ry="5" fill="url(#c15-dkShadow)"/>
+
+  <!-- 머리 위 별 안테나 (골드 그라디언트 + 글로우) -->
+  <line x1="60" y1="36" x2="60" y2="22" stroke="#E63B6E" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="60" cy="16" r="13" fill="url(#c15-dkStarGlow)"/>
+  <path d="M60 6 L63 14 L72 14 L65 19 L67.5 27 L60 22 L52.5 27 L55 19 L48 14 L57 14 Z" fill="url(#c15-dkStar)" stroke="#C77B1B" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="57.5" cy="13" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+
+  <!-- 본체 — 좌상단 광원 그라디언트 + 림 셰이딩 + 스펙큘러 하이라이트 -->
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c15-dkBody)"/>
+  <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#c15-dkRim)"/>
+  <ellipse cx="45" cy="52" rx="12" ry="6.5" fill="#FFFFFF" opacity="0.65" transform="rotate(-18 45 52)"/>
+  <circle cx="57" cy="42" r="2" fill="#FFFFFF" opacity="0.75"/>
+
+  <!-- 옅은 별 무늬 (가슴) -->
+  <path d="M84 88 L85 92 L89 92 L86 94 L87 98 L84 95.5 L81 98 L82 94 L79 92 L83 92 Z" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="42" cy="88" r="2.2" fill="#FFFFFF" opacity="0.8"/>
+
+    <path d="M46 64 Q50 60 54 64" stroke="#2B2B2B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <ellipse cx="70" cy="64" rx="2.6" ry="3.4" fill="#2B2B2B"/>
+  <circle cx="69.2" cy="62.9" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M54 78 Q60 82 66 78" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
+  
+
+  <!-- 양쪽 볼 홍조 (radial fade) -->
+  <ellipse cx="42" cy="74" rx="6" ry="4" fill="url(#c15-dkCheek)"/>
+  <ellipse cx="78" cy="74" rx="6" ry="4" fill="url(#c15-dkCheek)"/>
+</svg>
+<div class="label">DIKO — wink</div>
+</div>
 </div>
 </body></html>
