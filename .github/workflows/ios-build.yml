@@ -85,14 +85,19 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
+      # 개발팀/인증서 없이 "컴파일·플러그인 통합" 을 검증하는 게 이 잡의 목적.
+      # 디바이스 --no-codesign 빌드는 google_mobile_ads 등 일부 Pod 리소스 번들이
+      # Xcode 14+/16+ 에서 서명을 요구해 팀 없이는 실패한다. 시뮬레이터 빌드는
+      # 서명이 전혀 필요 없어 이 검증을 안정적으로 통과한다. 실제 서명 디바이스
+      # 빌드(IPA)는 아래 testflight 잡의 fastlane 이 담당한다.
+      - name: Build iOS (simulator, no signing)
+        run: flutter build ios --simulator
 
       - name: Upload Runner.app
         uses: actions/upload-artifact@v4
         with:
           name: Runner-app
-          path: build/ios/iphoneos/Runner.app
+          path: build/ios/iphonesimulator/Runner.app
           if-no-files-found: warn
 
   # ──────────────────────────────────────────────────────────────────────
