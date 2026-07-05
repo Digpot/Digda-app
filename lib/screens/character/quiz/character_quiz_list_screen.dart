@@ -544,6 +544,11 @@ class _QuizCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       const _ImageBadge(),
                     ],
+                    // 이미 응시한 퀴즈는 정답/오답 배지를 오른쪽 끝에 표시.
+                    if (quiz.attempted) ...[
+                      const Spacer(),
+                      _AttemptBadge(correct: quiz.attemptCorrect ?? false),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -733,6 +738,44 @@ class _ImageBadge extends StatelessWidget {
               fontWeight: FontWeight.w700,
               fontSize: 11,
               color: Color(0xFFA78BFA),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 이미 응시한 퀴즈의 정답/오답 배지. correct=true → 초록 정답, false → 빨강 오답.
+class _AttemptBadge extends StatelessWidget {
+  const _AttemptBadge({required this.correct});
+  final bool correct;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = correct ? AppColors.green : AppColors.primary;
+    final IconData icon =
+        correct ? Icons.check_circle_rounded : Icons.cancel_rounded;
+    final String label = correct ? '정답' : '오답';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+              color: color,
             ),
           ),
         ],

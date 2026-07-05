@@ -1,12 +1,12 @@
-/// 5번 도메인(Membership) DTO 정의.
+// 5번 도메인(Membership) DTO 정의.
 
-/// 서버에서 수신한 datetime 문자열을 UTC로 파싱한다.
-/// 타임존 정보가 없는 문자열은 UTC로 간주해 KST 표기에서 9시간 오차를 방지.
-DateTime _parseUtc(String s) {
+DateTime _parseServerTime(String s) {
+  // 서버(JVM TZ=Asia/Seoul)는 타임존 표기 없는 KST wall-clock 을 내려주므로,
+  // 표기 없으면 로컬(KST)로 그대로 파싱한다. 예전처럼 'Z'를 붙이면 +9시간 어긋난다.
+  // Z/오프셋이 붙은 값만 실제 시각으로 보고 toLocal 로 변환.
   if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
-    return DateTime.parse(s);
+    return DateTime.parse(s).toLocal();
   }
-  if (s.contains('T')) return DateTime.parse('${s}Z');
   return DateTime.parse(s);
 }
 
@@ -36,7 +36,7 @@ class Membership {
       profileImage: json['profileImage'] as String?,
       color: json['color'] as String? ?? '#999999',
       role: json['role'] as String? ?? 'member',
-      joinedAt: _parseUtc(json['joinedAt'] as String),
+      joinedAt: _parseServerTime(json['joinedAt'] as String),
     );
   }
 }

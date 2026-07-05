@@ -1,10 +1,12 @@
-/// 공통 객체 — 여러 도메인에서 재사용.
+// 공통 객체 — 여러 도메인에서 재사용.
 
-DateTime _parseUtc(String s) {
+DateTime _parseServerTime(String s) {
+  // 서버(JVM TZ=Asia/Seoul)는 타임존 표기 없는 KST wall-clock 을 내려주므로,
+  // 표기 없으면 로컬(KST)로 그대로 파싱한다. 예전처럼 'Z'를 붙이면 +9시간 어긋난다.
+  // Z/오프셋이 붙은 값만 실제 시각으로 보고 toLocal 로 변환.
   if (s.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(s)) {
-    return DateTime.parse(s);
+    return DateTime.parse(s).toLocal();
   }
-  if (s.contains('T')) return DateTime.parse('${s}Z');
   return DateTime.parse(s);
 }
 
@@ -53,7 +55,7 @@ class CommentEntity {
       text: json['text'] as String? ?? '',
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
-      createdAt: _parseUtc(json['createdAt'] as String),
+      createdAt: _parseServerTime(json['createdAt'] as String),
       hidden: json['hidden'] as bool? ?? false,
       hiddenReason: json['hiddenReason'] as String?,
     );
