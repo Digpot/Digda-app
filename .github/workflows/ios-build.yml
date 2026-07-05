@@ -26,10 +26,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select latest stable Xcode
+      # Xcode 26.x(러너 latest-stable)에서 `flutter build ios --no-codesign` 이
+      # 디바이스 빌드 후 "Development Team 필요" 로 실패한다(서명 강화). 06-28 까지
+      # 초록이던 16.x 로 고정 — Firebase Swift6 요구(Xcode 16+)도 충족한다.
+      - name: Select Xcode 16.x
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: "^16.0"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
