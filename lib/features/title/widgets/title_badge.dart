@@ -167,20 +167,57 @@ class TitleBadge extends StatelessWidget {
             ),
           ),
 
-          // 5) 골드 엠보스 아이콘 — 그림자 판 위에 골드 그라데이션 문장.
+          // 5) 기요셰 텍스처 — 시계 다이얼처럼 새긴 동심원 각인.
+          if (detailed)
+            CustomPaint(
+              size: Size(discSize, discSize),
+              painter: _GuillochePainter(
+                color: Colors.white.withValues(alpha: earned ? 0.07 : 0.10),
+                rings: 7,
+              ),
+            ),
+
+          // 6) 월계수 리스 — 원반 안쪽을 감싸는 금장 월계관(위가 트인 형태).
+          if (detailed)
+            CustomPaint(
+              size: Size(discSize, discSize),
+              painter: _LaurelWreathPainter(
+                light: earned ? _goldHi : _silverLight,
+                dark: earned ? _goldDeep : _silverDeep,
+                outline: (earned ? _goldDark : _silverDark)
+                    .withValues(alpha: 0.45),
+              ),
+            ),
+
+          // 7) 리스 상단 트임에 얹는 작은 골드 플레어.
+          if (detailed)
+            Transform.translate(
+              offset: Offset(0, -discSize * 0.375),
+              child: CustomPaint(
+                size: Size(discSize * 0.13, discSize * 0.13),
+                painter: _DiamondFlarePainter(
+                  color: earned ? _goldChampagne : _silverLight,
+                  core: Colors.white,
+                ),
+              ),
+            ),
+
+          // 8) 골드 엠보스 문장 — 민팅 외곽선 + 그림자 판 + 골드 그라데이션.
           _EmbossedIcon(
             icon: earned ? def.icon : Icons.question_mark_rounded,
-            size: discSize * 0.48,
+            size: discSize * (detailed ? 0.42 : 0.48),
             drop: size * 0.016,
             shadowColor: earned
                 ? enamelDark.withValues(alpha: 0.75)
                 : _silverDark.withValues(alpha: 0.6),
+            outlineColor: (earned ? const Color(0xFF5A3D08) : _silverDark)
+                .withValues(alpha: 0.55),
             gradient: earned
                 ? const [Color(0xFFFFFBE8), Color(0xFFFFE28C), Color(0xFFE8B23E)]
                 : const [Colors.white, Color(0xFFE7EAEF), Color(0xFFC2C8D2)],
           ),
 
-          // 6) 유리 광 스트릭 — 메달 전체를 가로지르는 비스듬한 폴리시 광.
+          // 9) 유리 광 스트릭 — 메달 전체를 가로지르는 비스듬한 폴리시 광.
           if (detailed)
             ClipOval(
               child: SizedBox(
@@ -232,7 +269,7 @@ class TitleBadge extends StatelessWidget {
               ),
             ),
 
-          // 7) 다이아 플레어 — 링 하이라이트 자리에 얹는 보석 반짝임.
+          // 10) 다이아 플레어 — 링 하이라이트 자리에 얹는 보석 반짝임.
           if (earned && detailed) ...[
             Positioned(
               right: size * 0.16,
@@ -263,14 +300,15 @@ class TitleBadge extends StatelessWidget {
   }
 }
 
-/// 골드 엠보스 아이콘 — 아래로 살짝 깔리는 그림자 판 + 골드 그라데이션 본체로
-/// 금속 양각 문장 느낌을 낸다.
+/// 골드 엠보스 아이콘 — 그림자 판 + 민팅(주조) 외곽선 + 골드 그라데이션
+/// 본체로 금속에 새겨 찍은 문장 느낌을 낸다.
 class _EmbossedIcon extends StatelessWidget {
   const _EmbossedIcon({
     required this.icon,
     required this.size,
     required this.drop,
     required this.shadowColor,
+    required this.outlineColor,
     required this.gradient,
   });
 
@@ -278,10 +316,12 @@ class _EmbossedIcon extends StatelessWidget {
   final double size;
   final double drop;
   final Color shadowColor;
+  final Color outlineColor;
   final List<Color> gradient;
 
   @override
   Widget build(BuildContext context) {
+    final o = math.max(0.6, size * 0.035);
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -289,6 +329,17 @@ class _EmbossedIcon extends StatelessWidget {
           offset: Offset(0, drop),
           child: Icon(icon, size: size, color: shadowColor),
         ),
+        // 4방향 오프셋 사본으로 만드는 가짜 스트로크 — 글리프를 또렷하게 조각.
+        for (final d in [
+          Offset(-o, 0),
+          Offset(o, 0),
+          Offset(0, -o),
+          Offset(0, o),
+        ])
+          Transform.translate(
+            offset: d,
+            child: Icon(icon, size: size, color: outlineColor),
+          ),
         ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
             begin: Alignment.topLeft,
@@ -301,6 +352,128 @@ class _EmbossedIcon extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 기요셰 — 에나멜 위에 시계 다이얼처럼 새긴 미세한 동심원 각인.
+class _GuillochePainter extends CustomPainter {
+  _GuillochePainter({required this.color, required this.rings});
+
+  final Color color;
+  final int rings;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final rMax = size.width / 2 * 0.86;
+    final rMin = size.width / 2 * 0.24;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.5, size.width * 0.008)
+      ..color = color;
+    for (var i = 0; i < rings; i++) {
+      final r = rMin + (rMax - rMin) * (i / (rings - 1));
+      canvas.drawCircle(c, r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GuillochePainter old) =>
+      old.color != color || old.rings != rings;
+}
+
+/// 월계수 리스 — 좌우 대칭 두 가지가 원반 안쪽 가장자리를 감싸 올라가는
+/// 금장 월계관. 위쪽은 트여 있고 아래 가운데서 만난다.
+class _LaurelWreathPainter extends CustomPainter {
+  _LaurelWreathPainter({
+    required this.light,
+    required this.dark,
+    required this.outline,
+  });
+
+  final Color light;
+  final Color dark;
+  final Color outline;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final R = size.width / 2;
+    final branchR = R * 0.72;
+
+    // 리스 전체에 하나의 광원(위) — 잎들이 한 몸처럼 셰이딩되도록.
+    // 아래쪽도 충분히 밝게 유지해 에나멜/비네트에 묻히지 않도록 한다.
+    final fill = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(c.dx, c.dy - R),
+        Offset(c.dx, c.dy + R),
+        [light, Color.lerp(light, dark, 0.55)!],
+      );
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.5, R * 0.02)
+      ..color = outline;
+
+    final leaves = Path();
+    const perBranch = 7;
+    // 가지 각도 범위: 아래 중앙(π/2) 근처에서 시작해 위쪽 트임 직전까지.
+    const startOff = 0.30; // 아래 중앙에서 벌어지는 시작 각
+    const endOff = 0.80; // 위 트임을 남기는 끝 각 (−π/2 로부터)
+    for (final side in const [1, -1]) {
+      for (var i = 0; i < perBranch; i++) {
+        final t = i / (perBranch - 1);
+        // side=1: 오른쪽 가지(π/2−…→−π/2+…), side=−1: 왼쪽 미러.
+        final theta = side == 1
+            ? (math.pi / 2 - startOff) - t * (math.pi - startOff - endOff)
+            : (math.pi / 2 + startOff) + t * (math.pi - startOff - endOff);
+        // 잎 쌍 느낌 — 안/밖으로 살짝 교차 배치.
+        final rr = branchR + (i.isEven ? R * 0.07 : -R * 0.05);
+        final p = Offset(
+          c.dx + rr * math.cos(theta),
+          c.dy + rr * math.sin(theta),
+        );
+        // 성장 방향(가지를 따라 위로) + 바깥쪽 기울임.
+        final growth = side == 1 ? theta - math.pi / 2 : theta + math.pi / 2;
+        final tilt = side * (0.32 + (i.isEven ? 0.10 : -0.08));
+        final len = R * (0.36 - 0.11 * t); // 위로 갈수록 잎이 작아진다.
+        leaves.addPath(
+          _leaf(len, len * 0.50).transform(
+            (Matrix4.translationValues(p.dx, p.dy, 0)
+                  ..rotateZ(growth + math.pi / 2 + tilt))
+                .storage,
+          ),
+          Offset.zero,
+        );
+      }
+    }
+    canvas.drawPath(leaves, fill);
+    canvas.drawPath(leaves, stroke);
+
+    // 아래 중앙 — 가지가 만나는 자리의 베리 두 알.
+    final berry = Paint()..color = Color.lerp(light, dark, 0.35)!;
+    canvas.drawCircle(
+        Offset(c.dx - R * 0.08, c.dy + branchR * 1.02), R * 0.055, berry);
+    canvas.drawCircle(
+        Offset(c.dx + R * 0.08, c.dy + branchR * 1.02), R * 0.055, berry);
+    canvas.drawCircle(
+        Offset(c.dx - R * 0.08, c.dy + branchR * 1.02), R * 0.055, stroke);
+    canvas.drawCircle(
+        Offset(c.dx + R * 0.08, c.dy + branchR * 1.02), R * 0.055, stroke);
+  }
+
+  /// 원점 중심 세로 방향 잎사귀(티어드롭) — 위가 뾰족, 아래가 둥근 형태.
+  Path _leaf(double len, double width) {
+    final h = len / 2;
+    final w = width / 2;
+    return Path()
+      ..moveTo(0, -h)
+      ..quadraticBezierTo(w, -h * 0.25, 0, h)
+      ..quadraticBezierTo(-w, -h * 0.25, 0, -h)
+      ..close();
+  }
+
+  @override
+  bool shouldRepaint(covariant _LaurelWreathPainter old) =>
+      old.light != light || old.dark != dark || old.outline != outline;
 }
 
 /// 메달 뒤 로제트 — [petals] 개의 둥근 꽃잎을 링 형태로 배치해 부드러운
