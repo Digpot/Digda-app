@@ -457,6 +457,8 @@ class CharacterQuiz {
     this.imageUrl,
     this.createdAt,
     this.remainingCount,
+    this.attempted = false,
+    this.attemptCorrect,
   });
 
   final int id;
@@ -479,6 +481,12 @@ class CharacterQuiz {
   /// (현재 문제 포함). 목록/생성 응답에서는 null.
   final int? remainingCount;
 
+  /// 목록을 조회한 사용자가 이 퀴즈를 이미 응시했는지. 목록에서 정답/오답 배지 노출용.
+  final bool attempted;
+
+  /// 응시했다면 정답(true)/오답(false), 미응시면 null. [attempted] 와 함께 사용.
+  final bool? attemptCorrect;
+
   factory CharacterQuiz.fromJson(Map<String, dynamic> json) {
     final rawImage = json['imageUrl'] as String?;
     final rawCreated = json['createdAt'] as String?;
@@ -496,6 +504,8 @@ class CharacterQuiz {
       imageUrl: (rawImage == null || rawImage.trim().isEmpty) ? null : rawImage,
       createdAt: rawCreated == null ? null : DateTime.tryParse(rawCreated),
       remainingCount: (json['remainingCount'] as num?)?.toInt(),
+      attempted: json['attempted'] as bool? ?? false,
+      attemptCorrect: json['attemptCorrect'] as bool?,
     );
   }
 }
