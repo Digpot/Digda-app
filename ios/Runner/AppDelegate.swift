@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import FirebaseCore
 import FirebaseMessaging
 
 @main
@@ -44,7 +45,18 @@ import FirebaseMessaging
     NSLog("[APNs] 디바이스 토큰 수신 성공 — \(deviceToken.count) bytes")
     apnsDeviceToken = deviceToken
     apnsError = nil
-    Messaging.messaging().apnsToken = deviceToken
+    // ⚠️ 흰 화면 근본원인: didFinishLaunching 에서 registerForRemoteNotifications() 를
+    // 강제 호출하므로, 이 콜백이 Dart 의 Firebase.initializeApp 완료 '전에' 불릴 수
+    // 있다(콜드스타트·기기 타이밍 편차). 그 시점에 Messaging.messaging() 을 만지면
+    // "The default Firebase app has not yet been configured." 예외로 앱이 첫 프레임
+    // 전에 죽어 흰 화면이 된다. Firebase 구성 여부를 확인하고, 아직이면 토큰만
+    // 보관한다 — Dart 초기화 완료 후 auth_session 이 "sync" 채널로 재적용하므로
+    // 토큰 유실은 없다.
+    if FirebaseApp.app() != nil {
+      Messaging.messaging().apnsToken = deviceToken
+    } else {
+      NSLog("[APNs] Firebase 미구성 상태 — 토큰 보관 후 sync 에서 재적용")
+    }
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
@@ -76,7 +88,9 @@ import FirebaseMessaging
         switch call.method {
         case "sync":
           // Firebase 가 구성된 지금 시점에 토큰을 재적용해 유실 레이스를 차단.
-          if let token = self?.apnsDeviceToken {
+          // (Dart 의 Firebase.initializeApp 완료 후 호출되므로 정상 구성 상태지만,
+          //  구성 전 오호출에도 크래시가 없도록 방어적으로 확인한다.)
+          if let token = self?.apnsDeviceToken, FirebaseApp.app() != nil {
             Messaging.messaging().apnsToken = token
           }
           result([
