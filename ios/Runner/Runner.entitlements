@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Apple 로그인(Sign in with Apple) capability. App ID 에도 동일 capability 활성화 필요. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+	<!-- FCM 푸시. match 수동 서명은 자동 production 승격이 없어 직접 production 으로
+	     둔다(CI 는 release/TestFlight 빌드만 생성). App ID 에 Push Notifications
+	     capability 활성화 + 프로파일에 aps-environment 포함 필요. -->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>

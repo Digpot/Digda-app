@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>카카오맵 API 호출 권한 심사 응답서 — 붐빔 · 디그팟</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    color: #1f2933;
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+    font-size: 11pt;
+    line-height: 1.62;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1, h2, h3 { color: #d23a3a; margin: 0 0 8px 0; line-height: 1.3; }
+  h1 { font-size: 26pt; letter-spacing: -0.6px; }
+  h2 {
+    font-size: 16pt;
+    margin-top: 22px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ffd0d0;
+  }
+  h3 { font-size: 12.5pt; color: #1f2933; margin-top: 18px; }
+  p { margin: 6px 0 8px 0; }
+  ul, ol { margin: 6px 0 10px 22px; padding: 0; }
+  li { margin: 3px 0; }
+  strong { color: #b8302a; }
+  code {
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 10pt;
+    background: #f4f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .cover {
+    height: 245mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    page-break-after: always;
+  }
+  .cover .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border: 1.5px solid #d23a3a;
+    color: #d23a3a;
+    border-radius: 999px;
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+  }
+  .cover h1 { font-size: 30pt; margin-bottom: 14px; }
+  .cover .subtitle { font-size: 13pt; color: #555; margin-bottom: 40px; }
+  .cover .meta { font-size: 11pt; color: #777; line-height: 1.9; }
+  .cover .accent { color: #d23a3a; font-weight: 700; }
+
+  .page-break { page-break-before: always; }
+  .section { page-break-inside: avoid; }
+
+  .infobox {
+    background: #fff5f5;
+    border-left: 4px solid #d23a3a;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+  .infobox strong { color: #b8302a; }
+  .note {
+    background: #f4f6fb;
+    border-left: 4px solid #5b87e5;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+  .quote {
+    background: #fafafa;
+    border-left: 3px solid #bbb;
+    padding: 8px 14px;
+    margin: 10px 0;
+    color: #555;
+    font-size: 10.5pt;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 12px 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #e1e5ea;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #fff5f5;
+    color: #b8302a;
+    font-weight: 700;
+    width: 28%;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  .app-card {
+    border: 1.5px solid #d23a3a;
+    border-radius: 8px;
+    padding: 14px 18px 8px 18px;
+    margin: 14px 0 18px 0;
+    background: #fffafa;
+    page-break-inside: avoid;
+  }
+  .app-card h3 {
+    color: #d23a3a;
+    margin: 0 0 10px 0;
+    font-size: 13pt;
+    border-bottom: 1px solid #ffd0d0;
+    padding-bottom: 6px;
+  }
+  .app-card .field {
+    margin: 6px 0;
+    font-size: 10.5pt;
+  }
+  .app-card .field b {
+    color: #b8302a;
+    display: inline-block;
+    min-width: 130px;
+  }
+
+  .footer {
+    margin-top: 28px;
+    padding-top: 12px;
+    border-top: 1px solid #e1e5ea;
+    color: #777;
+    font-size: 10pt;
+    text-align: center;
+  }
+
+  /* ── 서비스 적용 화면 목업 ── */
+  .screens-legend {
+    background: #f4f6fb;
+    border-left: 4px solid #5b87e5;
+    padding: 9px 14px;
+    border-radius: 4px;
+    margin: 10px 0 14px 0;
+    font-size: 10pt;
+  }
+  .shots {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin: 16px 0 4px 0;
+    page-break-inside: avoid;
+  }
+  .shot { width: 32%; }
+  .phone {
+    border: 1.5px solid #1f2933;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .phone .statusbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 9px;
+    font-size: 6pt;
+    color: #1f2933;
+    background: #fafafa;
+  }
+  .phone .scr { padding: 8px 9px 10px 9px; min-height: 190px; }
+  .phone .topbar {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
+  }
+  .phone .title { font-size: 8.5pt; font-weight: 700; color: #1f2933; }
+  .mask {
+    display: inline-block;
+    background: #1f2933;
+    color: #fff;
+    border-radius: 2px;
+    font-size: 5.8pt;
+    letter-spacing: 1px;
+    padding: 1px 5px;
+    vertical-align: middle;
+  }
+  .row {
+    display: flex; justify-content: space-between;
+    border-bottom: 1px solid #eef0f3;
+    padding: 3.5px 0; font-size: 7pt; color: #555;
+  }
+  .place-entry {
+    border: 1.4px solid #d23a3a;
+    background: #fff5f5;
+    color: #b8302a;
+    border-radius: 6px;
+    padding: 5px 7px;
+    font-size: 7.4pt;
+    font-weight: 700;
+    margin-top: 9px;
+    text-align: center;
+  }
+  .searchbar {
+    border: 1.2px solid #d23a3a;
+    border-radius: 7px;
+    padding: 4px 7px;
+    font-size: 7pt;
+    color: #1f2933;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .searchbar .go {
+    color: #fff; background: #d23a3a; border-radius: 4px;
+    padding: 1px 6px; font-size: 6.2pt;
+  }
+  .api-tag {
+    display: inline-block; background: #fff3cd; color: #8a6d00;
+    border: 1px solid #ffe08a; border-radius: 3px;
+    font-size: 6pt; padding: 0 4px; margin-bottom: 5px;
+  }
+  .result { border-bottom: 1px solid #eef0f3; padding: 4.5px 2px; }
+  .result .name { font-size: 7.4pt; font-weight: 700; color: #1f2933; }
+  .result .addr { font-size: 6.4pt; color: #888; }
+  .cap {
+    font-size: 9pt; color: #555; text-align: center;
+    margin-top: 6px; line-height: 1.45;
+  }
+  .cap b { color: #b8302a; }
+
+  /* ── 붐빔 지도 목업 ── */
+  .mapcanvas {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background:
+      linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px) 0 0 / 100% 22px,
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px) 0 0 / 22px 100%,
+      #eef3ee;
+    min-height: 150px;
+  }
+  .mapcanvas .river {
+    position: absolute; left: -6%; right: -6%; top: 54%;
+    height: 16px; background: #bcd6ea; transform: rotate(-7deg);
+    opacity: .85;
+  }
+  .mapcanvas .road {
+    position: absolute; background: #fff; opacity: .9;
+  }
+  .pin {
+    position: absolute;
+    width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    border-radius: 50% 50% 50% 2px;
+    transform: rotate(45deg);
+    border: 1.4px solid rgba(0,0,0,0.18);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  }
+  .pin span {
+    transform: rotate(-45deg);
+    display: block; text-align: center;
+    font-size: 6pt; font-weight: 800; color: #fff; line-height: 18px;
+  }
+  .pin.hot   { background: #ef4444; }
+  .pin.mid   { background: #f59e0b; }
+  .pin.calm  { background: #22c55e; }
+  .pin.stale { background: #9aa5b1; }
+  .ktag {
+    position: absolute; left: 6px; top: 6px;
+    background: #fff3cd; color: #8a6d00; border: 1px solid #ffe08a;
+    border-radius: 3px; font-size: 6pt; padding: 1px 5px;
+  }
+  .klogo {
+    position: absolute; right: 6px; bottom: 5px;
+    font-size: 5.6pt; color: #6b7280; background: rgba(255,255,255,.7);
+    border-radius: 2px; padding: 0 3px;
+  }
+  .legend {
+    display: flex; gap: 8px; margin-top: 7px; flex-wrap: wrap;
+  }
+  .legend i {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 3px; vertical-align: middle;
+  }
+  .legend span { font-size: 6.4pt; color: #555; }
+  .toplist .li {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #eef0f3; padding: 3px 0; font-size: 7pt;
+  }
+  .badge-lv {
+    font-size: 5.8pt; font-weight: 800; color: #fff;
+    border-radius: 3px; padding: 1px 5px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 표지 ============ -->
+<section class="cover">
+  <div class="badge">KAKAO MAP API · REVIEW RESPONSE</div>
+  <h1>카카오맵 API 호출 권한 심사 응답서</h1>
+  <div class="subtitle">계정 내 카카오맵 권한 보유 앱 전체 정보<br/>[앱 1] 붐빔(Boombim) · [앱 2] 디그팟(DigPot)</div>
+  <div class="meta">
+    심사 대상(신규 앱): <span class="accent">디그팟(DigPot)</span><br/>
+    기존 권한 보유 앱: <span class="accent">붐빔(Boombim)</span><br/>
+    제출일: 2026-06-08<br/>
+    담당자: chl****@naver.com
+  </div>
+</section>
+
+<!-- ============ 본문 ============ -->
+
+<h2>1. 안내 사항 확인 및 응답 요지</h2>
+<div class="quote">
+  “심사를 신청한 앱 이외, 기존 카카오맵 API 호출 권한을 이미 가진 앱에 대해서도 동일 양식으로
+  정보를 작성해 주셔야 합니다.” — 가이드 devtalk.kakao.com/t/api/146633
+</div>
+<p>
+  안내해 주신 내용을 확인하였습니다. 본 응답서는 동일 카카오 계정에 등록된
+  <strong>카카오맵 API 권한 보유 앱 2개 전부</strong>를, 가이드의
+  <strong>“2. 카카오맵 API 권한 심사 요청 양식”</strong>(서비스 상세 설명 / 서비스 주소 /
+  카카오맵 API 활용 시나리오)에 맞추어 <strong>각각</strong> 작성한 자료입니다.
+</p>
+<div class="infobox">
+  <strong>1앱-1서비스 정책 준수 선언</strong> — 본 계정의 카카오맵 권한 보유 앱은
+  <strong>붐빔(Boombim)</strong>과 <strong>디그팟(DigPot)</strong> <strong>2개</strong>이며,
+  두 앱은 <strong>서로 완전히 다른 서비스</strong>입니다(혼잡도 지도 vs 그룹 다이어리).
+  동일 서비스를 도메인·PackageName·BundleID 기준으로 <strong>중복 등록한 사실이 없습니다.</strong>
+  <br/>· <strong>[앱 1] 붐빔</strong> — 계정 내 먼저 생성되어 카카오맵 API 호출 권한을 이미 보유한
+  운영 중 서비스(별도 심사 불요).
+  <br/>· <strong>[앱 2] 디그팟</strong> — 이번에 <strong>신규 생성하여 심사를 요청</strong>하는 앱.
+</div>
+
+<h2>2. 계정 내 앱 현황</h2>
+<table>
+  <tr>
+    <th>구분</th>
+    <th>내용</th>
+  </tr>
+  <tr>
+    <td>카카오맵 API 권한 보유 앱</td>
+    <td><strong>2개</strong> — [앱 1] 붐빔(Boombim, 운영 중) · [앱 2] 디그팟(DigPot, 신규)</td>
+  </tr>
+  <tr>
+    <td>이번 심사 요청(신규) 앱</td>
+    <td><strong>디그팟(DigPot)</strong> — 본 응답서 [앱 2]</td>
+  </tr>
+  <tr>
+    <td>기존 권한 보유 앱</td>
+    <td><strong>붐빔(Boombim)</strong> — 본 응답서 [앱 1]. 계정 첫 앱으로 권한 자동 보유, 현재 운영 중</td>
+  </tr>
+  <tr>
+    <td>동일 서비스 중복 등록 여부</td>
+    <td><strong>없음</strong> — 붐빔과 디그팟은 별개 서비스이며 동일
+        도메인/PackageName/BundleID 중복 등록 앱 없음</td>
+  </tr>
+  <tr>
+    <td>Test App 사용 여부</td>
+    <td>해당 없음 — 운영(메인) 앱으로만 호출</td>
+  </tr>
+</table>
+
+<h2>3. 앱별 상세 정보 (가이드 양식)</h2>
+
+<!-- ===== 앱 1 : 붐빔 ===== -->
+<div class="app-card">
+  <h3>[앱 1 — 기존 카카오맵 API 호출 권한 보유 앱]  붐빔 (Boombim)</h3>
+
+  <div class="field"><b>· 서비스명</b> 붐빔 (Boombim)</div>
+  <div class="field"><b>· 운영 상태</b> <strong>운영 중</strong> — Google Play · App Store · 웹 동시 서비스</div>
+  <div class="field"><b>· 권한 보유 경위</b> 계정 내 먼저 생성된 앱으로 카카오맵 API 호출 권한 자동 보유</div>
+
+  <h3 style="margin-top:14px;">① 서비스 상세 설명</h3>
+  <p>
+    붐빔은 카페·식당·헬스장·병원·마트 등 생활 공간의 <strong>실시간 혼잡도(붐비는 정도)를
+    지도 위에서 확인하고 공유</strong>하는 위치 기반 모바일 서비스입니다. 사용자의
+    <strong>실시간 참여형 입력</strong>과 <strong>공공데이터</strong>를 결합해 장소별 혼잡도를
+    산출하고, 이를 <strong>지도 위 마커</strong>로 시각화합니다. 홈 화면에서는 인근의 한산한 지역과
+    붐비는 장소 TOP 5 를 제공하며, 만료된 혼잡도 데이터는 회색 마커로 구분 표시합니다.
+    현재 서울 지역을 중심으로 운영 중입니다.
+  </p>
+
+  <h3 style="margin-top:14px;">② 서비스 주소 (도메인 / PackageName / BundleID)</h3>
+  <table>
+    <tr><th style="width:35%;">웹 도메인</th>
+        <td><code>https://boombim.co.kr</code></td></tr>
+    <tr><th>Android Package Name</th>
+        <td><code>com.boombim.android</code> (Google Play 배포)</td></tr>
+    <tr><th>iOS Bundle ID</th>
+        <td><code>com.yhjo.BoomBim</code> (App Store ID <code>6751637320</code>)</td></tr>
+    <tr><th>플랫폼 구분</th>
+        <td>Android · iOS · Web — 3개 클라이언트 운영 중</td></tr>
+  </table>
+
+  <h3 style="margin-top:14px;">③ 카카오맵 API 활용 시나리오</h3>
+  <ol>
+    <li><strong>지도 화면 구성</strong> —
+      앱·웹의 메인 지도 화면을 <strong>카카오맵으로 렌더링</strong>하고, 그 위에 장소별
+      혼잡도 마커(붐빔/보통/한산/만료)를 올려 사용자에게 표시합니다.
+    </li>
+    <li><strong>좌표 → 행정구역 변환</strong> —
+      혼잡도 데이터의 위·경도 좌표를 <strong>카카오 로컬 좌표→행정구역 코드 변환</strong>
+      (<code>coord2regioncode</code>)으로 행정구역(시/군/구·동)에 매핑해, “인근 지역” 단위의
+      한산·혼잡 집계와 지역 검색에 사용합니다.
+    </li>
+    <li><strong>호출 방식</strong> —
+      클라이언트는 카카오맵 SDK 로 지도를 표시하고, 좌표 변환은 서버가 카카오 로컬 REST API
+      (<code>Authorization: KakaoAK &lt;KEY&gt;</code>)로 호출합니다.
+    </li>
+  </ol>
+  <div class="note">
+    참고 — 카카오 소셜 로그인(OAuth)도 함께 사용하나, 이는 본 심사 대상인 지도/로컬 API 와는
+    별개의 인증 기능입니다.
+  </div>
+
+  <!-- 붐빔 지도 목업 -->
+  <div class="shots" style="margin-top:10px;">
+    <div class="shot" style="width:48%;">
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+        <div class="scr">
+          <div class="topbar"><span class="title">붐빔 — 실시간 혼잡도 지도</span></div>
+          <div class="mapcanvas">
+            <div class="ktag">▶ 카카오맵 SDK 지도 렌더링</div>
+            <div class="river"></div>
+            <div class="road" style="left:0; right:0; top:30%; height:5px;"></div>
+            <div class="road" style="top:0; bottom:0; left:42%; width:5px;"></div>
+            <div class="pin hot"  style="left:30%; top:34%;"><span>혼</span></div>
+            <div class="pin mid"  style="left:58%; top:46%;"><span>보</span></div>
+            <div class="pin calm" style="left:46%; top:68%;"><span>한</span></div>
+            <div class="pin hot"  style="left:70%; top:28%;"><span>혼</span></div>
+            <div class="pin stale" style="left:22%; top:64%;"><span>·</span></div>
+            <div class="klogo">© Kakao</div>
+          </div>
+          <div class="legend">
+            <span><i style="background:#ef4444;"></i>붐빔</span>
+            <span><i style="background:#f59e0b;"></i>보통</span>
+            <span><i style="background:#22c55e;"></i>한산</span>
+            <span><i style="background:#9aa5b1;"></i>만료</span>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>①</b> 카카오맵 위에 <b>혼잡도 마커</b> 표시<br/><i>(실제 지도 호출 화면)</i></div>
+    </div>
+
+    <div class="shot" style="width:48%;">
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+        <div class="scr">
+          <div class="topbar"><span class="title">내 주변 혼잡도 TOP</span></div>
+          <div class="api-tag">▶ 좌표→행정구역(coord2regioncode) 매핑</div>
+          <div class="toplist">
+            <div class="li"><span>○○ 카페 (성수동)</span><span class="badge-lv" style="background:#ef4444;">붐빔</span></div>
+            <div class="li"><span>○○ 헬스장 (서교동)</span><span class="badge-lv" style="background:#f59e0b;">보통</span></div>
+            <div class="li"><span>○○ 마트 (망원동)</span><span class="badge-lv" style="background:#22c55e;">한산</span></div>
+            <div class="li"><span>○○ 병원 (합정동)</span><span class="badge-lv" style="background:#22c55e;">한산</span></div>
+          </div>
+          <div style="font-size:6.2pt;color:#aaa;margin-top:8px;">
+            좌표를 행정구역(동)으로 변환해 “인근 지역” 단위로 집계
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>②</b> 좌표를 <b>행정구역</b>으로 변환해<br/>지역별 한산·혼잡 집계</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 앱 2 : 디그팟 ===== -->
+<div class="app-card page-break">
+  <h3>[앱 2 — 신규 생성 / 카카오맵 API 심사 요청 대상]  디그팟 (DigPot)</h3>
+
+  <div class="field"><b>· 서비스명</b> 디그팟 (DigPot)</div>
+  <div class="field"><b>· 운영사</b> 태리팟</div>
+  <div class="field"><b>· 출시 단계</b> 베타 운영 중 / 정식 출시 준비</div>
+  <div class="field"><b>· 타겟 사용자</b> 가족·연인·친구 등 친밀한 비공개 소그룹</div>
+
+  <h3 style="margin-top:14px;">① 서비스 상세 설명</h3>
+  <p>
+    디그팟은 초대 기반의 <strong>비공개 그룹 다이어리·일정 공유 모바일 앱</strong>입니다.
+    초대 코드로 가입한 그룹 멤버들이 일정(캘린더), 그림일기, 투두리스트, 캐릭터 키우기 등을
+    함께 사용하며, 모든 콘텐츠는 그룹 외부로 노출되지 않습니다. 그림일기 작성 화면의
+    <strong>“장소 추가하기”</strong>에서 사용자가 그날 다녀온 카페·식당·관광지의 이름을 검색해
+    일기 본문과 함께 기록할 수 있도록 <strong>카카오 로컬 키워드 검색 API</strong>를 활용합니다.
+  </p>
+
+  <h3 style="margin-top:14px;">② 서비스 주소 (도메인 / PackageName / BundleID)</h3>
+  <table>
+    <tr><th style="width:35%;">Android Package Name</th>
+        <td><code>com.digda.app</code></td></tr>
+    <tr><th>iOS Bundle ID</th>
+        <td>정식 출시 시 등록 예정 (현재 iOS 미배포, Android 우선 운영)</td></tr>
+    <tr><th>웹 도메인</th>
+        <td>해당 없음 — 모바일 앱 단독 서비스 (운영사 도메인은 정식 출시 시 등록 예정)</td></tr>
+    <tr><th>플랫폼 구분</th>
+        <td>Android(Google Play) 우선 · iOS(App Store) 준비 중</td></tr>
+  </table>
+
+  <h3 style="margin-top:14px;">③ 카카오맵 API 활용 시나리오</h3>
+  <p><strong>활용 API</strong> — 카카오 로컬 키워드 검색
+     <code>GET /v2/local/search/keyword.json</code></p>
+  <ol>
+    <li><strong>호출 지점</strong> —
+      그림일기 <strong>작성·수정 화면</strong>의 “장소 추가하기”를 탭하면 검색 시트가 열립니다.
+    </li>
+    <li><strong>호출 트리거</strong> —
+      검색바에 키워드(예: “성수동 카페”)를 입력하고 <strong>검색 버튼을 누를 때만</strong> 호출.
+      입력 중 자동 호출(autocomplete) 없음.
+    </li>
+    <li><strong>응답 활용</strong> —
+      결과 목록에서 사용자가 선택한 장소의 <code>place_name</code>(문자열)만
+      <code>diary.location</code> 컬럼에 저장. 좌표·내부 ID·연락처는 저장하지 않음.
+    </li>
+    <li><strong>호출 방식</strong> — HTTP REST,
+      헤더 <code>Authorization: KakaoAK &lt;REST_API_KEY&gt;</code>. 카카오맵 JavaScript SDK·지도
+      임베드는 사용하지 않음.
+    </li>
+  </ol>
+
+  <h3 style="margin-top:14px;">호출 예상 트래픽</h3>
+  <table>
+    <tr><th>단계</th><th>예상 MAU</th><th>일일 검색 호출(추정)</th></tr>
+    <tr><td>베타</td><td>약 500명</td><td>2,000 ~ 5,000건</td></tr>
+    <tr><td>정식 +3개월</td><td>약 2,000명</td><td>8,000 ~ 20,000건</td></tr>
+    <tr><td>정식 +6개월</td><td>약 5,000명</td><td>20,000 ~ 50,000건</td></tr>
+  </table>
+</div>
+
+<h2 class="page-break">4. 디그팟 서비스 적용 화면 (카카오 로컬 API 호출 화면)</h2>
+<p>
+  심사 요청 대상인 디그팟에서 카카오 로컬 키워드 검색 API 가
+  <strong>실제로 호출되는 화면</strong>의 흐름입니다. 개인정보 보호를 위해 그룹명·작성자명 등
+  <strong>이용자 식별 정보는 검은 박스로 마스킹</strong>했으며, 검색 결과의 장소명·주소는
+  카카오 API 가 반환하는 정보입니다.
+</p>
+<div class="screens-legend">
+  <strong>마스킹 안내</strong> — <span class="mask">●●● 마스킹</span> 으로 표시된 영역은
+  그룹명·이용자명 등 개인정보로, 제출용 자료에서 검은 박스로 가려 식별이 불가능하도록 처리했습니다.
+</div>
+
+<div class="shots">
+  <div class="shot">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+      <div class="scr">
+        <div class="topbar">
+          <span style="font-size:9pt;">‹</span>
+          <span class="title">그림일기 작성</span>
+        </div>
+        <div style="font-size:6.6pt;color:#888;margin-bottom:7px;">
+          그룹 <span class="mask">●●●● 그룹</span>
+        </div>
+        <div class="row"><span>날짜</span><span>2026.06.08</span></div>
+        <div class="row"><span>날씨</span><span>☀ 맑음</span></div>
+        <div class="row"><span>기분</span><span>😊 좋음</span></div>
+        <div class="place-entry">📍 장소 추가하기</div>
+        <div style="font-size:6.2pt;color:#aaa;margin-top:8px;">
+          오늘 다녀온 곳을 기록해요
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>①</b> 작성 화면의 <b>‘장소 추가하기’</b> 탭<br/>→ 장소 검색 시트 열림</div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+      <div class="scr">
+        <div class="topbar"><span class="title">장소 검색</span></div>
+        <div class="searchbar"><span>성수동 카페</span><span class="go">검색</span></div>
+        <div class="api-tag">▶ 카카오 로컬 키워드 검색 API 호출</div>
+        <div class="result">
+          <div class="name">블루보틀 성수 카페</div>
+          <div class="addr">서울 성동구 아차산로 7</div>
+        </div>
+        <div class="result">
+          <div class="name">어니언 성수</div>
+          <div class="addr">서울 성동구 아차산로9길 8</div>
+        </div>
+        <div class="result">
+          <div class="name">대림창고 갤러리</div>
+          <div class="addr">서울 성동구 성수이로 78</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>②</b> 키워드 입력·검색 시 <b>API 호출</b><br/>→ 상호·주소 결과 표시 <i>(실제 호출 화면)</i></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>LTE · 87%</span></div>
+      <div class="scr">
+        <div class="topbar">
+          <span style="font-size:9pt;">‹</span>
+          <span class="title">그림일기 작성</span>
+        </div>
+        <div style="font-size:6.6pt;color:#888;margin-bottom:7px;">
+          작성자 <span class="mask">●●●</span>
+        </div>
+        <div class="place-entry" style="background:#fff;">📍 블루보틀 성수 카페</div>
+        <div style="border:1px solid #eef0f3;border-radius:6px;padding:6px;margin-top:8px;font-size:6.8pt;color:#555;min-height:62px;">
+          오늘 성수동 카페 투어 다녀왔다 ☕<br/>날씨도 좋고 커피도 맛있었던 하루!
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>③</b> 선택한 <b>장소명(place_name)만</b> 저장<br/>좌표·연락처·내부 ID 는 저장 안 함</div>
+  </div>
+</div>
+
+<div class="infobox">
+  <strong>저장 범위</strong> — 위 ③ 처럼 사용자가 선택한 장소의 <code>place_name</code>(상호 문자열)만
+  <code>diary.location</code> 에 저장합니다. 좌표(x/y)·카카오 내부 ID·전화번호 등은 저장하지 않으며,
+  디그팟은 카카오맵 JavaScript SDK·지도 임베드를 사용하지 않고 REST 로컬 검색 API 만 호출합니다.
+</div>
+
+<h2>5. 정책 준수 확인 사항</h2>
+<ul>
+  <li>본 계정의 카카오맵 권한 보유 앱은 <strong>붐빔(운영)·디그팟(신규)</strong> 2개이며,
+      본 응답서에 <strong>두 앱 모두</strong> 동일 양식으로 기재함.</li>
+  <li>붐빔과 디그팟은 서로 다른 서비스로, <strong>동일 서비스를 중복 등록하지 않음</strong>
+      (도메인 · PackageName · BundleID 기준).</li>
+  <li>이번 심사 요청 대상은 신규 앱 <strong>디그팟</strong>이며, 붐빔은 계정 첫 앱으로
+      권한을 자동 보유한 <strong>운영 중</strong> 서비스임.</li>
+  <li>테스트·개발 용도 키는 <strong>Test App</strong> 가이드를 따라 별도 관리하며,
+      운영 앱과 같은 PackageName 으로 중복 등록하지 않음.</li>
+  <li>카카오 디벨로퍼스 운영정책(동일 서비스의 다수 계정/중복 등록 금지)을 준수함.</li>
+  <li>카카오맵 API 정책(쿼터·과금 등) 변경 사항을 인지하고 호출량을 위 트래픽 표 기준으로 모니터링.</li>
+</ul>
+
+<h2>6. 요청 사항</h2>
+<p>
+  위와 같이 계정 내 카카오맵 권한 보유 앱 2개([앱 1] 붐빔 · [앱 2] 디그팟)의 정보를 동일 양식으로
+  작성하였습니다. 이를 바탕으로 신규 앱 <strong>디그팟(DigPot)의 카카오맵 / 카카오 로컬 API
+  호출 권한</strong> 심사를 재진행해 주시기 바랍니다. 추가 자료나 보완이 필요하면 아래 연락처로
+  안내 부탁드립니다.
+</p>
+
+<div class="footer">
+  <strong>태리팟 · 디그팟 운영팀</strong><br/>
+  담당: chl****@naver.com &nbsp;|&nbsp; 작성: 2026-06-08
+</div>
+
+</body>
+</html>

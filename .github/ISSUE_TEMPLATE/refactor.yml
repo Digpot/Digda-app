@@ -1,0 +1,24 @@
+name: "♻️ 리팩토링"
+description: "기능 변화 없이 코드 구조/품질을 개선합니다."
+title: "[♻️ Refactor] "
+labels: ["♻️ Refactor"]
+assignees: ["chltmdgh522"]
+body:
+  - type: textarea
+    attributes:
+      label: ♻️ 대상 / 현재 문제
+      description: 어떤 코드를 왜 개선하나요?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 개선 방향
+      description: 어떻게 바꿀 계획인가요?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ⚠️ 주의사항 (선택)
+      description: 동작이 바뀌지 않아야 하는 범위 등을 적어 주세요.
+    validations:
+      required: false

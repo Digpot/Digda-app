@@ -1,0 +1,43 @@
+name: "🐛 버그 리포트"
+description: "버그/오류를 제보합니다."
+title: "[🐛 Bug] "
+labels: ["🐛 Bug"]
+assignees: ["chltmdgh522"]
+body:
+  - type: textarea
+    attributes:
+      label: 🐛 버그 설명
+      description: 어떤 문제가 발생했나요?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🔁 재현 방법
+      description: 버그를 재현하는 단계를 적어 주세요.
+      placeholder: |
+        1. 그룹 홈 진입
+        2. 그룹 전환 시트 열기
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 기대 동작
+      description: 원래 어떻게 동작해야 하나요?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📱 환경
+      description: 기기 / OS / 앱 버전 등을 적어 주세요.
+      placeholder: |
+        - 기기: Galaxy S24
+        - OS: Android 14
+        - 앱 버전: 1.0.0
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 🖼️ 스크린샷 / 로그 (선택)
+    validations:
+      required: false

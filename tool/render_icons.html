@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  body { width: 1024px; height: 1024px; }
+  svg { display: block; width: 1024px; height: 1024px; }
+</style>
+</head>
+<body>
+<!--
+  사용법:
+    1) 마스터 아이콘 (iOS) → 이 파일 그대로 렌더링
+    2) 어댑티브 포어그라운드 (Android) → URL 끝에 #fg 붙여서 렌더링
+       chrome --headless --screenshot=... "file://.../render_icons.html#fg"
+-->
+<svg id="master" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="48" fill="#FF6B6B"/>
+  <g>
+    <ellipse cx="124" cy="112" rx="42" ry="36" fill="#FFE4E4"/>
+    <ellipse cx="112" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
+    <ellipse cx="136" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
+    <path d="M118 121 Q124 127 130 121" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+  </g>
+  <g>
+    <ellipse cx="82" cy="118" rx="48" ry="41" fill="#FFFFFF"/>
+    <path d="M82 70 C78 64 68 64 68 73 C68 79 75 84 82 90 C89 84 96 79 96 73 C96 64 86 64 82 70 Z" fill="#FF9FB0"/>
+    <ellipse cx="68" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
+    <ellipse cx="96" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
+    <path d="M74 128 Q82 135 90 128" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+  </g>
+</svg>
+
+<!-- 안드로이드 어댑티브 포어그라운드용 (66% safe zone 내 중앙) -->
+<svg id="foreground" style="display:none" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- 그룹 중심(100,100)으로 정렬 + 1.05배 살짝 확대 -->
+  <g transform="translate(100 100) scale(1.05) translate(-104 -105)">
+    <g>
+      <ellipse cx="124" cy="112" rx="36" ry="31" fill="#FFE4E4"/>
+      <ellipse cx="114" cy="110" rx="2.2" ry="2.8" fill="#2B2B2B"/>
+      <ellipse cx="135" cy="110" rx="2.2" ry="2.8" fill="#2B2B2B"/>
+      <path d="M119 120 Q124 125 130 120" stroke="#2B2B2B" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+      <ellipse cx="106" cy="119" rx="3.6" ry="2.4" fill="#FF9AAA" opacity="0.7"/>
+      <ellipse cx="144" cy="119" rx="3.6" ry="2.4" fill="#FF9AAA" opacity="0.7"/>
+    </g>
+    <g>
+      <ellipse cx="82" cy="118" rx="42" ry="36" fill="#FFFFFF"/>
+      <path d="M82 74 C79 69 70 69 70 77 C70 82 76 86 82 91 C88 86 94 82 94 77 C94 69 85 69 82 74 Z" fill="#FF9FB0"/>
+      <ellipse cx="70" cy="116" rx="2.6" ry="3.2" fill="#2B2B2B"/>
+      <ellipse cx="94" cy="116" rx="2.6" ry="3.2" fill="#2B2B2B"/>
+      <path d="M75 128 Q82 134 89 128" stroke="#2B2B2B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+      <ellipse cx="58" cy="125" rx="4.4" ry="3" fill="#FF9AAA" opacity="0.75"/>
+      <ellipse cx="106" cy="125" rx="4.4" ry="3" fill="#FF9AAA" opacity="0.75"/>
+    </g>
+  </g>
+</svg>
+
+<script>
+  if (location.hash === '#fg') {
+    document.getElementById('master').style.display = 'none';
+    document.getElementById('foreground').style.display = 'block';
+  }
+</script>
+</body>
+</html>

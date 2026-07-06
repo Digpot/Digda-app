@@ -1,0 +1,87 @@
+default_platform(:ios)
+
+# fastlane match 로 배포 인증서·App Store 프로비저닝 프로파일 1세트를 별도 비공개
+# repo(Digpot/ios-certs)에 암호화 저장하고 매 CI 에서 재사용한다. cert 처럼 매번
+# 새 인증서를 만들지 않으므로 "최대 인증서 수 초과" 문제가 없다.
+#
+# 필요한 환경변수(워크플로 주입):
+#   APPSTORE_API_KEY_ID / APPSTORE_API_ISSUER_ID / APPSTORE_API_KEY_PATH / IOS_TEAM_ID
+#   MATCH_PASSWORD                  match 저장소 암복호화 패스프레이즈
+#   MATCH_GIT_BASIC_AUTHORIZATION   ios-certs repo 접근용 base64("x-access-token:PAT")
+platform :ios do
+  desc "Release IPA 서명 빌드 후 TestFlight 업로드 (match)"
+  lane :beta do
+    team_id = ENV.fetch("IOS_TEAM_ID")
+    app_id  = "com.digda.app"
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APPSTORE_API_KEY_ID"),
+      issuer_id: ENV.fetch("APPSTORE_API_ISSUER_ID"),
+      key_filepath: ENV.fetch("APPSTORE_API_KEY_PATH")
+    )
+
+    # CI 러너용 임시 키체인
+    keychain_name = "ci.keychain"
+    keychain_password = "ci-temp-keychain"
+    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+    delete_keychain(name: keychain_name) if File.exist?(keychain_path)
+    create_keychain(
+      name: keychain_name,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false
+    )
+
+    # 배포 인증서·App Store 프로파일을 ios-certs repo 에 저장/재사용
+    # (MATCH_PASSWORD, MATCH_GIT_BASIC_AUTHORIZATION 은 환경변수로 자동 인식)
+    match(
+      type: "appstore",
+      app_identifier: app_id,
+      api_key: api_key,
+      git_url: "https://github.com/Digpot/ios-certs.git",
+      storage_mode: "git",
+      readonly: false,
+      # 프로파일을 매번 재발급해 App ID 의 현재 capability(Push 등)를 항상 반영.
+      # (인증서는 재사용, 프로파일만 재생성되므로 한도 문제 없음)
+      force: true,
+      keychain_name: keychain_name,
+      keychain_password: keychain_password
+    )
+
+    profile_name = "match AppStore #{app_id}"
+
+    # Runner 타깃만 수동 배포 서명으로 전환 (Pods 는 그대로 둠)
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      team_id: team_id,
+      code_sign_identity: "Apple Distribution",
+      bundle_identifier: app_id,
+      profile_name: profile_name,
+      targets: ["Runner"]
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      clean: true,
+      output_directory: "build",
+      export_options: {
+        signingStyle: "manual",
+        teamID: team_id,
+        provisioningProfiles: {
+          app_id => profile_name
+        }
+      }
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

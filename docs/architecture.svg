@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 660" font-family="'Apple SD Gothic Neo','Segoe UI',sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFF6F6"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF8A8A"/>
+      <stop offset="1" stop-color="#FF6B6B"/>
+    </linearGradient>
+    <linearGradient id="srv" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F3FBF5"/>
+      <stop offset="1" stop-color="#E6F4EA"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#1f2933" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#9aa5b1"/>
+    </marker>
+    <marker id="arrC" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#FF6B6B"/>
+    </marker>
+  </defs>
+
+  <rect width="1080" height="660" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <rect x="24" y="22" width="1032" height="56" rx="14" fill="url(#brand)" filter="url(#sh)"/>
+  <text x="48" y="58" fill="#fff" font-size="22" font-weight="800">🍙 디그팟 · DigPot — System Architecture</text>
+  <text x="1032" y="56" fill="#FFE3E3" font-size="13" font-weight="600" text-anchor="end">Digital Group Pocket · 태리팟</text>
+
+  <!-- ===== Zone: Client ===== -->
+  <text x="48" y="118" fill="#7A1F1F" font-size="13" font-weight="700">CLIENT</text>
+  <g filter="url(#sh)">
+    <rect x="120" y="128" width="320" height="92" rx="16" fill="#FFF1F1" stroke="#FF8A8A" stroke-width="1.5"/>
+  </g>
+  <text x="280" y="166" text-anchor="middle" font-size="26">📱</text>
+  <text x="280" y="192" text-anchor="middle" fill="#7A1F1F" font-size="16" font-weight="800">Digda-app</text>
+  <text x="280" y="210" text-anchor="middle" fill="#B05252" font-size="12">Flutter · Android / iOS</text>
+
+  <g filter="url(#sh)">
+    <rect x="640" y="128" width="320" height="92" rx="16" fill="#FFF1F1" stroke="#FF8A8A" stroke-width="1.5"/>
+  </g>
+  <text x="800" y="166" text-anchor="middle" font-size="26">🖥️</text>
+  <text x="800" y="192" text-anchor="middle" fill="#7A1F1F" font-size="16" font-weight="800">digda-admin</text>
+  <text x="800" y="210" text-anchor="middle" fill="#B05252" font-size="12">Vue 3 · TypeScript</text>
+
+  <!-- Client -> Server arrows -->
+  <line x1="280" y1="220" x2="280" y2="266" stroke="#FF6B6B" stroke-width="2" marker-end="url(#arrC)"/>
+  <line x1="800" y1="220" x2="800" y2="266" stroke="#FF6B6B" stroke-width="2" marker-end="url(#arrC)"/>
+  <text x="540" y="250" text-anchor="middle" fill="#8a6d00" font-size="12" font-weight="700">HTTPS · REST (JWT)</text>
+
+  <!-- ===== Zone: Server ===== -->
+  <text x="48" y="292" fill="#114B22" font-size="13" font-weight="700">SERVER</text>
+  <g filter="url(#sh)">
+    <rect x="120" y="270" width="840" height="120" rx="18" fill="url(#srv)" stroke="#34A853" stroke-width="1.6"/>
+  </g>
+  <text x="140" y="300" fill="#114B22" font-size="15" font-weight="800">🍙 Digda-server · Kotlin · Spring Boot 3</text>
+
+  <!-- inner pipeline -->
+  <g font-size="13" font-weight="700">
+    <rect x="148" y="318" width="150" height="50" rx="10" fill="#fff" stroke="#34A853" stroke-width="1.2"/>
+    <text x="223" y="340" text-anchor="middle" fill="#114B22">🔐 Security</text>
+    <text x="223" y="357" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="500">JWT 필터</text>
+
+    <rect x="328" y="318" width="150" height="50" rx="10" fill="#fff" stroke="#34A853" stroke-width="1.2"/>
+    <text x="403" y="340" text-anchor="middle" fill="#114B22">🧭 Controller</text>
+    <text x="403" y="357" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="500">REST API</text>
+
+    <rect x="508" y="318" width="150" height="50" rx="10" fill="#fff" stroke="#34A853" stroke-width="1.2"/>
+    <text x="583" y="340" text-anchor="middle" fill="#114B22">⚙️ Service</text>
+    <text x="583" y="357" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="500">도메인 로직</text>
+
+    <rect x="688" y="318" width="150" height="50" rx="10" fill="#fff" stroke="#34A853" stroke-width="1.2"/>
+    <text x="763" y="340" text-anchor="middle" fill="#114B22">🗃️ Repository</text>
+    <text x="763" y="357" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="500">Spring Data JPA</text>
+
+    <rect x="858" y="318" width="86" height="50" rx="10" fill="#FEF3F3" stroke="#FF8A8A" stroke-width="1.2"/>
+    <text x="901" y="340" text-anchor="middle" fill="#7A1F1F">⏰ Batch</text>
+    <text x="901" y="357" text-anchor="middle" fill="#B05252" font-size="10" font-weight="500">리마인더</text>
+  </g>
+  <line x1="298" y1="343" x2="326" y2="343" stroke="#9aa5b1" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="478" y1="343" x2="506" y2="343" stroke="#9aa5b1" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="658" y1="343" x2="686" y2="343" stroke="#9aa5b1" stroke-width="1.6" marker-end="url(#arr)"/>
+
+  <!-- Server -> Data / External -->
+  <line x1="300" y1="390" x2="300" y2="470" stroke="#9aa5b1" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="760" y1="390" x2="760" y2="448" stroke="#9aa5b1" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ===== Zone: Data (AWS) ===== -->
+  <text x="48" y="498" fill="#0B3D91" font-size="13" font-weight="700">DATA · AWS</text>
+  <g filter="url(#sh)">
+    <rect x="120" y="478" width="360" height="150" rx="16" fill="#EEF4FE" stroke="#4285F4" stroke-width="1.5"/>
+  </g>
+  <g font-weight="800" font-size="14">
+    <rect x="144" y="506" width="150" height="44" rx="10" fill="#fff" stroke="#4285F4" stroke-width="1.2"/>
+    <text x="219" y="533" text-anchor="middle" fill="#0B3D91">🐬 MySQL (RDS)</text>
+    <rect x="306" y="506" width="150" height="44" rx="10" fill="#fff" stroke="#4285F4" stroke-width="1.2"/>
+    <text x="381" y="533" text-anchor="middle" fill="#0B3D91">⚡ Redis</text>
+    <rect x="144" y="564" width="312" height="44" rx="10" fill="#fff" stroke="#4285F4" stroke-width="1.2"/>
+    <text x="300" y="591" text-anchor="middle" fill="#0B3D91">🪣 AWS S3 · 이미지 저장</text>
+  </g>
+  <text x="300" y="460" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600">JPA · 캐시 · 업로드</text>
+
+  <!-- ===== Zone: External ===== -->
+  <text x="624" y="498" fill="#7A4F00" font-size="13" font-weight="700">EXTERNAL</text>
+  <g filter="url(#sh)">
+    <rect x="600" y="478" width="360" height="150" rx="16" fill="#FFF6E8" stroke="#F9A825" stroke-width="1.5"/>
+  </g>
+  <g font-weight="800" font-size="14">
+    <rect x="624" y="506" width="150" height="44" rx="10" fill="#fff" stroke="#F9A825" stroke-width="1.2"/>
+    <text x="699" y="533" text-anchor="middle" fill="#7A4F00">🔑 소셜 OAuth</text>
+    <rect x="786" y="506" width="150" height="44" rx="10" fill="#fff" stroke="#F9A825" stroke-width="1.2"/>
+    <text x="861" y="533" text-anchor="middle" fill="#7A4F00">🔔 FCM</text>
+    <rect x="624" y="564" width="312" height="44" rx="10" fill="#fff" stroke="#F9A825" stroke-width="1.2"/>
+    <text x="780" y="591" text-anchor="middle" fill="#7A4F00">📍 카카오 로컬 · 🗺️ 장소 검색</text>
+  </g>
+  <text x="760" y="460" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600">인증 · 푸시 · 검색</text>
+
+  <!-- App direct to OAuth/FCM/Kakao -->
+  <path d="M120 174 C 40 174, 40 540, 120 540" fill="none" stroke="#FF6B6B" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="30" y="360" fill="#FF6B6B" font-size="11" font-weight="700" transform="rotate(-90 30 360)">소셜 로그인 · 푸시 수신 · 장소 검색</text>
+</svg>
