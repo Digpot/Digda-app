@@ -1,0 +1,20 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- No background — for use on coral surfaces -->
+  <g>
+    <ellipse cx="124" cy="112" rx="42" ry="36" fill="#FFE4E4"/>
+    <ellipse cx="112" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
+    <ellipse cx="136" cy="110" rx="2.4" ry="3.2" fill="#2B2B2B"/>
+    <path d="M118 121 Q124 127 130 121" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <ellipse cx="103" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+    <ellipse cx="145" cy="120" rx="4.2" ry="2.8" fill="#FF9AAA" opacity="0.7"/>
+  </g>
+  <g>
+    <ellipse cx="82" cy="118" rx="48" ry="41" fill="#FFFFFF"/>
+    <path d="M82 70 C78 64 68 64 68 73 C68 79 75 84 82 90 C89 84 96 79 96 73 C96 64 86 64 82 70 Z" fill="#FF9FB0"/>
+    <ellipse cx="68" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
+    <ellipse cx="96" cy="116" rx="2.8" ry="3.6" fill="#2B2B2B"/>
+    <path d="M74 128 Q82 135 90 128" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="56" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+    <ellipse cx="108" cy="126" rx="5" ry="3.3" fill="#FF9AAA" opacity="0.75"/>
+  </g>
+</svg>

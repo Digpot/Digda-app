@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 문의 / 논의
+    url: https://github.com/DateDiary/Digda-app/discussions
+    about: 기능 제안·질문 등 자유로운 논의는 Discussions 를 이용해 주세요.

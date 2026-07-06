@@ -1,0 +1,784 @@
+import 'package:flutter/material.dart';
+import '../../core/di.dart';
+import '../../core/network/error_message.dart';
+import '../../features/notification/models/notification_models.dart';
+import '../../theme/colors.dart';
+import '../../widgets/app_dialog.dart';
+
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+enum _Filter { all, mochi, diary, schedule }
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  static const int _pageSize = 20;
+
+  bool _loading = true;
+  bool _loadingMore = false;
+  String? _errorMessage;
+  List<AppNotification> _items = const [];
+  int _total = 0;
+  _Filter _filter = _Filter.all;
+
+  /// 서버에 아직 더 가져올 알림이 남아있는지 (필터와 무관 — 다음 페이지엔 다른 타입이 섞여 있을 수 있음).
+  bool get _hasMore => _items.length < _total;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result =
+          await Di.notificationRepository.list(limit: _pageSize, offset: 0);
+      if (!mounted) return;
+      setState(() {
+        _items = result.notifications;
+        _total = result.total;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = errorMessageOf(e);
+      });
+    }
+  }
+
+  /// "더 많이 보기" — 현재 로드된 개수를 offset 으로 다음 페이지를 이어붙인다.
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final result = await Di.notificationRepository
+          .list(limit: _pageSize, offset: _items.length);
+      if (!mounted) return;
+      setState(() {
+        // offset 페이징 사이에 새 알림이 들어와 중복이 생길 수 있어 id 기준으로 합친다.
+        final seen = _items.map((e) => e.id).toSet();
+        _items = [
+          ..._items,
+          ...result.notifications.where((n) => seen.add(n.id)),
+        ];
+        _total = result.total;
+        _loadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    showInfoDialog(context, '알림', message);
+  }
+
+  void _markAllRead() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '모두 읽음 처리',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: AppColors.gray900,
+          ),
+        ),
+        content: const Text(
+          '모든 알림을 읽음 처리하시겠습니까?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+            color: AppColors.gray700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await Di.notificationRepository.markAllRead();
+                if (!mounted) return;
+                await _load();
+                _showToast('모든 알림을 읽음 처리했어요');
+              } catch (e) {
+                if (!mounted) return;
+                showErrorDialog(context, errorMessageOf(e));
+              }
+            },
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _onNotificationTap(AppNotification n) async {
+    // 탭하면 다른 화면으로 이동시키지 않고 그 자리에서 읽음 처리만 한다.
+    // (예전엔 팝업 띄우고 확인 후 그룹 홈/일정 상세로 점프했지만, 사용자가
+    // 보던 알림 목록에서 갑자기 다른 화면으로 끌려가는 UX 가 어색했다.)
+    if (n.isRead) return;
+    if (!mounted) return;
+    setState(() {
+      _items = _items
+          .map((it) => it.id == n.id
+              ? AppNotification(
+                  id: it.id,
+                  type: it.type,
+                  title: it.title,
+                  message: it.message,
+                  groupRoomId: it.groupRoomId,
+                  groupRoomName: it.groupRoomName,
+                  relatedId: it.relatedId,
+                  relatedType: it.relatedType,
+                  isRead: true,
+                  createdAt: it.createdAt,
+                )
+              : it)
+          .toList();
+    });
+    Di.notificationRepository.markRead(n.id).ignore();
+  }
+
+  /// 와이어프레임 기준 시간 표기:
+  ///   - 오늘: "3분 전" / "1시간 전" 등 상대 시간
+  ///   - 어제: "어제 오후 6:30"
+  ///   - 그 외: "2월 6일"
+  String _formatTime(DateTime t, _Bucket bucket) {
+    final local = t.toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(t);
+    switch (bucket) {
+      case _Bucket.today:
+        if (diff.inMinutes < 1) return '방금';
+        if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+        if (diff.inHours < 24) return '${diff.inHours}시간 전';
+        return '오늘';
+      case _Bucket.yesterday:
+        final hour12 = local.hour == 0
+            ? 12
+            : (local.hour > 12 ? local.hour - 12 : local.hour);
+        final period = local.hour < 12 ? '오전' : '오후';
+        return '어제 $period $hour12:${local.minute.toString().padLeft(2, '0')}';
+      case _Bucket.earlier:
+        return '${local.month}월 ${local.day}일';
+    }
+  }
+
+  /// 현재 필터에 맞춰 표시할 알림.
+  Iterable<AppNotification> _filtered() {
+    final set = switch (_filter) {
+      _Filter.mochi => NotificationType.mochiTypes,
+      _Filter.diary => NotificationType.diaryTypes,
+      _Filter.schedule => NotificationType.scheduleTypes,
+      _Filter.all => null,
+    };
+    if (set == null) return _items;
+    return _items.where((n) => set.contains(n.type));
+  }
+
+  /// 특정 필터의 '미읽음' 알림 개수 (칩 배지용). 알림을 읽으면 줄어들어 0이 되면
+  /// 배지가 사라진다 — 읽었는데도 숫자가 남아있는 혼란을 막는다.
+  int _countFor(Set<String> types) =>
+      _items.where((n) => types.contains(n.type) && !n.isRead).length;
+
+  /// 전체 탭의 미읽음 개수.
+  int get _unreadTotal => _items.where((n) => !n.isRead).length;
+
+  /// 알림 목록을 (섹션, 알림들) 의 리스트로 묶는다. 와이어프레임의 오늘/어제/이전.
+  List<_Section> _buildSections() {
+    final list = _filtered().toList();
+    if (list.isEmpty) return const [];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final todayItems = <AppNotification>[];
+    final yesterdayItems = <AppNotification>[];
+    final earlierItems = <AppNotification>[];
+
+    for (final n in list) {
+      final local = n.createdAt.toLocal();
+      final d = DateTime(local.year, local.month, local.day);
+      if (d == today) {
+        todayItems.add(n);
+      } else if (d == yesterday) {
+        yesterdayItems.add(n);
+      } else {
+        earlierItems.add(n);
+      }
+    }
+
+    return [
+      if (todayItems.isNotEmpty) _Section('오늘', _Bucket.today, todayItems),
+      if (yesterdayItems.isNotEmpty)
+        _Section('어제', _Bucket.yesterday, yesterdayItems),
+      if (earlierItems.isNotEmpty)
+        _Section('이전', _Bucket.earlier, earlierItems),
+    ];
+  }
+
+  /// 알림 타입별 아이콘 스킨. 11종 모두 색조가 한눈에 구별되도록 분리.
+  /// bg/fg 모두 톤이 묶이지 않게 의도적으로 분산했고, 의미가 가까운 짝(일정 작성/수정,
+  /// 일정 댓글/일기 댓글, 자발탈퇴/강퇴)은 같은 계열 내에서만 명도를 달리한다.
+  static const _iconSkins = <String, _IconSkin>{
+    // 모찌(캐릭터/퀴즈) — 코랄/핑크/골드 계열로 모찌 패밀리 통일
+    'mochi_levelup':
+        _IconSkin(Icons.auto_awesome_rounded, Color(0xFFFFF1F2), Color(0xFFE11D48)),
+    'diko_unlocked':
+        _IconSkin(Icons.celebration_rounded, Color(0xFFFFE4E6), Color(0xFFBE185D)),
+    'quiz_created':
+        _IconSkin(Icons.psychology_alt_rounded, Color(0xFFFCE7F3), Color(0xFFC2185B)),
+    'quiz_answered':
+        _IconSkin(Icons.emoji_events_rounded, Color(0xFFFFF7E2), Color(0xFFC07F00)),
+    // 일정 — 블루 계열
+    'schedule_created':
+        _IconSkin(Icons.event_available_rounded, Color(0xFFE8F0FE), Color(0xFF1A73E8)),
+    'schedule_updated':
+        _IconSkin(Icons.edit_calendar_rounded, Color(0xFFE0F7FA), Color(0xFF00838F)),
+    // 일정 리마인더 — 하루 전(티얼: 차분한 예고), 당일(딥 코랄: 가장 강조)
+    'schedule_day_before':
+        _IconSkin(Icons.event_note_rounded, Color(0xFFE0F2F1), Color(0xFF00897B)),
+    'schedule_today':
+        _IconSkin(Icons.notifications_active_rounded, Color(0xFFFFCCBC), Color(0xFFBF360C)),
+    // 일기 — 핑크
+    'diary_written':
+        _IconSkin(Icons.auto_stories_rounded, Color(0xFFFFE3EC), Color(0xFFE91E63)),
+    // 댓글 — 보라 계열 (일정 댓글 = 퍼플, 일기 댓글 = 마젠타)
+    'comment_on_schedule':
+        _IconSkin(Icons.mode_comment_rounded, Color(0xFFEDE7F6), Color(0xFF5E35B1)),
+    'comment_on_diary':
+        _IconSkin(Icons.forum_rounded, Color(0xFFFCE4EC), Color(0xFFAD1457)),
+    // 멤버 변화 — 초록(가입) / 그레이(자발탈퇴) / 오렌지(강퇴)
+    'member_joined':
+        _IconSkin(Icons.person_add_alt_1_rounded, Color(0xFFE6F4EA), Color(0xFF2E7D32)),
+    'member_left':
+        _IconSkin(Icons.logout_rounded, Color(0xFFF1F3F5), Color(0xFF6B7280)),
+    'member_removed':
+        _IconSkin(Icons.person_off_rounded, Color(0xFFFFF3E0), Color(0xFFE65100)),
+    // 권한 — 골드
+    'ownership_transferred':
+        _IconSkin(Icons.workspace_premium_rounded, Color(0xFFFFF8E1), Color(0xFFF9A825)),
+    // 그룹 삭제 예약 — 짙은 빨강(경고)
+    'group_delete_scheduled':
+        _IconSkin(Icons.auto_delete_rounded, Color(0xFFFFEBEE), Color(0xFFC62828)),
+    // 공지 — 인디고
+    'announcement':
+        _IconSkin(Icons.campaign_rounded, Color(0xFFE8EAF6), Color(0xFF3949AB)),
+  };
+  static const _defaultSkin =
+      _IconSkin(Icons.notifications_rounded, Color(0xFFF1F3F5), Color(0xFF9CA3AF));
+
+  _IconSkin _skinFor(String type) => _iconSkins[type] ?? _defaultSkin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      size: 16,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    '알림',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: AppColors.gray900,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_items.any((n) => !n.isRead))
+                    GestureDetector(
+                      onTap: _markAllRead,
+                      child: const Text(
+                        '모두 읽음',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 56),
+                ],
+              ),
+            ),
+            // 필터 칩: 전체 / 모찌 관련. 진입 직후엔 전체. 모찌 칩을 누르면 모찌
+            // 4종(mochi_levelup/diko_unlocked/quiz_created/quiz_answered)만 필터링.
+            // 바깥 Column 이 center 정렬이라, 전체 너비를 강제해 칩들이 좌측에 붙도록 한다.
+            SizedBox(
+              width: double.infinity,
+              child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+              child: Row(
+                children: [
+                  _FilterChipButton(
+                    label: '전체',
+                    selected: _filter == _Filter.all,
+                    badgeCount: _unreadTotal,
+                    onTap: () => setState(() => _filter = _Filter.all),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '모찌',
+                    selected: _filter == _Filter.mochi,
+                    badgeCount: _countFor(NotificationType.mochiTypes),
+                    onTap: () => setState(() => _filter = _Filter.mochi),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '일정',
+                    selected: _filter == _Filter.schedule,
+                    badgeCount: _countFor(NotificationType.scheduleTypes),
+                    onTap: () => setState(() => _filter = _Filter.schedule),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChipButton(
+                    label: '일기',
+                    selected: _filter == _Filter.diary,
+                    badgeCount: _countFor(NotificationType.diaryTypes),
+                    onTap: () => setState(() => _filter = _Filter.diary),
+                  ),
+                ],
+              ),
+            ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? _buildError()
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: _filtered().isEmpty
+                              ? ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    const SizedBox(height: 100),
+                                    Center(
+                                      child: Text(
+                                        switch (_filter) {
+                                          _Filter.mochi => '아직 모찌 관련 알림이 없어요',
+                                          _Filter.diary => '아직 일기 관련 알림이 없어요',
+                                          _Filter.schedule => '아직 일정 관련 알림이 없어요',
+                                          _Filter.all => '아직 알림이 없어요',
+                                        },
+                                        style: const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                          color: AppColors.gray500,
+                                        ),
+                                      ),
+                                    ),
+                                    // 현재 필터엔 없어도 다음 페이지에 있을 수 있어 더 보기 노출.
+                                    const SizedBox(height: 24),
+                                    _buildLoadMore(),
+                                  ],
+                                )
+                              : _buildSectionList(),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionList() {
+    final sections = _buildSections();
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 8, bottom: 24),
+      // 마지막 한 칸은 "더 많이 보기" 푸터 (남은 게 없으면 빈 위젯).
+      itemCount: sections.length + 1,
+      itemBuilder: (context, sectionIndex) {
+        if (sectionIndex == sections.length) {
+          return _buildLoadMore();
+        }
+        final s = sections[sectionIndex];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, sectionIndex == 0 ? 4 : 20, 20, 10),
+              child: Text(
+                s.label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 13,
+                  color: AppColors.gray500,
+                ),
+              ),
+            ),
+            ...s.items.map((n) => Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: _NotificationCard(
+                    notification: n,
+                    skin: _skinFor(n.type),
+                    timeLabel: _formatTime(n.createdAt, s.bucket),
+                    onTap: () => _onNotificationTap(n),
+                  ),
+                )),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 하단 "더 많이 보기" 버튼. 더 받을 게 없으면 빈 위젯, 로딩 중이면 스피너.
+  Widget _buildLoadMore() {
+    if (!_hasMore && !_loadingMore) return const SizedBox.shrink();
+    final remaining = _total - _items.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+      child: Center(
+        child: _loadingMore
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : OutlinedButton(
+                onPressed: _loadMore,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.gray200),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 22, vertical: 11),
+                ),
+                child: Text(
+                  remaining > 0 ? '더 많이 보기 ($remaining)' : '더 많이 보기',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline,
+              size: 48, color: AppColors.gray400),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _errorMessage ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: AppColors.gray700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _load,
+            child: const Text(
+              '다시 시도',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _Bucket { today, yesterday, earlier }
+
+class _Section {
+  const _Section(this.label, this.bucket, this.items);
+  final String label;
+  final _Bucket bucket;
+  final List<AppNotification> items;
+}
+
+class _IconSkin {
+  const _IconSkin(this.icon, this.bg, this.fg);
+  final IconData icon;
+  final Color bg;
+  final Color fg;
+}
+
+class _NotificationCard extends StatelessWidget {
+  const _NotificationCard({
+    required this.notification,
+    required this.skin,
+    required this.timeLabel,
+    required this.onTap,
+  });
+
+  final AppNotification notification;
+  final _IconSkin skin;
+  final String timeLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isRead = notification.isRead;
+    // 와이어프레임: 미읽음 = 옅은 라벤더/블루 톤, 읽음 = 옅은 그레이.
+    final bg = isRead
+        ? const Color(0xFFF6F7F9)
+        : const Color(0xFFEEF1FB);
+    final titleColor = isRead ? AppColors.gray500 : AppColors.gray900;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: skin.bg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      skin.icon,
+                      size: 20,
+                      color: skin.fg,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          notification.groupRoomName.isNotEmpty
+                              ? notification.groupRoomName
+                              : notification.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            height: 1.3,
+                            color: titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          notification.message,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 13,
+                            height: 1.35,
+                            color: isRead
+                                ? AppColors.gray500
+                                : AppColors.gray700,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          timeLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 11,
+                            color: AppColors.gray400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!isRead)
+              const Positioned(
+                top: 10,
+                left: 10,
+                child: _UnreadDot(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChipButton extends StatelessWidget {
+  const _FilterChipButton({
+    required this.label,
+    required this.selected,
+    required this.badgeCount,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final int badgeCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary
+                : AppColors.gray50,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.gray200,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: selected ? Colors.white : AppColors.gray700,
+                ),
+              ),
+              if (badgeCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.25)
+                        : AppColors.gray200,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    badgeCount > 99 ? '99+' : '$badgeCount',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: selected ? Colors.white : AppColors.gray700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnreadDot extends StatelessWidget {
+  const _UnreadDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}

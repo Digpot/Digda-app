@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.digda.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>digda</string>
+			</array>
+		</dict>
+		<!-- 카카오 로그인 리다이렉트: kakao{네이티브앱키}://oauth. 앱키는 빌드 설정
+		     KAKAO_NATIVE_APP_KEY(Secrets.xcconfig, CI 에서 .env→주입) 로 치환된다. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>KakaoLogin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kakao$(KAKAO_NATIVE_APP_KEY)</string>
+			</array>
+		</dict>
+		<!-- 네이버 로그인 콜백 스킴(naver{clientId}). NAVER_URL_SCHEME 로 치환. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>NaverLogin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(NAVER_URL_SCHEME)</string>
+			</array>
+		</dict>
+	</array>
+	<!-- flutter_naver_login(iOS) 이 Info.plist 에서 직접 읽는 네이버 SDK 설정 값.
+	     값은 빌드 설정(Secrets.xcconfig)으로 주입한다. -->
+	<key>NidClientID</key>
+	<string>$(NAVER_CLIENT_ID)</string>
+	<key>NidClientSecret</key>
+	<string>$(NAVER_CLIENT_SECRET)</string>
+	<key>NidAppName</key>
+	<string>$(NAVER_CLIENT_NAME)</string>
+	<key>NidUrlScheme</key>
+	<string>$(NAVER_URL_SCHEME)</string>
+	<!-- 카카오톡/네이버 앱 설치 시 앱 전환 로그인을 위한 조회 스킴 화이트리스트. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaokompassauth</string>
+		<string>kakaotalk</string>
+		<string>kakaolink</string>
+		<string>naversearchapp</string>
+		<string>naversearchthirdlogin</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<!-- 카메라/사진 접근 사유 — image_picker 로 일기·프로필·퀴즈 사진을 찍거나 고를 때 사용 -->
+	<key>NSCameraUsageDescription</key>
+	<string>일기·프로필·퀴즈에 넣을 사진을 촬영하기 위해 카메라를 사용합니다.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>일기·프로필·퀴즈에 넣을 사진을 선택하기 위해 사진 보관함에 접근합니다.</string>
+	<!-- 표준 HTTPS 외 암호화 미사용 — 매 제출 시 수출 규정 질문을 건너뛴다 -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- ATT(앱 추적 투명성) 동의 팝업에 표시될 설명 문구 -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>회원님께 더 알맞은 광고를 보여드리기 위해 활동을 추적합니다. 허용하지 않아도 광고는 표시되며, 앱은 동일하게 이용할 수 있어요.</string>
+	<!--
+		AdMob 앱 ID. 현재는 구글 공식 "테스트" 앱 ID. 출시 전 AdMob 콘솔에서
+		발급한 실제 iOS 앱 ID(ca-app-pub-XXXX~YYYY) 로 교체할 것.
+	-->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>디그팟</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>digdaapp</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>
