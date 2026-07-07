@@ -60,7 +60,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCIoq6QMfQza5MovIQ7D4GlRr4yMkrlyEc',
-    appId: '1:625310637326:ios:4fe7a76eb42818eeeb8b5f',
+    appId: '1:625310637326:ios:1d177ab507371135eb8b5f',
     messagingSenderId: '625310637326',
     projectId: 'digda-792fa',
     storageBucket: 'digda-792fa.firebasestorage.app',
@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCIoq6QMfQza5MovIQ7D4GlRr4yMkrlyEc',
-    appId: '1:625310637326:ios:4fe7a76eb42818eeeb8b5f',
+    appId: '1:625310637326:ios:1d177ab507371135eb8b5f',
     messagingSenderId: '625310637326',
     projectId: 'digda-792fa',
     storageBucket: 'digda-792fa.firebasestorage.app',

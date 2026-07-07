@@ -29,18 +29,23 @@ class AdConfig {
       'ca-app-pub-3940256099942544/1712485313';
 
   // ── 실제 광고 단위 ID — 빌드 시 dart-define 으로 주입(레포 미커밋) ──
-  // iOS 는 아직 실제 ID 미발급 → 테스트 유지(Android 만 교체).
+  // Android: 로컬 admob.local.json, iOS: CI(ios-build.yml)가 GitHub Secret 주입.
   static const String _prodBannerAndroid =
       String.fromEnvironment('ADMOB_BANNER_ANDROID');
   static const String _prodRewardedAndroid =
       String.fromEnvironment('ADMOB_REWARDED_ANDROID');
+  static const String _prodBannerIos =
+      String.fromEnvironment('ADMOB_BANNER_IOS');
+  static const String _prodRewardedIos =
+      String.fromEnvironment('ADMOB_REWARDED_IOS');
 
-  static String get bannerUnitId =>
-      Platform.isAndroid ? _orTest(_prodBannerAndroid, _testBannerAndroid) : _testBannerIos;
+  static String get bannerUnitId => Platform.isAndroid
+      ? _orTest(_prodBannerAndroid, _testBannerAndroid)
+      : _orTest(_prodBannerIos, _testBannerIos);
 
   static String get rewardedUnitId => Platform.isAndroid
       ? _orTest(_prodRewardedAndroid, _testRewardedAndroid)
-      : _testRewardedIos;
+      : _orTest(_prodRewardedIos, _testRewardedIos);
 
   /// 실제 ID 가 주입돼 있으면 그것을, 비어 있으면 테스트 ID 를 쓴다.
   static String _orTest(String prod, String test) =>

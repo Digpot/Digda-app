@@ -23,6 +23,8 @@ dependencies:
   share_plus: ^10.1.4
   app_links: ^7.0.0
   url_launcher: ^6.3.0
+  # 앱 정보(버전 등) 동적 표기 — ios 브랜치의 마이페이지가 사용
+  package_info_plus: ^8.0.0
   # API 통신 및 인증 토큰 보관
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.2
