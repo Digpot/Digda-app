@@ -62,7 +62,20 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
   }
 
   /// 목록에서 특정 퀴즈를 '연습(재풀이)' 모드로 푼다(경험치 없음).
+  ///
+  /// 퀴즈는 한 문제당 한 명만 풀 수 있다(2.0.0) — 아직 아무도 안 푼 퀴즈를
+  /// 연습으로 열면 정답이 미리 공개돼 실제 도전 기회를 망치므로, 풀린 퀴즈만
+  /// 다시 풀기를 허용한다.
   Future<void> _openPractice(CharacterQuiz quiz) async {
+    final solved = quiz.attempts.isNotEmpty || quiz.attempted;
+    if (!solved) {
+      showInfoDialog(
+        context,
+        '아직 풀리지 않은 퀴즈예요',
+        '퀴즈는 한 문제당 한 명만 풀 수 있어요.\n캐릭터 화면의 \'퀴즈 풀기\'에서 도전해보세요!',
+      );
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CharacterQuizPlayScreen(practiceQuiz: quiz),
@@ -614,31 +627,44 @@ class _QuizCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.replay_rounded,
-                              size: 14, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text(
-                            '다시 풀기',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              color: AppColors.primary,
+                    // 풀린 퀴즈만 '다시 풀기'(연습). 미풀이 퀴즈는 '퀴즈 풀기'로
+                    // 도전해야 하므로 도전 대기 칩을 보여준다(한 문제당 한 명 규칙).
+                    Builder(builder: (context) {
+                      final solved =
+                          quiz.attempts.isNotEmpty || quiz.attempted;
+                      final Color chipColor =
+                          solved ? AppColors.primary : AppColors.gray500;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: chipColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              solved
+                                  ? Icons.replay_rounded
+                                  : Icons.lock_open_rounded,
+                              size: 14,
+                              color: chipColor,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
+                            const SizedBox(width: 4),
+                            Text(
+                              solved ? '다시 풀기' : '도전 대기',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: chipColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ],
@@ -751,13 +777,39 @@ class _ImageBadge extends StatelessWidget {
   }
 }
 
-/// 퀴즈를 푼 그룹원 목록 — 닉네임 + 정답(✓)/오답(✗) 칩을 응시순으로 나열.
+/// 퀴즈를 푼 사람 표시 — 퀴즈는 한 문제당 한 명만 풀 수 있으므로(2.0.0) 보통 1명이다.
+/// "OO님이 풀었어요" + 정답/오답 칩. 과거 정책으로 복수 응시가 남은 퀴즈는 전부 나열.
 class _SolverList extends StatelessWidget {
   const _SolverList({required this.attempts});
   final List<QuizAttemptSummary> attempts;
 
   @override
   Widget build(BuildContext context) {
+    if (attempts.length == 1) {
+      final a = attempts.first;
+      return Row(
+        children: [
+          const Icon(Icons.person_pin_circle_rounded,
+              size: 14, color: AppColors.gray400),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              '${a.userName}님이 풀었어요',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: AppColors.gray600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          _SolverChip(attempt: a, showName: false),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -790,10 +842,12 @@ class _SolverList extends StatelessWidget {
   }
 }
 
-/// 응시자 1명 칩 — 정답이면 초록 ✓, 오답이면 빨강 ✗ 가 닉네임 앞에 붙는다.
+/// 응시자 칩 — 정답이면 초록 ✓ 정답, 오답이면 빨강 ✗ 오답.
+/// [showName]=true 면 닉네임을 함께 표시(복수 응시 레거시 나열용).
 class _SolverChip extends StatelessWidget {
-  const _SolverChip({required this.attempt});
+  const _SolverChip({required this.attempt, this.showName = true});
   final QuizAttemptSummary attempt;
+  final bool showName;
 
   @override
   Widget build(BuildContext context) {
@@ -816,20 +870,31 @@ class _SolverChip extends StatelessWidget {
             color: color,
           ),
           const SizedBox(width: 3),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 96),
-            child: Text(
-              attempt.userName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+          if (showName)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 96),
+              child: Text(
+                attempt.userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: AppColors.gray700,
+                ),
+              ),
+            )
+          else
+            Text(
+              attempt.correct ? '정답' : '오답',
+              style: TextStyle(
                 fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 fontSize: 11,
-                color: AppColors.gray700,
+                color: color,
               ),
             ),
-          ),
         ],
       ),
     );
