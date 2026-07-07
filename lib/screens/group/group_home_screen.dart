@@ -201,6 +201,12 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         return dd == today;
       }).length;
 
+      // 2.0.0 인당 하루 1편 — 작성 버튼 차단은 "내가" 오늘 썼는지로 판정한다.
+      final myId = Di.userSession.profile?.id;
+      final myTodayDiary = myId != null &&
+          diaryRes.diaries.any(
+              (d) => dateOnly(d.date) == today && d.createdBy.id == myId);
+
       final home = GroupHomeData(
         userName: Di.userSession.profile?.name ?? '',
         today: TodaySummary(
@@ -243,7 +249,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         _home = home;
         _activity = groupActivity;
         _activityVisible = 5;
-        _todayHasDiary = newDiaryCount > 0;
+        _todayHasDiary = myTodayDiary;
         _loading = false;
       });
     } catch (e) {
@@ -265,14 +271,13 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         .then((_) => _load());
   }
 
-  /// 일기 쓰기 — 오늘 일기는 하루 한 번만. 이미 있으면 작성 대신 안내 팝업을 띄운다.
-  /// (그림일기는 '하루에 한 편'만 작성 가능 — 캘린더의 중복 작성 방지와 같은 규칙)
+  /// 일기 쓰기 — 인당 하루 한 편(2.0.0). 내가 오늘 이미 썼으면 안내 팝업을 띄운다.
   void _handleWriteDiary() {
     if (_todayHasDiary) {
       showInfoDialog(
         context,
-        '오늘 일기가 이미 있어요',
-        '그림일기는 하루에 한 편만 작성할 수 있어요.\n오늘 일기는 그림일기 탭에서 확인하거나 수정할 수 있어요.',
+        '오늘 일기를 이미 썼어요',
+        '그림일기는 한 사람당 하루에 한 편만 쓸 수 있어요.\n오늘 일기는 그림일기 탭에서 확인하거나 수정할 수 있어요.',
       );
       return;
     }

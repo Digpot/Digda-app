@@ -13,6 +13,7 @@ import 'screens/schedule/schedule_calendar_screen.dart';
 import 'screens/schedule/schedule_detail_screen.dart';
 import 'screens/schedule/add_schedule_screen.dart';
 import 'screens/diary/diary_calendar_screen.dart';
+import 'screens/diary/diary_day_list_screen.dart';
 import 'screens/diary/diary_detail_screen.dart';
 import 'screens/diary/write_diary_screen.dart';
 import 'screens/diary/edit_diary_screen.dart';
@@ -101,6 +102,13 @@ class AppRouter {
             settings: settings, builder: (_) => const AddScheduleScreen());
       case '/diary':
         return _tabRoute(const DiaryCalendarScreen(), settings);
+      case '/diary-day':
+        // 인당 하루 1편 체제 — 캘린더 날짜 탭 시 그날의 일기 목록으로 진입.
+        final dayArg = settings.arguments;
+        final day = dayArg is DateTime ? dayArg : DateTime.now();
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => DiaryDayListScreen(date: day));
       case '/diary-detail':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const DiaryDetailScreen());

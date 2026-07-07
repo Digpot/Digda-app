@@ -143,6 +143,10 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   Timer? _bubbleHideTimer;
   int _lastBubbleIndex = -1;
 
+  // 말풍선 위치 변주(2.0.0) — 매번 같은 자리에 뜨지 않도록 머리 위 범위에서 랜덤.
+  double _bubbleLeftFactor = 0.45; // size 대비 0.10~0.50
+  double _bubbleTop = 0; // 0~10px
+
   final _rng = math.Random();
 
   @override
@@ -378,6 +382,9 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     setState(() {
       _bubbleSeq++;
       _bubbleMessage = messages[index];
+      // 위치도 함께 변주 — 겹침을 줄이려 머리 위(상단 밴드) 안에서만 움직인다.
+      _bubbleLeftFactor = 0.10 + _rng.nextDouble() * 0.40;
+      _bubbleTop = _rng.nextDouble() * 10;
     });
     _bubbleHideTimer = Timer(const Duration(milliseconds: 4500), () {
       if (!mounted) return;
@@ -491,8 +498,8 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
             ),
             if (widget.showBubble)
               Positioned(
-                top: 0,
-                left: widget.size * 0.45,
+                top: _bubbleTop,
+                left: widget.size * _bubbleLeftFactor,
                 right: -8,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 260),

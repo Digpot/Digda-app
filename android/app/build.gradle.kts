@@ -29,6 +29,21 @@ if (admobPropertiesFile.exists()) {
 val admobAppId = (admobProperties["admobAppId"] as String?)
     ?: "ca-app-pub-3940256099942544~3347511713"
 
+// 카카오톡 공유 딥링크(kakao{앱키}://kakaolink) 스킴 — 프로젝트 루트 .env 의
+// KAKAO_NATIVE_APP_KEY 를 읽어 매니페스트에 주입한다(git 미커밋, CI 는 .env 생성).
+// 파일/키가 없으면 더미 스킴으로 폴백해 빌드는 깨지지 않되 딥링크만 비활성화된다.
+val kakaoNativeAppKey: String = run {
+    val envFile = rootProject.file("../.env")
+    if (envFile.exists()) {
+        envFile.readLines()
+            .firstOrNull { it.trim().startsWith("KAKAO_NATIVE_APP_KEY=") }
+            ?.substringAfter("=")?.trim()?.takeIf { it.isNotEmpty() }
+            ?: "unset"
+    } else {
+        "unset"
+    }
+}
+
 android {
     namespace = "com.digda.app"
     // google_mobile_ads(AdMob)·Android 14 대응으로 compileSdk 34 이상을 보장한다.
@@ -57,6 +72,8 @@ android {
         versionName = flutter.versionName
         // AndroidManifest 의 ${admobAppId} 치환값. 실제 앱 ID 는 admob.properties 에서 주입.
         manifestPlaceholders["admobAppId"] = admobAppId
+        // 카카오톡 공유 딥링크 스킴(kakao{앱키}) — .env 미존재 시 "kakaounset" 폴백.
+        manifestPlaceholders["kakaoScheme"] = "kakao$kakaoNativeAppKey"
     }
 
     signingConfigs {

@@ -7,6 +7,7 @@ import 'core/ads/ad_service.dart';
 import 'core/di.dart';
 import 'core/notification_router.dart';
 import 'core/route_observer.dart';
+import 'core/update_gate.dart';
 import 'features/title/title_catalog.dart';
 import 'features/title/widgets/title_earned_dialog.dart';
 import 'theme/colors.dart';
@@ -45,7 +46,17 @@ class _DigdaAppState extends State<DigdaApp> {
     });
     Di.authSession.addListener(_onAuthChanged);
     Di.titleRepository.newlyEarned.addListener(_onNewTitle);
-    if (Di.authSession.isAuthenticated) _primeTitles();
+    if (Di.authSession.isAuthenticated) {
+      _primeTitles();
+      _checkForceUpdate();
+    }
+  }
+
+  /// 강제 업데이트 검사 — 스플래시/로그인 라우팅이 자리 잡은 뒤 띄운다.
+  void _checkForceUpdate() {
+    Future<void>.delayed(const Duration(milliseconds: 2000), () {
+      UpdateGate.check(_navigatorKey);
+    });
   }
 
   @override
@@ -66,6 +77,7 @@ class _DigdaAppState extends State<DigdaApp> {
     } else {
       // 로그인 직후 — 현재 보유 칭호로 기준선을 잡아 이후 획득만 축하한다.
       _primeTitles();
+      _checkForceUpdate();
     }
   }
 
@@ -108,6 +120,15 @@ class _DigdaAppState extends State<DigdaApp> {
     // digda://invite?code=A3X9K2
     if (uri.scheme == 'digda' && uri.host == 'invite') {
       final code = uri.queryParameters['code'];
+      if (code != null && code.length == 6) {
+        _navigatorKey.currentState?.pushNamed('/code-input', arguments: code);
+      }
+      return;
+    }
+    // 카카오톡 공유 메시지의 "디그팟에서 코드 입력하기" 버튼으로 진입:
+    // kakao{네이티브앱키}://kakaolink?invite_code=A3X9K2
+    if (uri.scheme.startsWith('kakao') && uri.host == 'kakaolink') {
+      final code = uri.queryParameters['invite_code'];
       if (code != null && code.length == 6) {
         _navigatorKey.currentState?.pushNamed('/code-input', arguments: code);
       }

@@ -444,6 +444,27 @@ enum QuizCategory {
   }
 }
 
+/// 퀴즈를 푼 그룹원 1명의 응시 요약 — 목록에서 "누가 풀었고 맞았는지" 표시용.
+class QuizAttemptSummary {
+  QuizAttemptSummary({
+    required this.userId,
+    required this.userName,
+    required this.correct,
+  });
+
+  final String userId;
+  final String userName; // 프로필 닉네임 우선(서버 displayedName)
+  final bool correct;
+
+  factory QuizAttemptSummary.fromJson(Map<String, dynamic> json) {
+    return QuizAttemptSummary(
+      userId: json['userId'].toString(),
+      userName: json['userName'] as String? ?? '',
+      correct: json['correct'] as bool? ?? false,
+    );
+  }
+}
+
 class CharacterQuiz {
   CharacterQuiz({
     required this.id,
@@ -459,6 +480,7 @@ class CharacterQuiz {
     this.remainingCount,
     this.attempted = false,
     this.attemptCorrect,
+    this.attempts = const [],
   });
 
   final int id;
@@ -487,6 +509,9 @@ class CharacterQuiz {
   /// 응시했다면 정답(true)/오답(false), 미응시면 null. [attempted] 와 함께 사용.
   final bool? attemptCorrect;
 
+  /// 이 퀴즈를 푼 모든 그룹원의 응시 요약(응시순). 목록 응답에서만 채워진다.
+  final List<QuizAttemptSummary> attempts;
+
   factory CharacterQuiz.fromJson(Map<String, dynamic> json) {
     final rawImage = json['imageUrl'] as String?;
     final rawCreated = json['createdAt'] as String?;
@@ -506,6 +531,10 @@ class CharacterQuiz {
       remainingCount: (json['remainingCount'] as num?)?.toInt(),
       attempted: json['attempted'] as bool? ?? false,
       attemptCorrect: json['attemptCorrect'] as bool?,
+      attempts: ((json['attempts'] as List?) ?? const [])
+          .map((e) =>
+              QuizAttemptSummary.fromJson((e as Map).cast<String, dynamic>()))
+          .toList(),
     );
   }
 }
