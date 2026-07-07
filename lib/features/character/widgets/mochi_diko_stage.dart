@@ -262,16 +262,36 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
   // 시작되는 느낌을 준다.
   int? _index;
 
+  // 말풍선 위치 변주 — 매 라인마다 머리 위 기준으로 조금씩 다른 자리에 떠서
+  // 항상 같은 자리에 박혀 보이지 않게 한다(2.0.0). 캐릭터 본체를 가리지 않도록
+  // 각자 머리 위 범위 안에서만 흔든다.
+  final math.Random _rng = math.Random();
+  double _mochiLeftFactor = 0.04; // mochiSize 대비 0.02~0.20
+  double _mochiTop = 0; // 0~10px
+  double _dikoRightFactor = 0.03; // dikoSize 대비 0.03~0.28
+  double _dikoLift = 0; // 0~12px 추가로 띄움
+
+  void _shuffleSlots() {
+    _mochiLeftFactor = 0.02 + _rng.nextDouble() * 0.18;
+    _mochiTop = _rng.nextDouble() * 10;
+    _dikoRightFactor = 0.03 + _rng.nextDouble() * 0.25;
+    _dikoLift = _rng.nextDouble() * 12;
+  }
+
   @override
   void initState() {
     super.initState();
     _firstShowTimer = Timer(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
-      setState(() => _index = 0);
+      setState(() {
+        _shuffleSlots();
+        _index = 0;
+      });
     });
     _ticker = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted || _index == null) return;
       setState(() {
+        _shuffleSlots();
         _index = (_index! + 1) % _corpus(widget.stage).length;
       });
     });
@@ -360,10 +380,10 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // 모찌 말풍선 — 모찌 머리 위(상단 밴드).
+        // 모찌 말풍선 — 모찌 머리 위(상단 밴드). 라인마다 좌우/상하로 살짝 변주.
         Positioned(
-          top: 0,
-          left: mochiSize * 0.04,
+          top: _mochiTop,
+          left: mochiSize * _mochiLeftFactor,
           child: _slot(
             show: isMochi,
             line: line,
@@ -377,10 +397,10 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
         // 을 넘으면 작은 화면에서 ListView 가 가로로 잘라먹으므로 그 안쪽으로 둔다.
         Positioned(
           // 컨테이너가 오른쪽으로 dikoPeek(=dikoSize*0.65) 넓어졌으므로, 디코 말풍선이
-          // 기존(폭 mochiSize 기준 right:-dikoSize*0.62)과 동일한 화면 위치에 오도록
-          // dikoPeek 만큼 안쪽으로 당긴다: -0.62 + 0.65 = +0.03.
-          right: dikoSize * 0.03,
-          bottom: 16 + dikoSize + 14,
+          // 기존(폭 mochiSize 기준 right:-dikoSize*0.62)과 동일한 화면 위치 부근에 오도록
+          // dikoPeek 만큼 안쪽으로 당긴 지점(+0.03)을 기준으로 라인마다 살짝 변주한다.
+          right: dikoSize * _dikoRightFactor,
+          bottom: 16 + dikoSize + 14 + _dikoLift,
           child: _slot(
             show: isDiko,
             line: line,

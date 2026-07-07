@@ -47,6 +47,9 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   final FocusNode _commentFocus = FocusNode();
   bool _commentSending = false;
 
+  /// 답글 대상(최상위) 댓글 — null 이면 일반 댓글 작성 모드.
+  CommentEntity? _replyTarget;
+
   // 더보기 팝오버 OverlayEntry. NavigatorOverlay 에 붙기 때문에 화면이 pop 되어도
   // 자동으로 제거되지 않아 다음 화면 위에 남아 보이는 버그가 있었음.
   // dispose 와 메뉴 액션 시점에 명시적으로 정리한다.
@@ -140,6 +143,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         groupRoomId: groupId,
         diaryId: detail.diary.id,
         text: text,
+        parentCommentId: _replyTarget?.id,
       );
       if (!mounted) return;
       _commentController.clear();
@@ -150,12 +154,23 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           comments: [...detail.comments, created],
         );
         _commentSending = false;
+        _replyTarget = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _commentSending = false);
       showErrorDialog(context, errorMessageOf(e));
     }
+  }
+
+  /// 답글 모드 시작 — 대상 댓글을 기억하고 입력창에 포커스.
+  void _startReply(CommentEntity target) {
+    setState(() => _replyTarget = target);
+    _commentFocus.requestFocus();
+  }
+
+  void _cancelReply() {
+    setState(() => _replyTarget = null);
   }
 
   Future<void> _onEditTap() async {
@@ -938,13 +953,53 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             ),
           )
         else
-          for (final c in comments)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _CommentRow(comment: c, onMore: _commentMoreFor(c)),
-            ),
+          ..._buildThreadedComments(comments),
       ],
     );
+  }
+
+  /// 댓글 스레드 — 최상위 댓글 아래에 대댓글을 들여쓰기로 붙인다(1단계).
+  /// 부모가 삭제돼 못 찾는 대댓글은 최상위처럼 노출해 유실을 막는다.
+  List<Widget> _buildThreadedComments(List<CommentEntity> comments) {
+    final topLevel = <CommentEntity>[];
+    final repliesByParent = <String, List<CommentEntity>>{};
+    final topLevelIds = <String>{};
+    for (final c in comments) {
+      if (!c.isReply) {
+        topLevel.add(c);
+        topLevelIds.add(c.id);
+      }
+    }
+    final orphans = <CommentEntity>[];
+    for (final c in comments) {
+      if (c.isReply) {
+        if (topLevelIds.contains(c.parentId)) {
+          (repliesByParent[c.parentId!] ??= []).add(c);
+        } else {
+          orphans.add(c);
+        }
+      }
+    }
+
+    Widget row(CommentEntity c, {bool reply = false}) => Padding(
+          padding: EdgeInsets.only(bottom: 14, left: reply ? 44 : 0),
+          child: _CommentRow(
+            comment: c,
+            onMore: _commentMoreFor(c),
+            // 답글은 최상위 댓글에서만 시작할 수 있다(대대댓글 금지).
+            onReply: (!reply && !c.hidden) ? () => _startReply(c) : null,
+            isReply: reply,
+          ),
+        );
+
+    return [
+      for (final c in topLevel) ...[
+        row(c),
+        for (final r in repliesByParent[c.id] ?? const <CommentEntity>[])
+          row(r, reply: true),
+      ],
+      for (final c in orphans) row(c),
+    ];
   }
 
   // ── Bottom sticky comment bar ────────────────────────────────────────
@@ -966,7 +1021,49 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         16,
         MediaQuery.of(context).padding.bottom + 10,
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 답글 모드 배너 — 누구에게 답글을 다는지 보여주고 X 로 취소.
+          if (_replyTarget != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.subdirectory_arrow_right_rounded,
+                      size: 15, color: _coral),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${_replyTarget!.createdBy.name}님에게 답글 남기는 중',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: _coral,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _cancelReply,
+                    child: const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: Icon(Icons.close, size: 16, color: _muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          _buildCommentInputRow(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentInputRow() {
+    return Row(
         children: [
           Expanded(
             child: Container(
@@ -990,13 +1087,15 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   fontSize: 14,
                   color: _ink,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isCollapsed: true,
                   counterText: '',
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 13),
-                  hintText: '댓글로 마음을 남겨보세요',
-                  hintStyle: TextStyle(
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                  hintText: _replyTarget != null
+                      ? '답글을 남겨보세요'
+                      : '댓글로 마음을 남겨보세요',
+                  hintStyle: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
@@ -1032,7 +1131,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             ),
           ),
         ],
-      ),
     );
   }
 
@@ -1257,11 +1355,22 @@ class _ReactionPill extends StatelessWidget {
 }
 
 class _CommentRow extends StatelessWidget {
-  const _CommentRow({required this.comment, this.onMore});
+  const _CommentRow({
+    required this.comment,
+    this.onMore,
+    this.onReply,
+    this.isReply = false,
+  });
   final CommentEntity comment;
 
   /// 더보기(⋯) 탭 — 신고/숨기기/차단. null 이면 버튼을 숨긴다(내 댓글/이미 숨김).
   final VoidCallback? onMore;
+
+  /// "답글 달기" 탭 — 최상위 댓글에서만 제공(1단계 대댓글 정책). null 이면 숨김.
+  final VoidCallback? onReply;
+
+  /// 대댓글이면 아바타를 작게 그려 계층을 표현한다(들여쓰기는 부모에서).
+  final bool isReply;
 
   @override
   Widget build(BuildContext context) {
@@ -1272,7 +1381,7 @@ class _CommentRow extends StatelessWidget {
         _Avatar(
             name: comment.createdBy.name,
             image: comment.createdBy.profileImage,
-            size: 36),
+            size: isReply ? 28 : 36),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -1317,14 +1426,34 @@ class _CommentRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                _relativeTime(comment.createdAt),
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                  color: Color(0xFF8B95A1),
-                ),
+              Row(
+                children: [
+                  Text(
+                    _relativeTime(comment.createdAt),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                      color: Color(0xFF8B95A1),
+                    ),
+                  ),
+                  if (onReply != null) ...[
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: onReply,
+                      behavior: HitTestBehavior.opaque,
+                      child: const Text(
+                        '답글 달기',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          color: Color(0xFF8B95A1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

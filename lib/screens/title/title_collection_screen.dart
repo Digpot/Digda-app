@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../core/share/share_service.dart';
 import '../../features/title/models/title_models.dart';
 import '../../features/title/title_catalog.dart';
 import '../../features/title/widgets/title_badge.dart';
@@ -308,7 +309,8 @@ class _TitleDetailSheetState extends State<_TitleDetailSheet> {
       );
       await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
       if (!mounted) return;
-      await Share.shareXFiles(
+      await ShareService.shareFiles(
+        context,
         [XFile(file.path, mimeType: 'image/png')],
         text: widget.def.name,
       );
