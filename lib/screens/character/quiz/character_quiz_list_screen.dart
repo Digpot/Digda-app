@@ -585,6 +585,11 @@ class _QuizCard extends StatelessWidget {
                 // 선택지는 항상 한 줄에 2개씩(2×2) 배치한다. Wrap 은 너비에 따라
                 // 3+1 처럼 들쭉날쭉해져 균형이 안 맞아 고정 2열 그리드로 둔다.
                 _OptionGrid(options: quiz.options),
+                // 누가 풀었는지 — 응시한 그룹원 전원을 닉네임+정답/오답으로 표시.
+                if (quiz.attempts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SolverList(attempts: quiz.attempts),
+                ],
                 const SizedBox(height: 14),
                 Container(height: 1, color: AppColors.gray50),
                 const SizedBox(height: 12),
@@ -738,6 +743,91 @@ class _ImageBadge extends StatelessWidget {
               fontWeight: FontWeight.w700,
               fontSize: 11,
               color: Color(0xFFA78BFA),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 퀴즈를 푼 그룹원 목록 — 닉네임 + 정답(✓)/오답(✗) 칩을 응시순으로 나열.
+class _SolverList extends StatelessWidget {
+  const _SolverList({required this.attempts});
+  final List<QuizAttemptSummary> attempts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.people_alt_rounded,
+                size: 13, color: AppColors.gray400),
+            const SizedBox(width: 4),
+            Text(
+              '${attempts.length}명이 풀었어요',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                color: AppColors.gray500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final a in attempts) _SolverChip(attempt: a),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 응시자 1명 칩 — 정답이면 초록 ✓, 오답이면 빨강 ✗ 가 닉네임 앞에 붙는다.
+class _SolverChip extends StatelessWidget {
+  const _SolverChip({required this.attempt});
+  final QuizAttemptSummary attempt;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = attempt.correct ? AppColors.green : AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            attempt.correct
+                ? Icons.check_circle_rounded
+                : Icons.cancel_rounded,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 96),
+            child: Text(
+              attempt.userName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                color: AppColors.gray700,
+              ),
             ),
           ),
         ],

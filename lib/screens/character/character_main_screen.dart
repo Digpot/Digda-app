@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
+import '../../core/share/share_service.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/animated_mochi_widget.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
@@ -341,7 +342,8 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
       );
       await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
       if (!mounted) return;
-      await Share.shareXFiles(
+      await ShareService.shareFiles(
+        context,
         [XFile(file.path, mimeType: 'image/png')],
         text: text,
       );

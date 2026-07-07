@@ -104,6 +104,29 @@ class DiaryRepository {
     return DiaryListResult.fromJson(res.data!);
   }
 
+  /// 7-2b. 날짜별 일기 목록 — 캘린더 날짜 탭 → 목록 화면. 항상 최신을 가져온다(캐시 없음).
+  Future<DiaryDayResult> byDate(String groupRoomId, DateTime date) async {
+    String f(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final res = await _api.get<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/diaries/by-date',
+      query: {'date': f(date)},
+    );
+    return DiaryDayResult.fromJson(res.data!);
+  }
+
+  /// 대표 썸네일 지정 — 그룹원 누구나. 같은 날 기존 대표는 해제된다.
+  Future<DiaryDayResult> setRepresentative(
+    String groupRoomId,
+    String diaryId,
+  ) async {
+    final res = await _api.put<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/diaries/$diaryId/representative',
+    );
+    _invalidate(); // 캘린더 대표 썸네일이 바뀌므로 캐시 무효화.
+    return DiaryDayResult.fromJson(res.data!);
+  }
+
   /// 7-3. 일기 상세.
   Future<DiaryDetail> detail(String groupRoomId, String diaryId) async {
     final res = await _api.get<Map<String, dynamic>>(

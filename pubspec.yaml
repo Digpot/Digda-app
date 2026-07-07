@@ -32,6 +32,8 @@ dependencies:
   provider: ^6.1.2
   # 소셜 로그인 SDK
   kakao_flutter_sdk_user: ^1.9.7
+  # 카카오톡 공유(초대코드 딥링크 메시지)
+  kakao_flutter_sdk_share: ^1.9.7
   flutter_naver_login: ^2.1.1
   sign_in_with_apple: ^6.1.4
   # FCM 푸시 알림
