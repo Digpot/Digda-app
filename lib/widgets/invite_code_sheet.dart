@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
+import '../core/share/share_service.dart';
 import '../theme/colors.dart';
 
 /// 발급된 초대 코드(6자리 숫자)를 보여주는 공용 바텀시트.
@@ -92,6 +92,35 @@ class _InviteCodeSheetState extends State<InviteCodeSheet> {
             ),
           ),
           const SizedBox(height: 16),
+          // 카카오톡 공유 — 코드 입력 딥링크가 포함된 메시지 카드로 전달.
+          GestureDetector(
+            onTap: () =>
+                ShareService.shareInviteViaKakao(context, widget.code),
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.kakaoYellow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble, size: 18, color: AppColors.kakaoText),
+                  SizedBox(width: 8),
+                  Text(
+                    '카카오톡으로 초대하기',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.kakaoText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -120,11 +149,10 @@ class _InviteCodeSheetState extends State<InviteCodeSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    Share.share(
-                      '디그팟에서 함께 일기를 써요!\n\n초대 코드: ${widget.code}\n\n디그팟 앱을 열고 초대 코드를 입력해주세요 🙌',
-                    );
-                  },
+                  onTap: () => ShareService.shareText(
+                    context,
+                    ShareService.inviteMessage(widget.code),
+                  ),
                   child: Container(
                     height: 48,
                     decoration: BoxDecoration(

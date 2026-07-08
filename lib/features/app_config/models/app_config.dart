@@ -1,16 +1,26 @@
-/// 앱 전역 운영 설정(서버) — 대공지 배너 + 피드백 메뉴 노출/링크.
+/// 앱 전역 운영 설정(서버) — 대공지 배너 + 피드백 메뉴 노출/링크 + 강제 업데이트.
 class AppConfig {
   const AppConfig({
     required this.noticeEnabled,
     required this.noticeMessage,
     required this.feedbackEnabled,
     required this.feedbackUrl,
+    this.minAppVersion = '',
+    this.storeUrlAndroid = '',
+    this.storeUrlIos = '',
   });
 
   final bool noticeEnabled;
   final String noticeMessage;
   final bool feedbackEnabled;
   final String feedbackUrl;
+
+  /// 강제 업데이트 최소 버전(semver "2.0.0"). 빈 값 = 게이트 끔.
+  final String minAppVersion;
+
+  /// 스토어 URL — 빈 값이면 앱이 플랫폼 기본 URL 로 폴백.
+  final String storeUrlAndroid;
+  final String storeUrlIos;
 
   static const empty = AppConfig(
     noticeEnabled: false,
@@ -31,6 +41,9 @@ class AppConfig {
       noticeMessage: json['noticeMessage'] as String? ?? '',
       feedbackEnabled: json['feedbackEnabled'] as bool? ?? false,
       feedbackUrl: json['feedbackUrl'] as String? ?? '',
+      minAppVersion: json['minAppVersion'] as String? ?? '',
+      storeUrlAndroid: json['storeUrlAndroid'] as String? ?? '',
+      storeUrlIos: json['storeUrlIos'] as String? ?? '',
     );
   }
 }

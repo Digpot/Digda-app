@@ -188,17 +188,25 @@ class DiaryCalendarResult {
     required this.dates,
     required this.entries,
     required this.stats,
+    this.myDates = const [],
   });
 
   final List<DateTime> dates; // 일기 있는 날 (하위호환)
   final List<DiaryCalendarEntry> entries;
   final DiaryCalendarStats stats;
 
+  /// 조회자 본인이 일기를 쓴 날짜(자정) — "인당 하루 1편" 작성 가능 판정용.
+  final List<DateTime> myDates;
+
   /// 날짜(자정) → 대표 일기 매핑.
   Map<DateTime, DiaryCalendarEntry> get byDay => {
         for (final e in entries)
           DateTime(e.date.year, e.date.month, e.date.day): e,
       };
+
+  /// 내가 그날 일기를 이미 썼는지.
+  bool hasMine(DateTime day) =>
+      myDates.contains(DateTime(day.year, day.month, day.day));
 
   factory DiaryCalendarResult.fromJson(Map<String, dynamic> json) {
     final entries = ((json['entries'] as List?) ?? const [])
@@ -212,12 +220,48 @@ class DiaryCalendarResult {
             return DateTime(d.year, d.month, d.day);
           }).toList()
         : entries.map((e) => e.date).toList();
+    final myDates = ((json['myDates'] as List?) ?? const []).map((e) {
+      final d = _parseServerTime(e as String).toLocal();
+      return DateTime(d.year, d.month, d.day);
+    }).toList();
     return DiaryCalendarResult(
       dates: dates,
       entries: entries,
       stats: json['stats'] != null
           ? DiaryCalendarStats.fromJson(json['stats'] as Map<String, dynamic>)
           : DiaryCalendarStats(count: 0, streak: 0),
+      myDates: myDates,
+    );
+  }
+}
+
+/// 7-2b. 날짜별 일기 목록 응답 — 캘린더 날짜 탭 → 목록 화면용.
+class DiaryDayResult {
+  DiaryDayResult({
+    required this.date,
+    required this.diaries,
+    this.representativeDiaryId,
+    this.myDiaryId,
+  });
+
+  final DateTime date;
+  final List<DiarySummary> diaries; // 먼저 쓴 순
+
+  /// 그날의 대표 썸네일 일기 id — 지정된 대표가 없으면 서버가 최초 작성 일기로 폴백.
+  final String? representativeDiaryId;
+
+  /// 조회자 본인이 그날 쓴 일기 id(없으면 null) — 작성 버튼 노출 판정용.
+  final String? myDiaryId;
+
+  factory DiaryDayResult.fromJson(Map<String, dynamic> json) {
+    final d = _parseServerTime(json['date'] as String).toLocal();
+    return DiaryDayResult(
+      date: DateTime(d.year, d.month, d.day),
+      diaries: (json['diaries'] as List? ?? [])
+          .map((e) => DiarySummary.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      representativeDiaryId: json['representativeDiaryId']?.toString(),
+      myDiaryId: json['myDiaryId']?.toString(),
     );
   }
 }

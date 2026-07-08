@@ -13,10 +13,12 @@ import 'core/push_service.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
-  // 부팅 초기화 중 무엇이 던지더라도 runApp 에는 반드시 도달해야 한다. 어느 한
-  // await 가 예외로 새면 첫 프레임이 안 그려져 iOS 에서 흰 화면이 되기 때문이다.
-  // 그래서 실패해도 앱 사용에 치명적이지 않은 단계(Firebase/푸시/세션복원/광고)는
-  // 각각 감싸 로그만 남기고 진행한다.
+  // iOS 흰 화면 방지 원칙: 첫 프레임(runApp)을 막을 수 있는 작업을 runApp 앞에
+  // 두지 않는다. 특히 Firebase.initializeApp 은 iOS 네이티브가 아직 준비 전이면
+  // 던지거나 '지연(hang)'될 수 있는데, 이를 await 하면 스플래시조차 못 그려 흰
+  // 화면이 된다. 그래서 Firebase/푸시/광고는 runApp '이후' 백그라운드로 미룬다.
+  // runApp 전에는 화면 구동에 꼭 필요한 것(.env, DI, 세션 복원)만, 그마저도 각각
+  // 감싸 실패해도 스플래시는 무조건 뜨게 한다.
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
@@ -33,17 +35,7 @@ Future<void> main() async {
       debugPrint('[main] .env 로드 실패(무시하고 진행): $e');
     }
 
-    // Firebase / 푸시: 실패해도 앱은 떠야 한다(푸시만 비활성으로 저하).
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
-      await PushService.init();
-    } catch (e) {
-      debugPrint('[main] Firebase/푸시 초기화 실패(무시하고 진행): $e');
-    }
-
+    // 카카오 SDK 는 Env 만 필요(Firebase 무관) — 로그인 화면 전에 준비돼야 하므로 유지.
     kakao.KakaoSdk.init(
       nativeAppKey: Env.kakaoNativeAppKey,
       javaScriptAppKey: Env.kakaoJavaScriptAppKey,
@@ -57,17 +49,33 @@ Future<void> main() async {
     } catch (e) {
       debugPrint('[main] 세션 복원 실패(무시, 로그인부터 시작): $e');
     }
-    // 자동 로그인 상태면 FCM 디바이스 토큰을 다시 등록한다(푸시 유실 방지).
-    // UI 블로킹을 피하려 await 하지 않고 백그라운드로 진행.
-    Di.authSession.ensureDeviceRegistered();
 
+    // 여기서 즉시 첫 프레임(스플래시)을 띄운다. 아래 무거운 초기화는 절대
+    // 이 지점을 막지 못한다 = iOS 흰 화면 원천 차단.
     runApp(const DigdaApp());
 
-    // 광고 SDK 초기화는 네트워크 핸드셰이크로 수백 ms~수초가 걸려 첫 프레임을 늦출 수
-    // 있어, runApp 이후 백그라운드로 돌린다(실패해도 내부 try/catch 로 부팅 영향 없음).
+    // Firebase/FCM: 실패·지연이 첫 프레임에 영향 없도록 runApp 이후 백그라운드로.
+    unawaited(_initFirebaseAndPush());
+    // 광고 SDK 초기화도 네트워크 핸드셰이크로 수 초가 걸려 백그라운드로 돌린다.
     unawaited(AdService.init());
   }, (error, stack) {
     // 초기화 경로에서 새어 나온 비동기 예외도 흰 화면 대신 로그로 남긴다.
     debugPrint('[main] 부팅 존 미처리 예외: $error\n$stack');
   });
+}
+
+/// Firebase 초기화 + FCM 푸시 설정 + (자동 로그인 시) 디바이스 토큰 재등록.
+/// 첫 프레임 이후 백그라운드로 실행돼, 이 경로가 실패/지연해도 앱 화면은 이미 떠 있다.
+Future<void> _initFirebaseAndPush() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+    await PushService.init();
+    // Firebase 준비가 끝난 뒤에 FCM 디바이스 토큰을 재등록한다(푸시 유실 방지).
+    Di.authSession.ensureDeviceRegistered();
+  } catch (e) {
+    debugPrint('[main] Firebase/푸시 초기화 실패(무시, 앱은 정상 동작): $e');
+  }
 }

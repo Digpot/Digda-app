@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../core/di.dart';
+import '../../core/share/share_service.dart';
 import '../../theme/colors.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/outline_button.dart';
@@ -45,9 +45,13 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
   void _shareCode() {
     final code = _code;
     if (code == null) return;
-    Share.share(
-      '디그팟에서 함께 일기를 써요!\n\n초대 코드: $code\n\n디그팟 앱을 열고 초대 코드를 입력해주세요 🙌',
-    );
+    ShareService.shareText(context, ShareService.inviteMessage(code));
+  }
+
+  void _shareViaKakao() {
+    final code = _code;
+    if (code == null) return;
+    ShareService.shareInviteViaKakao(context, code);
   }
 
   void _enterGroupHome() {
@@ -121,6 +125,32 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // 카카오톡 공유 — 코드 입력 딥링크가 포함된 메시지 카드로 전달.
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _shareViaKakao,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.kakaoYellow,
+                          foregroundColor: AppColors.kakaoText,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.chat_bubble, size: 18),
+                        label: const Text(
+                          '카카오톡으로 초대하기',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
