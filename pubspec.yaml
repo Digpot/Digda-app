@@ -1,7 +1,7 @@
 name: digda
 description: 디그팟 - 디지털 그룹 다이어리
 publish_to: 'none'
-version: 1.1.0+3
+version: 2.0.0+6
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -23,6 +23,8 @@ dependencies:
   share_plus: ^10.1.4
   app_links: ^7.0.0
   url_launcher: ^6.3.0
+  # 앱 정보(버전 등) 동적 표기 — ios 브랜치의 마이페이지가 사용
+  package_info_plus: ^8.0.0
   # API 통신 및 인증 토큰 보관
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.2
@@ -30,6 +32,8 @@ dependencies:
   provider: ^6.1.2
   # 소셜 로그인 SDK
   kakao_flutter_sdk_user: ^1.9.7
+  # 카카오톡 공유(초대코드 딥링크 메시지)
+  kakao_flutter_sdk_share: ^1.9.7
   flutter_naver_login: ^2.1.1
   sign_in_with_apple: ^6.1.4
   # FCM 푸시 알림
@@ -40,8 +44,6 @@ dependencies:
   google_mobile_ads: ^5.2.0
   # iOS 앱 추적 투명성(ATT) 동의 — 개인화 광고용
   app_tracking_transparency: ^2.0.6
-  # 앱 버전 표기를 빌드(pubspec)에서 동적으로 읽기
-  package_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:

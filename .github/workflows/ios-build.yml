@@ -61,8 +61,12 @@ jobs:
           NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
           NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
-          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_URL_SCHEME = ${{ secrets.NAVER_URL_SCHEME }}
           EOF
+          # AdMob 실제 iOS 앱 ID — 시크릿이 있을 때만 덮어쓴다(없으면 xcconfig 의 테스트 앱 ID 폴백).
+          if [ -n "${{ secrets.ADMOB_APP_ID_IOS }}" ]; then
+            echo "ADMOB_APP_ID_IOS = ${{ secrets.ADMOB_APP_ID_IOS }}" >> ios/Flutter/Secrets.xcconfig
+          fi
 
       # ── (선택) Firebase iOS 설정 — 푸시/Analytics 가 필요할 때만 ──
       # GoogleService-Info.plist 파일 전체를 base64 로 인코딩해 시크릿에 저장:
@@ -159,8 +163,12 @@ jobs:
           NAVER_CLIENT_ID = ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET = ${{ secrets.NAVER_CLIENT_SECRET }}
           NAVER_CLIENT_NAME = ${{ secrets.NAVER_CLIENT_NAME }}
-          NAVER_URL_SCHEME = naver${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_URL_SCHEME = ${{ secrets.NAVER_URL_SCHEME }}
           EOF
+          # AdMob 실제 iOS 앱 ID — 시크릿이 있을 때만 덮어쓴다(없으면 xcconfig 의 테스트 앱 ID 폴백).
+          if [ -n "${{ secrets.ADMOB_APP_ID_IOS }}" ]; then
+            echo "ADMOB_APP_ID_IOS = ${{ secrets.ADMOB_APP_ID_IOS }}" >> ios/Flutter/Secrets.xcconfig
+          fi
 
       - name: Write GoogleService-Info.plist (optional)
         if: steps.guard.outputs.ready == 'true'
@@ -177,9 +185,16 @@ jobs:
 
       # Generated.xcconfig + CocoaPods 생성 및 빌드번호 주입(=GitHub run 번호).
       # TestFlight 는 빌드번호가 매번 증가해야 하므로 run_number 를 쓴다.
+      # dart-define 으로 AdMob 실 단위 ID 를 Generated.xcconfig(DART_DEFINES)에 굽는다.
+      # 이후 fastlane build_app(xcodebuild)가 같은 Generated.xcconfig 를 읽어 출고 바이너리에 반영.
+      # 시크릿 미설정 시 빈 값 → ad_config.dart 가 테스트 ID 로 폴백한다.
       - name: Generate iOS config + pods
         if: steps.guard.outputs.ready == 'true'
-        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-number=${{ github.run_number }} \
+            --dart-define=ADMOB_BANNER_IOS=${{ secrets.ADMOB_BANNER_IOS }} \
+            --dart-define=ADMOB_REWARDED_IOS=${{ secrets.ADMOB_REWARDED_IOS }}
 
       - name: Write App Store Connect API key (.p8)
         if: steps.guard.outputs.ready == 'true'
@@ -196,4 +211,6 @@ jobs:
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
           APPSTORE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: fastlane beta

@@ -20,8 +20,20 @@ class PushService {
 
   static Future<void> init() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // iOS(Darwin) 설정을 넘기지 않으면 flutter_local_notifications 가 내부에서
+    // settings.iOS! 로 강제 언랩 → iOS 에서 null check 예외로 앱이 첫 프레임 전에
+    // 죽는다(흰 화면). 실제 권한 요청은 FirebaseMessaging.requestPermission 가
+    // 따로 처리하므로 여기선 요청 플래그를 꺼 둔다.
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     await _plugin.initialize(
-      const InitializationSettings(android: androidSettings),
+      const InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      ),
       onDidReceiveNotificationResponse: _onLocalNotificationTap,
     );
 

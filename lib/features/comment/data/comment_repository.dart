@@ -21,15 +21,19 @@ class CommentRepository {
     return CommentEntity.fromJson(res.data!);
   }
 
-  /// 8-2. 일기 댓글 작성.
+  /// 8-2. 일기 댓글 작성. [parentCommentId] 를 주면 그 댓글의 대댓글로 달린다(1단계만).
   Future<CommentEntity> writeOnDiary({
     required String groupRoomId,
     required String diaryId,
     required String text,
+    String? parentCommentId,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/group-rooms/$groupRoomId/diaries/$diaryId/comments',
-      body: {'text': text},
+      body: {
+        'text': text,
+        if (parentCommentId != null) 'parentCommentId': int.parse(parentCommentId),
+      },
     );
     return CommentEntity.fromJson(res.data!);
   }

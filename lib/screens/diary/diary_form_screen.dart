@@ -239,16 +239,17 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
     );
     if (picked == null || !mounted) return;
 
-    // create 모드에서 이미 일기가 있는 날짜인지 확인
+    // create 모드에서 "내가" 이미 일기를 쓴 날짜인지 확인 (2.0.0 인당 하루 1편 —
+    // 다른 그룹원이 쓴 날에도 내 일기는 쓸 수 있으므로 그룹 dates 가 아닌 myDates 로 판정).
     if (widget.mode == DiaryFormMode.create) {
       final groupId = Di.activeGroup.groupRoomId;
       if (groupId != null) {
         try {
-          final diaryDates =
-              (await Di.diaryRepository.calendar(groupId, picked)).dates;
+          final myDates =
+              (await Di.diaryRepository.calendar(groupId, picked)).myDates;
           final pickedUtc =
               DateTime.utc(picked.year, picked.month, picked.day);
-          final hasDuplicate = diaryDates.any(
+          final hasDuplicate = myDates.any(
             (d) => DateTime.utc(d.year, d.month, d.day) == pickedUtc,
           );
           if (hasDuplicate) {
@@ -256,8 +257,8 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
             showLimitDialog(
               context,
               icon: Icons.event_available_rounded,
-              title: '이미 일기가 있어요',
-              message: '이 날짜엔 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+              title: '이미 일기를 썼어요',
+              message: '이 날짜엔 이미 내가 쓴 일기가 있어요.\n다른 날짜를 선택해주세요.',
             );
             return;
           }
@@ -280,15 +281,17 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
 
     setState(() => _saving = true);
     try {
-      // create 모드: 저장 직전 중복 날짜 최종 확인 (날짜 변경 후 저장하는 경우 대비).
-      // 다른 멤버가 같은 날 일기를 추가했을 수 있어, 캐시가 아닌 서버 최신을 강제 조회한다.
+      // create 모드: 저장 직전 "내 중복 날짜" 최종 확인 (날짜 변경 후 저장하는 경우 대비).
+      // 다른 기기에서 내가 같은 날 일기를 썼을 수 있어, 캐시가 아닌 서버 최신을 강제 조회한다.
+      // (2.0.0 인당 하루 1편 — 다른 그룹원 일기는 무관하므로 myDates 로만 판정.
+      //  서버도 같은 규칙으로 최종 검증하므로 이 검사는 UX 선제 방어용.)
       if (widget.mode == DiaryFormMode.create) {
-        final diaryDates =
+        final myDates =
             (await Di.diaryRepository.calendar(groupId, _date,
                     forceRefresh: true))
-                .dates;
+                .myDates;
         final dateUtc = DateTime.utc(_date.year, _date.month, _date.day);
-        final hasDuplicate = diaryDates.any(
+        final hasDuplicate = myDates.any(
           (d) => DateTime.utc(d.year, d.month, d.day) == dateUtc,
         );
         if (hasDuplicate) {
@@ -297,8 +300,8 @@ class _DiaryFormScreenState extends State<DiaryFormScreen> {
           showLimitDialog(
             context,
             icon: Icons.event_available_rounded,
-            title: '이미 일기가 있어요',
-            message: '이 날짜엔 이미 작성된 일기가 있어요.\n다른 날짜를 선택해주세요.',
+            title: '이미 일기를 썼어요',
+            message: '이 날짜엔 이미 내가 쓴 일기가 있어요.\n다른 날짜를 선택해주세요.',
           );
           return;
         }

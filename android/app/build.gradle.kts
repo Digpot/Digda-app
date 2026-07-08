@@ -71,6 +71,8 @@ android {
         manifestPlaceholders["admobAppId"] = admobAppId
         // AndroidManifest 의 카카오 리다이렉트 스킴(kakao${kakaoNativeAppKey}://oauth) 치환값.
         manifestPlaceholders["kakaoNativeAppKey"] = kakaoNativeAppKey
+        // 카카오톡 공유 딥링크 스킴(kakao{앱키}://kakaolink) — 키 없으면 더미 스킴으로 폴백.
+        manifestPlaceholders["kakaoScheme"] = "kakao" + kakaoNativeAppKey.ifEmpty { "unset" }
     }
 
     signingConfigs {

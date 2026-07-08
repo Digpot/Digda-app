@@ -7,8 +7,10 @@
 	<array>
 		<string>Default</string>
 	</array>
-	<!-- FCM 푸시. TestFlight/App Store 빌드는 production 으로 자동 승격됨. -->
+	<!-- FCM 푸시. match 수동 서명은 자동 production 승격이 없어 직접 production 으로
+	     둔다(CI 는 release/TestFlight 빌드만 생성). App ID 에 Push Notifications
+	     capability 활성화 + 프로파일에 aps-environment 포함 필요. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 </dict>
 </plist>

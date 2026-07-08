@@ -182,12 +182,12 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     );
   }
 
-  /// 헤더 안내(!) — 그림일기는 하루에 한 편만 작성 가능하다는 규칙 안내.
+  /// 헤더 안내(!) — 그림일기는 "인당" 하루 한 편 작성 가능하다는 규칙 안내 (2.0.0).
   void _showDiaryRuleInfo() {
     showInfoDialog(
       context,
       '그림일기 작성 규칙',
-      '그림일기는 하루에 한 편만 작성할 수 있어요.\n그날 한 명이 일기를 남기면 그룹의 그날 일기가 채워져요.\n이미 작성된 날에는 새 일기를 쓸 수 없고, 작성자가 수정할 수 있어요.',
+      '그림일기는 한 사람당 하루에 한 편씩 쓸 수 있어요.\n그룹원이 10명이면 하루에 최대 10편이 모여요.\n캘린더에는 그날의 대표 썸네일 한 장이 보이고,\n날짜를 누르면 그날의 모든 일기를 볼 수 있어요.',
     );
   }
 
@@ -687,8 +687,10 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     });
     final entry = _entryFor(selectedDay);
     if (entry != null) {
+      // 2.0.0: 인당 하루 1편 — 하루에 여러 편이 있을 수 있어 상세 대신
+      // 그날의 일기 목록 화면으로 진입한다(대표 썸네일 변경도 거기서).
       Navigator.of(context)
-          .pushNamed('/diary-detail', arguments: entry.diaryId)
+          .pushNamed('/diary-day', arguments: _key(selectedDay))
           .then((_) {
         if (mounted) {
           setState(() => _selectedDay = null);
@@ -775,11 +777,10 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
         _focusedDay.year == now.year && _focusedDay.month == now.month;
     if (!sameMonth) return const SizedBox.shrink();
 
-    final todayEntry = _calendar?.byDay[_key(now)];
     final streak = _calendar?.stats.streak ?? 0;
 
-    // 오늘 일기가 있으면 사라지지 않고 '작성 완료' 멘트를 보여준다(탭 → 오늘 일기).
-    final bool done = todayEntry != null;
+    // 2.0.0 인당 하루 1편 — '작성 완료'는 그룹 아닌 "내가" 오늘 썼는지로 판정한다.
+    final bool done = _calendar?.hasMine(now) ?? false;
     final String title =
         done ? '✅ 오늘 일기를 남겼어요!' : '✏️ 오늘은 어떤 하루였나요?';
     final String subtitle = done
@@ -791,8 +792,9 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
       child: GestureDetector(
         onTap: () {
           if (done) {
+            // 오늘의 일기 목록으로 — 내 일기 외 그룹원들 일기도 함께 볼 수 있다.
             Navigator.of(context)
-                .pushNamed('/diary-detail', arguments: todayEntry.diaryId)
+                .pushNamed('/diary-day', arguments: _key(now))
                 .then((_) {
               if (mounted) _loadMonth();
             });
@@ -1089,7 +1091,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
             await Di.diaryRepository.calendar(groupId, pickerFocusedDay);
         if (mounted) {
           setModalState(() {
-            pickerDiaryDates = result.dates
+            // 인당 하루 1편 — "내가" 이미 쓴 날짜만 막는다(그룹원 일기와 무관).
+            pickerDiaryDates = result.myDates
                 .map((d) => DateTime.utc(d.year, d.month, d.day))
                 .toSet();
           });
@@ -1364,8 +1367,8 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
     showLimitDialog(
       context,
       icon: Icons.event_available_rounded,
-      title: '이미 일기가 있어요',
-      message: '이 날짜엔 이미 작성된 일기가 있어요.\n하루에 한 편만 쓸 수 있어요.',
+      title: '이미 일기를 썼어요',
+      message: '이 날짜엔 이미 내가 쓴 일기가 있어요.\n한 사람당 하루에 한 편만 쓸 수 있어요.',
     );
   }
 }

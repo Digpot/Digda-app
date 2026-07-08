@@ -13,6 +13,7 @@ import 'screens/schedule/schedule_calendar_screen.dart';
 import 'screens/schedule/schedule_detail_screen.dart';
 import 'screens/schedule/add_schedule_screen.dart';
 import 'screens/diary/diary_calendar_screen.dart';
+import 'screens/diary/diary_day_list_screen.dart';
 import 'screens/diary/diary_detail_screen.dart';
 import 'screens/diary/write_diary_screen.dart';
 import 'screens/diary/edit_diary_screen.dart';
@@ -101,6 +102,13 @@ class AppRouter {
             settings: settings, builder: (_) => const AddScheduleScreen());
       case '/diary':
         return _tabRoute(const DiaryCalendarScreen(), settings);
+      case '/diary-day':
+        // 인당 하루 1편 체제 — 캘린더 날짜 탭 시 그날의 일기 목록으로 진입.
+        final dayArg = settings.arguments;
+        final day = dayArg is DateTime ? dayArg : DateTime.now();
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => DiaryDayListScreen(date: day));
       case '/diary-detail':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const DiaryDetailScreen());
@@ -180,6 +188,16 @@ class AppRouter {
             settings: settings,
             builder: (_) => AppGuideScreen(isFromMyPage: isFromMyPage));
       default:
+        // 소셜로그인 콜백 URL(kakao{앱키}://oauth?code=... 등)이 Flutter 딥링크로
+        // 라우트화돼 여기까지 새어 들어오는 경우를 방어한다(주 방지책은 iOS
+        // Info.plist FlutterDeepLinkingEnabled=false). 그런 외부 콜백은 화면 라우트가
+        // 아니므로 에러 페이지 대신 스플래시로 흘려보내 사용자에게 노출되지 않게 한다.
+        final name = settings.name ?? '';
+        if (name.contains('code=') || name.contains('://') || name.contains('oauth')) {
+          debugPrint('[Router] 외부 콜백 라우트 무시: $name');
+          return MaterialPageRoute(
+              settings: settings, builder: (_) => const SplashScreen());
+        }
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => Scaffold(
