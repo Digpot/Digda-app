@@ -60,6 +60,23 @@ class ScheduleRepository {
     return Schedule.fromJson(res.data!);
   }
 
+  /// 6-6. 일정 여러 날짜 복사 — 선택한 각 날짜를 시작일로 복사본을 만든다.
+  /// 기간 일정은 길이 유지, 참여자 포함. 서버가 최대 31개 날짜로 제한한다.
+  Future<List<Schedule>> copy(
+    String groupRoomId,
+    String scheduleId,
+    List<DateTime> dates,
+  ) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/schedules/$scheduleId/copy',
+      body: {'dates': dates.map(_date).toList()},
+    );
+    _listCache.clear();
+    return (res.data!['schedules'] as List? ?? [])
+        .map((e) => Schedule.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// 6-4. 일정 수정.
   Future<Schedule> update(
     String groupRoomId,
