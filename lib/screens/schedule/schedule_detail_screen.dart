@@ -9,6 +9,7 @@ import '../../theme/colors.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/report_block_actions.dart';
+import 'schedule_copy_sheet.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   const ScheduleDetailScreen({super.key});
@@ -78,6 +79,20 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         .pushNamed('/add-schedule', arguments: _scheduleId);
     if (!mounted) return;
     _load();
+  }
+
+  /// 여러 날짜에 복사하기 — 멀티 날짜 선택 시트를 띄우고, 성공 시 완료 팝업.
+  Future<void> _onCopyTap() async {
+    setState(() => _showMenu = false);
+    final schedule = _detail?.schedule;
+    if (schedule == null) return;
+    final copiedCount = await showScheduleCopySheet(context, schedule: schedule);
+    if (!mounted || copiedCount == null) return;
+    await showInfoDialog(
+      context,
+      '일정 복사 완료',
+      '선택한 $copiedCount개 날짜에\n\'${schedule.title}\' 일정을 복사했어요.',
+    );
   }
 
   Future<void> _submitComment() async {
@@ -899,6 +914,18 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _MoreMenuRow(
+              icon: Icons.copy_outlined,
+              label: '여러 날짜에 복사하기',
+              onTap: _onCopyTap,
+            ),
+            const Divider(
+              height: 8,
+              thickness: 1,
+              color: Color(0xFFF2F4F6),
+              indent: 8,
+              endIndent: 8,
+            ),
             _MoreMenuRow(
               icon: Icons.edit_outlined,
               label: '수정하기',
