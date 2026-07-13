@@ -4,8 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../theme/colors.dart';
 import '../models/character_models.dart';
+import 'character_speech_bubble.dart';
 import 'mochi_character_view.dart';
 
 // ─────────────────────────────────────────────
@@ -143,9 +143,57 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   Timer? _bubbleHideTimer;
   int _lastBubbleIndex = -1;
 
-  // 말풍선 위치 변주(2.0.0) — 매번 같은 자리에 뜨지 않도록 머리 위 범위에서 랜덤.
-  double _bubbleLeftFactor = 0.45; // size 대비 0.10~0.50
-  double _bubbleTop = 0; // 0~10px
+  // 말풍선 슬롯 — 머리 위 좌/중/우 + 머리 옆 좌/우까지 5개 자리를 돌아가며 떠서
+  // 캐릭터 주변 곳곳에서 말을 거는 느낌을 준다. 꼬리는 항상 모찌 쪽을 가리킨다.
+  _BubbleSlot _bubbleSlot = const _BubbleSlot(
+    left: 0,
+    top: 0,
+    tail: BubbleTailDirection.bottomCenter,
+  );
+  int _lastSlotIndex = -1;
+
+  /// 다음 말풍선이 뜰 자리를 고른다 — 직전과 같은 슬롯은 피한다.
+  void _pickBubbleSlot() {
+    final s = widget.size;
+    final slots = <_BubbleSlot>[
+      // 머리 위 왼쪽 끝 — 꼬리가 오른쪽 아래(머리)로.
+      _BubbleSlot(
+        left: -6,
+        top: _rng.nextDouble() * 10,
+        tail: BubbleTailDirection.bottomRight,
+      ),
+      // 머리 바로 위 — 꼬리 중앙.
+      _BubbleSlot(
+        left: s * (0.14 + _rng.nextDouble() * 0.12),
+        top: _rng.nextDouble() * 10,
+        tail: BubbleTailDirection.bottomCenter,
+      ),
+      // 머리 위 오른쪽 끝 — 꼬리가 왼쪽 아래(머리)로.
+      _BubbleSlot(
+        right: -6,
+        top: _rng.nextDouble() * 10,
+        tail: BubbleTailDirection.bottomLeft,
+      ),
+      // 머리 옆 왼쪽(배경 상단 모서리에 살짝 걸침).
+      _BubbleSlot(
+        left: -12,
+        top: 34 + _rng.nextDouble() * 12,
+        tail: BubbleTailDirection.bottomRight,
+      ),
+      // 머리 옆 오른쪽.
+      _BubbleSlot(
+        right: -12,
+        top: 34 + _rng.nextDouble() * 12,
+        tail: BubbleTailDirection.bottomLeft,
+      ),
+    ];
+    int idx;
+    do {
+      idx = _rng.nextInt(slots.length);
+    } while (idx == _lastSlotIndex);
+    _lastSlotIndex = idx;
+    _bubbleSlot = slots[idx];
+  }
 
   final _rng = math.Random();
 
@@ -382,9 +430,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     setState(() {
       _bubbleSeq++;
       _bubbleMessage = messages[index];
-      // 위치도 함께 변주 — 겹침을 줄이려 머리 위(상단 밴드) 안에서만 움직인다.
-      _bubbleLeftFactor = 0.10 + _rng.nextDouble() * 0.40;
-      _bubbleTop = _rng.nextDouble() * 10;
+      _pickBubbleSlot();
     });
     _bubbleHideTimer = Timer(const Duration(milliseconds: 4500), () {
       if (!mounted) return;
@@ -498,28 +544,36 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
             ),
             if (widget.showBubble)
               Positioned(
-                top: _bubbleTop,
-                left: widget.size * _bubbleLeftFactor,
-                right: -8,
+                top: _bubbleSlot.top,
+                left: _bubbleSlot.left,
+                right: _bubbleSlot.right,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 260),
                   switchInCurve: Curves.easeOutBack,
                   switchOutCurve: Curves.easeIn,
                   transitionBuilder: (child, anim) {
+                    // 팝 스케일은 꼬리(캐릭터를 가리키는 지점)를 기준으로 커진다.
+                    final alignment = switch (_bubbleSlot.tail) {
+                      BubbleTailDirection.bottomLeft => Alignment.bottomLeft,
+                      BubbleTailDirection.bottomCenter =>
+                        Alignment.bottomCenter,
+                      BubbleTailDirection.bottomRight => Alignment.bottomRight,
+                    };
                     return FadeTransition(
                       opacity: anim,
                       child: ScaleTransition(
                         scale: Tween<double>(begin: 0.7, end: 1.0).animate(anim),
-                        alignment: Alignment.bottomLeft,
+                        alignment: alignment,
                         child: child,
                       ),
                     );
                   },
                   child: _bubbleMessage == null
                       ? const SizedBox.shrink(key: ValueKey('empty'))
-                      : _SpeechBubble(
+                      : CharacterSpeechBubble(
                           key: ValueKey('bubble-$_bubbleSeq'),
-                          message: _bubbleMessage!,
+                          text: _bubbleMessage!,
+                          tail: _bubbleSlot.tail,
                         ),
                 ),
               ),
@@ -627,94 +681,15 @@ class _ParticleWidgetState extends State<_ParticleWidget>
 }
 
 // ─────────────────────────────────────────────
-// 말풍선 — 모찌 머리 위에 떠 있는 코멘트
+// 말풍선 슬롯 — 캐릭터 주변에서 말풍선이 뜨는 자리
 // ─────────────────────────────────────────────
 
-class _SpeechBubble extends StatelessWidget {
-  const _SpeechBubble({super.key, required this.message});
+class _BubbleSlot {
+  const _BubbleSlot({this.left, this.right, required this.top, required this.tail});
 
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = AppColors.primary.withValues(alpha: 0.22);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 168),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: borderColor, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Text(
-              message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                height: 1.25,
-                color: AppColors.gray900,
-              ),
-            ),
-          ),
-        ),
-        // 꼬리 — 말풍선 좌하단 살짝 안쪽에서 모찌 쪽을 가리킴
-        Padding(
-          padding: const EdgeInsets.only(left: 18),
-          child: CustomPaint(
-            size: const Size(14, 9),
-            painter: _BubbleTailPainter(borderColor: borderColor),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BubbleTailPainter extends CustomPainter {
-  _BubbleTailPainter({required this.borderColor});
-
-  final Color borderColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fillPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width * 0.55, size.height)
-      ..lineTo(size.width, 0);
-
-    // 채움 — 본체와 이어지도록 위쪽은 닫지 않음.
-    final fillPath = Path.from(path)..close();
-    canvas.drawPath(fillPath, fillPaint);
-    // 위쪽(0~size.width 라인) 은 본체 border 와 겹치므로 그리지 않는다.
-    canvas.drawPath(path, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BubbleTailPainter old) =>
-      old.borderColor != borderColor;
+  /// left/right 중 하나만 설정 — 나머지 쪽은 내용 크기에 맞게 열어둔다.
+  final double? left;
+  final double? right;
+  final double top;
+  final BubbleTailDirection tail;
 }

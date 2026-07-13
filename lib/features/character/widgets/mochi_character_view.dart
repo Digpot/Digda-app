@@ -247,8 +247,26 @@ class MochiCharacterView extends StatelessWidget {
     };
     final ground =
         '<ellipse cx="100" cy="${(bodyBottom + 3.5).toStringAsFixed(1)}" rx="${isEgg ? 44 : 42}" ry="7.5" fill="url(#mGround)"/>';
+    // 판타지 배경 — 스킨색 그라디언트 위에 오로라 글로우 2개(흰빛·보랏빛)와
+    // 반짝이 별·빛 방울(보케)을 흩뿌린다. 캐릭터 본체(중앙 하단)를 가리지 않도록
+    // 장식은 상단·좌우 가장자리에만 둔다. flutter_svg 는 <filter> 미지원이라
+    // 흐림 효과는 전부 radial 그라디언트 fade 로 표현한다.
     final bg = '<rect width="200" height="200" rx="48" fill="url(#mBg)"/>\n'
+        '  <ellipse cx="52" cy="30" rx="64" ry="42" fill="url(#mAuroraW)"/>\n'
+        '  <ellipse cx="158" cy="52" rx="52" ry="38" fill="url(#mAuroraV)"/>\n'
+        '  <ellipse cx="24" cy="120" rx="40" ry="52" fill="url(#mAuroraV)" opacity="0.55"/>\n'
         '  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#mSpot)"/>\n'
+        '  ${_sparkle(31, 32, 5.5, 0.85)}\n'
+        '  ${_sparkle(170, 27, 4.5, 0.7)}\n'
+        '  ${_sparkle(146, 14, 2.8, 0.55)}\n'
+        '  ${_sparkle(22, 78, 3.2, 0.6)}\n'
+        '  ${_sparkle(181, 96, 3.8, 0.65)}\n'
+        '  ${_sparkle(58, 14, 2.4, 0.5)}\n'
+        '  <circle cx="40" cy="58" r="4" fill="url(#mOrb)"/>\n'
+        '  <circle cx="167" cy="72" r="3" fill="url(#mOrb)"/>\n'
+        '  <circle cx="14" cy="150" r="2.6" fill="url(#mOrb)"/>\n'
+        '  <circle cx="186" cy="140" r="3.4" fill="url(#mOrb)"/>\n'
+        '  <circle cx="92" cy="18" r="2.2" fill="url(#mOrb)"/>\n'
         '  $ground';
     final isPanda = app.skinAssetKey == 'skin/panda';
     final body = switch (stage) {
@@ -273,6 +291,16 @@ class MochiCharacterView extends StatelessWidget {
 ''';
   }
 
+  /// 4각 반짝이 별 — 오목한 곡선 4개로 이어지는 다이아 스파클. 배경 장식용.
+  static String _sparkle(double cx, double cy, double r, double opacity) {
+    final t = (cy - r).toStringAsFixed(1);
+    final b = (cy + r).toStringAsFixed(1);
+    final l = (cx - r).toStringAsFixed(1);
+    final rt = (cx + r).toStringAsFixed(1);
+    return '<path d="M$cx $t Q$cx $cy $rt $cy Q$cx $cy $cx $b '
+        'Q$cx $cy $l $cy Q$cx $cy $cx $t Z" fill="#FFFFFF" opacity="$opacity"/>';
+  }
+
   /// 공용 그라디언트 defs. 모든 레이어(part) 의 SVG 에 동일하게 포함된다 —
   /// 미사용 그라디언트가 섞여 있어도 렌더 비용은 무시 가능하고, id 충돌이 없다.
   static String _defs({
@@ -290,6 +318,21 @@ class MochiCharacterView extends StatelessWidget {
     <radialGradient id="mSpot" cx="0.5" cy="0.42" r="0.58">
       <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
       <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mAuroraW" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.42"/>
+      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mAuroraV" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.38"/>
+      <stop offset="55%" stop-color="#A78BFA" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#A78BFA" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mOrb" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="mGround" cx="0.5" cy="0.5" r="0.5">

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/character_models.dart';
 import '../../../theme/colors.dart';
 import 'animated_mochi_widget.dart';
+import 'character_speech_bubble.dart';
 import 'diko_character_view.dart';
 import 'mochi_character_view.dart';
 
@@ -264,16 +265,22 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
 
   // 말풍선 위치 변주 — 매 라인마다 머리 위 기준으로 조금씩 다른 자리에 떠서
   // 항상 같은 자리에 박혀 보이지 않게 한다(2.0.0). 캐릭터 본체를 가리지 않도록
-  // 각자 머리 위 범위 안에서만 흔든다.
+  // 각자 머리 위 범위 안에서만 흔들되, 꼬리는 항상 화자 쪽을 가리킨다.
   final math.Random _rng = math.Random();
-  double _mochiLeftFactor = 0.04; // mochiSize 대비 0.02~0.20
-  double _mochiTop = 0; // 0~10px
+  double _mochiLeftFactor = 0.04; // mochiSize 대비 0.02~0.38
+  double _mochiTop = 0; // 0~12px
+  BubbleTailDirection _mochiTail = BubbleTailDirection.bottomCenter;
   double _dikoRightFactor = 0.03; // dikoSize 대비 0.03~0.28
   double _dikoLift = 0; // 0~12px 추가로 띄움
 
   void _shuffleSlots() {
-    _mochiLeftFactor = 0.02 + _rng.nextDouble() * 0.18;
-    _mochiTop = _rng.nextDouble() * 10;
+    _mochiLeftFactor = 0.02 + _rng.nextDouble() * 0.36;
+    _mochiTop = _rng.nextDouble() * 12;
+    // 말풍선이 모찌 머리 중심(≈0.5)보다 왼쪽으로 치우칠수록 꼬리를 오른쪽에 둬
+    // 머리를 가리키게 한다.
+    _mochiTail = _mochiLeftFactor < 0.16
+        ? BubbleTailDirection.bottomRight
+        : BubbleTailDirection.bottomCenter;
     _dikoRightFactor = 0.03 + _rng.nextDouble() * 0.25;
     _dikoLift = _rng.nextDouble() * 12;
   }
@@ -389,6 +396,7 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
             line: line,
             keyId: 'mochi-$idx',
             maxWidth: mochiSize * 0.78,
+            tail: _mochiTail,
           ),
         ),
         // 디코 말풍선 — 디코 머리 위(우측). 디코는 bottom:16, 높이 dikoSize 로 컨테이너
@@ -406,6 +414,8 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
             line: line,
             keyId: 'diko-$idx',
             maxWidth: mochiSize * 0.58,
+            // 디코는 항상 버블 오른쪽 아래에 있으므로 꼬리도 오른쪽.
+            tail: BubbleTailDirection.bottomRight,
           ),
         ),
       ],
@@ -413,13 +423,18 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
   }
 
   /// 한쪽 화자의 말풍선 슬롯. 현재 라인이 그 화자의 것이 아니면 빈 위젯으로 접힌다.
-  /// 슬롯 위치는 고정이라 말풍선이 항상 같은 자리(머리 위)에서 fade-in/out 된다.
   Widget _slot({
     required bool show,
     required _ChatLine? line,
     required String keyId,
     required double maxWidth,
+    required BubbleTailDirection tail,
   }) {
+    final alignment = switch (tail) {
+      BubbleTailDirection.bottomLeft => Alignment.bottomLeft,
+      BubbleTailDirection.bottomCenter => Alignment.bottomCenter,
+      BubbleTailDirection.bottomRight => Alignment.bottomRight,
+    };
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
       switchInCurve: Curves.easeOutBack,
@@ -429,16 +444,22 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
           opacity: anim,
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.85, end: 1.0).animate(anim),
-            alignment: Alignment.bottomCenter,
+            alignment: alignment,
             child: child,
           ),
         );
       },
       child: (show && line != null)
-          ? ConstrainedBox(
+          ? CharacterSpeechBubble(
               key: ValueKey(keyId),
-              constraints: BoxConstraints(maxWidth: maxWidth),
-              child: _ChatBubble(line: line),
+              text: line.text,
+              speakerLabel:
+                  line.speaker == _Speaker.mochi ? '모찌' : '디코',
+              accent: line.speaker == _Speaker.mochi
+                  ? AppColors.primary
+                  : const Color(0xFFA78BFA),
+              tail: tail,
+              maxWidth: maxWidth,
             )
           : const SizedBox.shrink(),
     );
@@ -453,65 +474,3 @@ class _ChatLine {
 }
 
 enum _Speaker { mochi, diko }
-
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({super.key, required this.line});
-  final _ChatLine line;
-
-  @override
-  Widget build(BuildContext context) {
-    final isMochi = line.speaker == _Speaker.mochi;
-    final bg = isMochi ? Colors.white : const Color(0xFFF3EBFF);
-    final border = isMochi
-        ? AppColors.primary.withValues(alpha: 0.22)
-        : const Color(0xFFA78BFA).withValues(alpha: 0.35);
-    final speakerLabel = isMochi ? '모찌' : '디코';
-    final speakerColor =
-        isMochi ? AppColors.primary : const Color(0xFFA78BFA);
-    // 폭 제약(maxWidth)은 바깥 슬롯에서 화자별로 잡아준다. 여기선 내용 크기에 맞춘다.
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: border, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            speakerLabel,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 10,
-              letterSpacing: 0.4,
-              color: speakerColor,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            line.text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              height: 1.25,
-              color: AppColors.gray900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
