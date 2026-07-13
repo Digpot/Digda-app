@@ -28,6 +28,7 @@ import 'character_stage_tree_screen.dart';
 import 'character_shop_screen.dart';
 import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
+import 'games/group_game_list_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
 import 'quiz/character_quiz_list_screen.dart';
 import '../exhibit/nickname_exhibit_screen.dart';
@@ -208,6 +209,12 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   Future<void> _openExhibit() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const NicknameExhibitScreen()),
+    );
+  }
+
+  Future<void> _openGames() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const GroupGameListScreen()),
     );
   }
 
@@ -647,12 +654,69 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               ),
             ],
           ),
+          // 그룹원들이 한 폰으로 즐기는 미니게임 목록 진입 버튼.
+          const SizedBox(height: 12),
+          _GameCta(onTap: _openGames),
           // 어드민이 허용한 사용자만 노출되는 역대 별명 전시관 진입 버튼.
           if (_exhibitAllowed) ...[
             const SizedBox(height: 12),
             _ExhibitCta(onTap: _openExhibit),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// 모찌 화면 하단의 '게임하기' 진입 버튼 — 그룹원 미니게임 목록으로.
+class _GameCta extends StatelessWidget {
+  const _GameCta({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF45B7D1), Color(0xFF34D399)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF45B7D1).withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Row(
+            children: [
+              Text('🎮', style: TextStyle(fontSize: 22)),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '게임하기',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
       ),
     );
   }
