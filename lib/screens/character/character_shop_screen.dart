@@ -145,6 +145,7 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
 
     String? previewSkinHex = base.skinHex;
     String? previewSkinAsset = base.skinAssetKey;
+    String previewBackground = base.backgroundAssetKey;
     final overlays = <EquippedItem>[];
     overlays.addAll(base.overlays);
 
@@ -171,6 +172,8 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
       if (type == ShopItemType.skin) {
         previewSkinHex = item.accentColor ?? previewSkinHex;
         previewSkinAsset = item.assetKey;
+      } else if (type == ShopItemType.background) {
+        previewBackground = item.assetKey;
       } else {
         overlays.removeWhere((e) => e.itemType == type);
         overlays.add(item.toEquipped());
@@ -181,6 +184,7 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     return MochiAppearance(
       skinHex: previewSkinHex ?? '#FF6B6B',
       skinAssetKey: previewSkinAsset ?? 'skin/coral',
+      backgroundAssetKey: previewBackground,
       overlays: overlays,
     );
   }
@@ -813,7 +817,10 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (hasEquipped && type != ShopItemType.skin)
+        // 스킨/배경은 렌더 필수 슬롯 — 해제 대신 다른 아이템으로만 교체 가능.
+        if (hasEquipped &&
+            type != ShopItemType.skin &&
+            type != ShopItemType.background)
           Padding(
             padding: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
             child: Align(
@@ -1131,20 +1138,28 @@ class _ItemThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 모든 카테고리에 동일하게 미니 모찌 미리보기를 제공한다.
-    // - 스킨: 본인이 적용된 모찌 (배경/본체 색만 적용)
+    // - 스킨: 본인이 적용된 모찌 (기본 배경 하늘 톤/본체 색 적용)
+    // - 배경: 해당 배경 씬 + 기본 코랄 모찌
     // - 그 외 카테고리: 기본 코랄 모찌 + 해당 아이템 1개만 overlay
     // 이렇게 통일하면 사용자가 "이 아이템 차면 어떻게 보이지?" 를 한 눈에 가늠 가능.
-    final MochiAppearance appearance = item.itemType == ShopItemType.skin
-        ? MochiAppearance(
-            skinHex: item.accentColor ?? '#FF6B6B',
-            skinAssetKey: item.assetKey,
-            overlays: const [],
-          )
-        : MochiAppearance(
-            skinHex: '#FF6B6B',
-            skinAssetKey: 'skin/coral',
-            overlays: [item.toEquipped()],
-          );
+    final MochiAppearance appearance = switch (item.itemType) {
+      ShopItemType.skin => MochiAppearance(
+          skinHex: item.accentColor ?? '#FF6B6B',
+          skinAssetKey: item.assetKey,
+          overlays: const [],
+        ),
+      ShopItemType.background => MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          backgroundAssetKey: item.assetKey,
+          overlays: const [],
+        ),
+      _ => MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          overlays: [item.toEquipped()],
+        ),
+    };
     return SizedBox(
       width: 56,
       height: 56,

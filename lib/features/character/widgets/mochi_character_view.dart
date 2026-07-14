@@ -10,21 +10,24 @@ import '../models/character_models.dart';
 /// - [body]: 본체·표정·액세서리만 (배경 투명)
 enum MochiCharacterPart { full, background, body }
 
-/// 모찌의 외형 정보. [skinHex] 는 배경 squircle 색, [skinAssetKey] 는 패턴 식별자
-/// (예: 'skin/coral', 'skin/panda'). [overlays] 는 머리/얼굴/목·옆에 그릴 액세서리들.
+/// 모찌의 외형 정보. [skinHex] 는 스킨 색(기본 배경 하늘 톤에 반영), [skinAssetKey] 는
+/// 패턴 식별자(예: 'skin/coral', 'skin/panda'). [backgroundAssetKey] 는 배경 씬
+/// (예: 'bg/meadow', 'bg/night'). [overlays] 는 머리/얼굴/목·옆에 그릴 액세서리들.
 ///
 /// [CharacterState.equippedItems] 에서 직접 만들거나, 상점 미리보기처럼 임의 조합으로
-/// 만들어 사용 가능. SKIN 슬롯은 [skinHex]/[skinAssetKey] 로 분리해 들어가고,
-/// 나머지 카테고리는 [overlays] 에 들어간다.
+/// 만들어 사용 가능. SKIN 슬롯은 [skinHex]/[skinAssetKey], BACKGROUND 슬롯은
+/// [backgroundAssetKey] 로 분리해 들어가고, 나머지 카테고리는 [overlays] 에 들어간다.
 class MochiAppearance {
   const MochiAppearance({
     required this.skinHex,
     required this.skinAssetKey,
+    this.backgroundAssetKey = 'bg/meadow',
     this.overlays = const [],
   });
 
   final String skinHex;
   final String skinAssetKey;
+  final String backgroundAssetKey;
   final List<EquippedItem> overlays;
 
   /// 서버 상태로부터 생성.
@@ -32,8 +35,11 @@ class MochiAppearance {
     return MochiAppearance(
       skinHex: state.skinHex,
       skinAssetKey: state.skinAssetKey,
+      backgroundAssetKey: state.backgroundAssetKey,
       overlays: state.equippedItems
-          .where((e) => e.itemType != ShopItemType.skin)
+          .where((e) =>
+              e.itemType != ShopItemType.skin &&
+              e.itemType != ShopItemType.background)
           .toList()
         ..sort((a, b) => a.layerOrder.compareTo(b.layerOrder)),
     );
@@ -49,11 +55,13 @@ class MochiAppearance {
   MochiAppearance copyWith({
     String? skinHex,
     String? skinAssetKey,
+    String? backgroundAssetKey,
     List<EquippedItem>? overlays,
   }) {
     return MochiAppearance(
       skinHex: skinHex ?? this.skinHex,
       skinAssetKey: skinAssetKey ?? this.skinAssetKey,
+      backgroundAssetKey: backgroundAssetKey ?? this.backgroundAssetKey,
       overlays: overlays ?? this.overlays,
     );
   }
@@ -228,14 +236,12 @@ class MochiCharacterView extends StatelessWidget {
     final safeHex = RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(hex)
         ? hex.toUpperCase()
         : '#FF6B6B';
-    final bgLight = _mixHex(safeHex, 0.20, toWhite: true);
-    final bgDark = _mixHex(safeHex, 0.14, toWhite: false);
-    final shadowCol = _mixHex(safeHex, 0.48, toWhite: false);
+    // 배경 씬 — 장착된 BACKGROUND 아이템의 assetKey 로 결정. 기본 풀밭(meadow)은
+    // 스킨색이 하늘 톤에 스며들어 스킨 구매 가치를 유지한다.
+    final scene = _scene(app.backgroundAssetKey, safeHex);
     final defs = _defs(
-      bgLight: bgLight,
-      bgBase: safeHex,
-      bgDark: bgDark,
-      shadowCol: shadowCol,
+      shadowCol: scene.shadowHex,
+      sceneDefs: scene.defs,
     );
     final isEgg = stage == CharacterStage.egg;
     // 접지 그림자 — 본체 바닥에 맞춰 단계별 위치 보정. background 레이어에 있어
@@ -247,27 +253,12 @@ class MochiCharacterView extends StatelessWidget {
     };
     final ground =
         '<ellipse cx="100" cy="${(bodyBottom + 3.5).toStringAsFixed(1)}" rx="${isEgg ? 44 : 42}" ry="7.5" fill="url(#mGround)"/>';
-    // 판타지 배경 — 스킨색 그라디언트 위에 오로라 글로우 2개(흰빛·보랏빛)와
-    // 반짝이 별·빛 방울(보케)을 흩뿌린다. 캐릭터 본체(중앙 하단)를 가리지 않도록
-    // 장식은 상단·좌우 가장자리에만 둔다. flutter_svg 는 <filter> 미지원이라
-    // 흐림 효과는 전부 radial 그라디언트 fade 로 표현한다.
-    final bg = '<rect width="200" height="200" rx="48" fill="url(#mBg)"/>\n'
-        '  <ellipse cx="52" cy="30" rx="64" ry="42" fill="url(#mAuroraW)"/>\n'
-        '  <ellipse cx="158" cy="52" rx="52" ry="38" fill="url(#mAuroraV)"/>\n'
-        '  <ellipse cx="24" cy="120" rx="40" ry="52" fill="url(#mAuroraV)" opacity="0.55"/>\n'
+    // 씬 전체를 squircle 로 클리핑하고, 캐릭터 뒤 스포트라이트와 접지 그림자를 얹는다.
+    final bg = '<g clip-path="url(#mClip)">\n'
+        '  ${scene.markup}\n'
         '  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#mSpot)"/>\n'
-        '  ${_sparkle(31, 32, 5.5, 0.85)}\n'
-        '  ${_sparkle(170, 27, 4.5, 0.7)}\n'
-        '  ${_sparkle(146, 14, 2.8, 0.55)}\n'
-        '  ${_sparkle(22, 78, 3.2, 0.6)}\n'
-        '  ${_sparkle(181, 96, 3.8, 0.65)}\n'
-        '  ${_sparkle(58, 14, 2.4, 0.5)}\n'
-        '  <circle cx="40" cy="58" r="4" fill="url(#mOrb)"/>\n'
-        '  <circle cx="167" cy="72" r="3" fill="url(#mOrb)"/>\n'
-        '  <circle cx="14" cy="150" r="2.6" fill="url(#mOrb)"/>\n'
-        '  <circle cx="186" cy="140" r="3.4" fill="url(#mOrb)"/>\n'
-        '  <circle cx="92" cy="18" r="2.2" fill="url(#mOrb)"/>\n'
-        '  $ground';
+        '  $ground\n'
+        '  </g>';
     final isPanda = app.skinAssetKey == 'skin/panda';
     final body = switch (stage) {
       CharacterStage.egg => _egg(isPanda: isPanda),
@@ -292,47 +283,358 @@ class MochiCharacterView extends StatelessWidget {
   }
 
   /// 4각 반짝이 별 — 오목한 곡선 4개로 이어지는 다이아 스파클. 배경 장식용.
-  static String _sparkle(double cx, double cy, double r, double opacity) {
+  static String _sparkle(double cx, double cy, double r, double opacity,
+      {String color = '#FFFFFF'}) {
     final t = (cy - r).toStringAsFixed(1);
     final b = (cy + r).toStringAsFixed(1);
     final l = (cx - r).toStringAsFixed(1);
     final rt = (cx + r).toStringAsFixed(1);
     return '<path d="M$cx $t Q$cx $cy $rt $cy Q$cx $cy $cx $b '
-        'Q$cx $cy $l $cy Q$cx $cy $cx $t Z" fill="#FFFFFF" opacity="$opacity"/>';
+        'Q$cx $cy $l $cy Q$cx $cy $cx $t Z" fill="$color" opacity="$opacity"/>';
+  }
+
+  // ─────────────────────────────────────────
+  // 배경 씬 — assetKey 별 야외 풍경. 캐릭터 본체(중앙 하단, 바닥 y≈150~170)를
+  // 가리지 않도록 큰 장식은 상단·좌우 가장자리에 두고, 지면(언덕/모래/설원)은
+  // y≈134 아래에만 깐다. flutter_svg 는 <filter> 미지원 — 흐림/발광은 전부
+  // 그라디언트 fade 로 표현한다.
+  // ─────────────────────────────────────────
+
+  /// [key] 배경 씬의 (전용 defs, 본문 마크업, 접지 그림자색). 알 수 없는 키는
+  /// 기본 풀밭으로 fallback — 구버전 앱이 신규 배경을 만나도 렌더가 깨지지 않는다.
+  static ({String defs, String markup, String shadowHex}) _scene(
+      String key, String skinHex) {
+    return switch (key) {
+      'bg/sakura' => _sceneSakura(),
+      'bg/beach' => _sceneBeach(),
+      'bg/night' => _sceneNight(),
+      'bg/winter' => _sceneWinter(),
+      'bg/space' => _sceneSpace(),
+      _ => _sceneMeadow(skinHex),
+    };
+  }
+
+  /// 기본 풀밭 언덕 — 하늘 톤이 스킨색을 따라간다 (코랄=살구빛, 민트=청록빛 하늘).
+  static ({String defs, String markup, String shadowHex}) _sceneMeadow(
+      String skinHex) {
+    final skyTop = _mixHex(skinHex, 0.80, toWhite: true);
+    final skyMid = _mixHex(skinHex, 0.58, toWhite: true);
+    final skyLow = _mixHex(skinHex, 0.38, toWhite: true);
+    return (
+      defs: '''
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="$skyTop"/>
+      <stop offset="68%" stop-color="$skyMid"/>
+      <stop offset="100%" stop-color="$skyLow"/>
+    </linearGradient>
+    <radialGradient id="bgSun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF7C9" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#FFEFA8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FFEFA8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bgHillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CBE8A4"/>
+      <stop offset="100%" stop-color="#A9D67F"/>
+    </linearGradient>
+    <linearGradient id="bgHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B4E086"/>
+      <stop offset="100%" stop-color="#7FC95B"/>
+    </linearGradient>''',
+      markup: '''
+<rect width="200" height="200" fill="url(#bgSky)"/>
+  <circle cx="160" cy="38" r="30" fill="url(#bgSun)"/>
+  <circle cx="160" cy="38" r="12" fill="#FFF2B8"/>
+  <circle cx="156" cy="34" r="4" fill="#FFFFFF" opacity="0.6"/>
+  <g opacity="0.92">
+    <ellipse cx="52" cy="42" rx="17" ry="9" fill="#FFFFFF"/>
+    <ellipse cx="38" cy="46" rx="11" ry="7" fill="#FFFFFF"/>
+    <ellipse cx="66" cy="46" rx="12" ry="7" fill="#FFFFFF"/>
+  </g>
+  <g opacity="0.7">
+    <ellipse cx="126" cy="66" rx="12" ry="6" fill="#FFFFFF"/>
+    <ellipse cx="137" cy="69" rx="8" ry="5" fill="#FFFFFF"/>
+  </g>
+  <ellipse cx="42" cy="206" rx="130" ry="72" fill="url(#bgHillBack)"/>
+  <ellipse cx="152" cy="214" rx="150" ry="76" fill="url(#bgHill)"/>
+  <path d="M27 170 Q25 161 28 155" stroke="#5FA843" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <path d="M32 171 Q33 163 31 157" stroke="#5FA843" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <path d="M172 166 Q170 158 173 152" stroke="#5FA843" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <circle cx="38" cy="176" r="3" fill="#FFFFFF"/>
+  <circle cx="38" cy="176" r="1.2" fill="#FCD34D"/>
+  <circle cx="62" cy="188" r="2.6" fill="#FFD7E2"/>
+  <circle cx="62" cy="188" r="1" fill="#FCD34D"/>
+  <circle cx="166" cy="178" r="3" fill="#FFFFFF"/>
+  <circle cx="166" cy="178" r="1.2" fill="#FCD34D"/>
+  <circle cx="184" cy="162" r="2.4" fill="#FFD7E2"/>
+  <circle cx="184" cy="162" r="0.9" fill="#FCD34D"/>''',
+      shadowHex: '#3E6B2F',
+    );
+  }
+
+  /// 벚꽃동산 — 분홍 하늘, 우상단 벚나무 가지, 흩날리는 꽃잎.
+  static ({String defs, String markup, String shadowHex}) _sceneSakura() {
+    return (
+      defs: '''
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFEAF1"/>
+      <stop offset="62%" stop-color="#FFD9E5"/>
+      <stop offset="100%" stop-color="#FFC9D8"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bgHillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CDE9AB"/>
+      <stop offset="100%" stop-color="#A3D47E"/>
+    </linearGradient>
+    <linearGradient id="bgHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#BAE18F"/>
+      <stop offset="100%" stop-color="#84CB60"/>
+    </linearGradient>''',
+      markup: '''
+<rect width="200" height="200" fill="url(#bgSky)"/>
+  <circle cx="48" cy="40" r="24" fill="url(#bgGlow)"/>
+  <path d="M204 14 Q166 26 142 50" stroke="#8A5A44" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M172 28 Q160 38 156 48" stroke="#8A5A44" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <circle cx="142" cy="52" r="7" fill="#FFB3C7"/>
+  <circle cx="155" cy="46" r="8" fill="#FFC3D3"/>
+  <circle cx="168" cy="35" r="8.5" fill="#FFAEC5"/>
+  <circle cx="183" cy="27" r="9" fill="#FFC3D3"/>
+  <circle cx="158" cy="57" r="6.5" fill="#FFAEC5"/>
+  <circle cx="176" cy="46" r="7" fill="#FFB3C7"/>
+  <circle cx="151" cy="42" r="2" fill="#FFFFFF" opacity="0.75"/>
+  <circle cx="171" cy="31" r="2.2" fill="#FFFFFF" opacity="0.75"/>
+  <circle cx="146" cy="55" r="1.4" fill="#E86F92"/>
+  <circle cx="180" cy="30" r="1.4" fill="#E86F92"/>
+  <ellipse cx="60" cy="70" rx="3" ry="1.8" fill="#FFB9CC" opacity="0.9" transform="rotate(-24 60 70)"/>
+  <ellipse cx="96" cy="42" rx="2.6" ry="1.6" fill="#FFB9CC" opacity="0.8" transform="rotate(18 96 42)"/>
+  <ellipse cx="34" cy="104" rx="3" ry="1.8" fill="#FFAEC5" opacity="0.85" transform="rotate(30 34 104)"/>
+  <ellipse cx="122" cy="84" rx="2.4" ry="1.5" fill="#FFB9CC" opacity="0.75" transform="rotate(-40 122 84)"/>
+  <ellipse cx="182" cy="106" rx="2.8" ry="1.7" fill="#FFAEC5" opacity="0.8" transform="rotate(12 182 106)"/>
+  <ellipse cx="42" cy="206" rx="130" ry="72" fill="url(#bgHillBack)"/>
+  <ellipse cx="152" cy="214" rx="150" ry="76" fill="url(#bgHill)"/>
+  <ellipse cx="40" cy="174" rx="2.6" ry="1.6" fill="#FFB9CC" transform="rotate(20 40 174)"/>
+  <ellipse cx="64" cy="186" rx="2.4" ry="1.5" fill="#FFAEC5" transform="rotate(-16 64 186)"/>
+  <ellipse cx="164" cy="178" rx="2.6" ry="1.6" fill="#FFB9CC" transform="rotate(28 164 178)"/>
+  <ellipse cx="184" cy="164" rx="2.2" ry="1.4" fill="#FFAEC5" transform="rotate(-8 184 164)"/>''',
+      shadowHex: '#5E8A46',
+    );
+  }
+
+  /// 바닷가 — 하늘·수평선·반짝이는 바다·모래사장, 불가사리와 조개.
+  static ({String defs, String markup, String shadowHex}) _sceneBeach() {
+    return (
+      defs: '''
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CDEEFB"/>
+      <stop offset="100%" stop-color="#A5DEF6"/>
+    </linearGradient>
+    <linearGradient id="bgSea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5FC6EA"/>
+      <stop offset="100%" stop-color="#2FA3D4"/>
+    </linearGradient>
+    <linearGradient id="bgSand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FBE9C6"/>
+      <stop offset="100%" stop-color="#EFD49F"/>
+    </linearGradient>
+    <radialGradient id="bgSun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF7C9" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#FFEFA8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FFEFA8" stop-opacity="0"/>
+    </radialGradient>''',
+      markup: '''
+<rect width="200" height="200" fill="url(#bgSky)"/>
+  <circle cx="42" cy="36" r="28" fill="url(#bgSun)"/>
+  <circle cx="42" cy="36" r="11" fill="#FFF2B8"/>
+  <g opacity="0.85">
+    <ellipse cx="138" cy="40" rx="14" ry="7" fill="#FFFFFF"/>
+    <ellipse cx="150" cy="44" rx="10" ry="6" fill="#FFFFFF"/>
+  </g>
+  <path d="M96 26 Q100 22 104 26 M104 26 Q108 22 112 26" stroke="#7FA8C9" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+  <rect x="0" y="112" width="200" height="52" fill="url(#bgSea)"/>
+  <line x1="0" y1="112" x2="200" y2="112" stroke="#FFFFFF" stroke-width="1.4" opacity="0.6"/>
+  <path d="M16 124 Q24 121 32 124" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" opacity="0.7" fill="none"/>
+  <path d="M52 134 Q60 131 68 134" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" opacity="0.6" fill="none"/>
+  <path d="M150 126 Q158 123 166 126" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" opacity="0.7" fill="none"/>
+  ${_sparkle(120, 120, 2.4, 0.8)}
+  ${_sparkle(178, 136, 2, 0.7)}
+  <path d="M0 156 Q50 146 100 152 Q150 158 200 150 L200 200 L0 200 Z" fill="url(#bgSand)"/>
+  <path d="M0 156 Q50 146 100 152 Q150 158 200 150" stroke="#FFFFFF" stroke-width="2" opacity="0.55" fill="none"/>
+  <path d="M32 186 L35 179 L40 184 L38 177 L45 178 L39 174 L44 170 L37 172 L36 165 L33 171 L27 168 L31 174 L25 176 L32 177 Z" fill="#FF9E6B" opacity="0.9"/>
+  <circle cx="170" cy="180" r="5" fill="#FFD9B0"/>
+  <path d="M170 175 Q174 178 172 183 Q168 184 167 180 Q167 177 170 175" stroke="#E8A96F" stroke-width="1.1" fill="none"/>
+  <circle cx="140" cy="190" r="1.4" fill="#E2C089"/>
+  <circle cx="58" cy="192" r="1.2" fill="#E2C089"/>''',
+      shadowHex: '#B08A50',
+    );
+  }
+
+  /// 밤하늘 — 초승달과 별, 반딧불이가 떠 있는 고요한 언덕.
+  static ({String defs, String markup, String shadowHex}) _sceneNight() {
+    return (
+      defs: '''
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3A4677"/>
+      <stop offset="55%" stop-color="#232C55"/>
+      <stop offset="100%" stop-color="#161C3C"/>
+    </linearGradient>
+    <radialGradient id="bgMoonGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFF3C2" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#FFF3C2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bgHillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C3766"/>
+      <stop offset="100%" stop-color="#242D56"/>
+    </linearGradient>
+    <linearGradient id="bgHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#222B52"/>
+      <stop offset="100%" stop-color="#1A2140"/>
+    </linearGradient>
+    <radialGradient id="bgFly" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#D9F07F" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#D9F07F" stop-opacity="0"/>
+    </radialGradient>''',
+      markup: '''
+<rect width="200" height="200" fill="url(#bgSky)"/>
+  <circle cx="152" cy="44" r="27" fill="url(#bgMoonGlow)"/>
+  <circle cx="152" cy="44" r="13" fill="#FFF3C2"/>
+  <circle cx="147" cy="40" r="11" fill="#232C55"/>
+  ${_sparkle(36, 30, 4, 0.9)}
+  ${_sparkle(72, 58, 2.6, 0.7)}
+  ${_sparkle(108, 26, 3, 0.8)}
+  ${_sparkle(22, 86, 2.4, 0.6)}
+  ${_sparkle(184, 92, 2.6, 0.7)}
+  <circle cx="56" cy="44" r="1.3" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="92" cy="66" r="1.1" fill="#FFFFFF" opacity="0.65"/>
+  <circle cx="126" cy="52" r="1.3" fill="#FFFFFF" opacity="0.75"/>
+  <circle cx="14" cy="52" r="1.1" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="176" cy="18" r="1.3" fill="#FFFFFF" opacity="0.7"/>
+  <ellipse cx="42" cy="206" rx="130" ry="72" fill="url(#bgHillBack)"/>
+  <ellipse cx="152" cy="214" rx="150" ry="76" fill="url(#bgHill)"/>
+  <circle cx="46" cy="142" r="6" fill="url(#bgFly)"/>
+  <circle cx="46" cy="142" r="1.5" fill="#E4F59B"/>
+  <circle cx="162" cy="134" r="5" fill="url(#bgFly)"/>
+  <circle cx="162" cy="134" r="1.3" fill="#E4F59B"/>
+  <circle cx="128" cy="160" r="4.5" fill="url(#bgFly)"/>
+  <circle cx="128" cy="160" r="1.2" fill="#E4F59B"/>''',
+      shadowHex: '#0A0E22',
+    );
+  }
+
+  /// 눈 내리는 언덕 — 설원과 눈사람, 소나무, 흩날리는 눈송이.
+  static ({String defs, String markup, String shadowHex}) _sceneWinter() {
+    return (
+      defs: '''
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#DCEBF8"/>
+      <stop offset="100%" stop-color="#C2D8EE"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bgHillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E9F1FB"/>
+    </linearGradient>
+    <linearGradient id="bgHill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDFEFF"/>
+      <stop offset="100%" stop-color="#DFEAF7"/>
+    </linearGradient>''',
+      markup: '''
+<rect width="200" height="200" fill="url(#bgSky)"/>
+  <circle cx="160" cy="36" r="22" fill="url(#bgGlow)"/>
+  <g>
+    <path d="M28 96 L14 126 L42 126 Z" fill="#5B8E68"/>
+    <path d="M28 110 L12 142 L44 142 Z" fill="#4F7D5B"/>
+    <ellipse cx="24" cy="103" rx="6" ry="2.4" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="30" cy="122" rx="7" ry="2.6" fill="#FFFFFF" opacity="0.9"/>
+    <rect x="25" y="142" width="6" height="8" rx="1.5" fill="#7A5A44"/>
+  </g>
+  <ellipse cx="42" cy="206" rx="130" ry="72" fill="url(#bgHillBack)"/>
+  <ellipse cx="152" cy="214" rx="150" ry="76" fill="url(#bgHill)"/>
+  <g>
+    <circle cx="168" cy="162" r="9" fill="#FFFFFF" stroke="#D9E6F2" stroke-width="1"/>
+    <circle cx="168" cy="147" r="6.5" fill="#FFFFFF" stroke="#D9E6F2" stroke-width="1"/>
+    <circle cx="166" cy="146" r="0.9" fill="#2B2B2B"/>
+    <circle cx="171" cy="146" r="0.9" fill="#2B2B2B"/>
+    <path d="M168 148 L172 150 L168 150 Z" fill="#FF9A5B"/>
+    <line x1="161" y1="158" x2="152" y2="152" stroke="#7A5A44" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="175" y1="158" x2="184" y2="152" stroke="#7A5A44" stroke-width="1.4" stroke-linecap="round"/>
+  </g>
+  ${_sparkle(58, 34, 2.6, 0.9)}
+  ${_sparkle(112, 52, 2.2, 0.8)}
+  <circle cx="76" cy="24" r="1.8" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="132" cy="30" r="1.5" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="44" cy="62" r="1.6" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="94" cy="78" r="1.4" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="152" cy="72" r="1.7" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="186" cy="52" r="1.4" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="18" cy="40" r="1.4" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="66" cy="106" r="1.5" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="140" cy="104" r="1.4" fill="#FFFFFF" opacity="0.8"/>''',
+      shadowHex: '#7FA0C2',
+    );
+  }
+
+  /// 우주 여행 — 고리 행성과 별, 혜성, 보랏빛 달 표면.
+  static ({String defs, String markup, String shadowHex}) _sceneSpace() {
+    return (
+      defs: '''
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3D2C77"/>
+      <stop offset="55%" stop-color="#251C52"/>
+      <stop offset="100%" stop-color="#140F33"/>
+    </linearGradient>
+    <radialGradient id="bgPlanet" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#F7B7D4"/>
+      <stop offset="60%" stop-color="#DE8AB5"/>
+      <stop offset="100%" stop-color="#B25C90"/>
+    </radialGradient>
+    <linearGradient id="bgGround" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A3C8A"/>
+      <stop offset="100%" stop-color="#352A66"/>
+    </linearGradient>''',
+      markup: '''
+<rect width="200" height="200" fill="url(#bgSky)"/>
+  <circle cx="44" cy="44" r="15" fill="url(#bgPlanet)"/>
+  <ellipse cx="44" cy="46" rx="25" ry="6.5" stroke="#E8D9A8" stroke-width="2.4" fill="none" opacity="0.9" transform="rotate(-16 44 46)"/>
+  <circle cx="38" cy="38" r="3.4" fill="#FFFFFF" opacity="0.45"/>
+  <circle cx="172" cy="84" r="7" fill="#7EE0D0"/>
+  <path d="M165.5 82 Q172 86 178.5 82" stroke="#57BFAE" stroke-width="1.6" fill="none"/>
+  <path d="M112 22 Q128 30 142 42" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" opacity="0.5" fill="none"/>
+  ${_sparkle(146, 46, 3.4, 0.9)}
+  ${_sparkle(96, 60, 2.6, 0.7)}
+  ${_sparkle(24, 96, 2.8, 0.75)}
+  ${_sparkle(184, 30, 2.6, 0.8)}
+  ${_sparkle(66, 112, 2.2, 0.6, color: '#BFD1FF')}
+  <circle cx="84" cy="34" r="1.3" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="126" cy="70" r="1.1" fill="#BFD1FF" opacity="0.75"/>
+  <circle cx="16" cy="60" r="1.2" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="190" cy="118" r="1.2" fill="#BFD1FF" opacity="0.7"/>
+  <circle cx="150" cy="108" r="1" fill="#FFFFFF" opacity="0.6"/>
+  <ellipse cx="100" cy="212" rx="145" ry="64" fill="url(#bgGround)"/>
+  <ellipse cx="56" cy="176" rx="8" ry="3" fill="#2E2560" opacity="0.75"/>
+  <ellipse cx="150" cy="184" rx="10" ry="3.5" fill="#2E2560" opacity="0.75"/>
+  <ellipse cx="98" cy="194" rx="6" ry="2.4" fill="#2E2560" opacity="0.7"/>''',
+      shadowHex: '#0E0930',
+    );
   }
 
   /// 공용 그라디언트 defs. 모든 레이어(part) 의 SVG 에 동일하게 포함된다 —
   /// 미사용 그라디언트가 섞여 있어도 렌더 비용은 무시 가능하고, id 충돌이 없다.
+  /// [sceneDefs] 는 배경 씬 전용 그라디언트 — 씬마다 같은 id(bgSky 등)를 재사용한다.
   static String _defs({
-    required String bgLight,
-    required String bgBase,
-    required String bgDark,
     required String shadowCol,
+    required String sceneDefs,
   }) => '''
 <defs>
-    <linearGradient id="mBg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="$bgLight"/>
-      <stop offset="52%" stop-color="$bgBase"/>
-      <stop offset="100%" stop-color="$bgDark"/>
-    </linearGradient>
+    <clipPath id="mClip"><rect width="200" height="200" rx="48"/></clipPath>
+$sceneDefs
     <radialGradient id="mSpot" cx="0.5" cy="0.42" r="0.58">
       <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
       <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.08"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="mAuroraW" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.42"/>
-      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.14"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="mAuroraV" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.38"/>
-      <stop offset="55%" stop-color="#A78BFA" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#A78BFA" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="mOrb" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
-      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="mGround" cx="0.5" cy="0.5" r="0.5">
@@ -460,6 +762,23 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="0%" stop-color="#FFC6D2"/>
       <stop offset="100%" stop-color="#F0789B"/>
     </radialGradient>
+    <linearGradient id="aStraw" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5E0A6"/>
+      <stop offset="100%" stop-color="#DDB96A"/>
+    </linearGradient>
+    <linearGradient id="aBeret" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EE6A6A"/>
+      <stop offset="100%" stop-color="#B03038"/>
+    </linearGradient>
+    <linearGradient id="aWiz" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9B8CF8"/>
+      <stop offset="100%" stop-color="#5B4BC4"/>
+    </linearGradient>
+    <radialGradient id="aBfly" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFE3A3"/>
+      <stop offset="60%" stop-color="#FFC85C"/>
+      <stop offset="100%" stop-color="#F09B2E"/>
+    </radialGradient>
   </defs>''';
 
   // ─────────────────────────────────────────
@@ -484,75 +803,119 @@ class MochiCharacterView extends StatelessWidget {
       'item/glasses_round' => _glassesRound(a),
       'item/glasses_heart' => _glassesHeart(a),
       'item/glasses_sun' => _glassesSun(a),
+      'item/glasses_star' => _glassesStar(a),
       'item/hairpin_star' => _hairpinStar(a),
       'item/hairpin_ribbon' => _hairpinRibbon(a),
       'item/hairpin_flower' => _hairpinFlower(a),
+      'item/hairpin_clover' => _hairpinClover(a),
       'item/hat_party' => _hatParty(a),
       'item/hat_chef' => _hatChef(a),
+      'item/hat_straw' => _hatStraw(a),
+      'item/hat_beret' => _hatBeret(a),
+      'item/hat_wizard' => _hatWizard(a),
       'item/bowtie' => _bowtie(a),
       'item/scarf' => _scarf(a),
       'item/necklace' => _necklace(a),
+      'item/bell' => _bellNecklace(a),
       'item/balloon' => _balloon(a),
       'item/balloon_heart' => _balloonHeart(a),
       'item/flower' => _flowerSide(a),
       'item/star' => _starCharm(a),
+      'item/butterfly' => _butterfly(a),
+      'item/music_note' => _musicNotes(a),
       _ => '',
     };
   }
 
-  /// 단계 + 카테고리 → SVG 좌표 anchor. 모찌는 항상 1마리(중앙) 라 단계마다 좌표가
-  /// 거의 동일하며, EGG 만 본체 크기가 살짝 달라 위치를 조금 내린다.
+  /// 단계 + 카테고리 → SVG 좌표 anchor. 본체 타원(일반: cx100 cy124 rx50 ry44,
+  /// EGG: cx100 cy120 rx52 ry58) 을 기준으로 실제 접점에 맞춘다.
+  /// - hat: 머리 정수리(본체 최상단)에 살짝 겹치는 착모점
+  /// - glasses: 두 눈의 중심. [_Anchor.gap] 이 눈 간격(중심→눈)이라 렌즈가 눈 위에 온다
+  /// - hairpin: 머리 우상단 곡면 위
+  /// - accessory: 입 아래 목 위치
+  /// - misc: 본체 오른쪽 여백
   _Anchor? _anchor(CharacterStage stage, ShopItemType type) {
     final isEgg = stage == CharacterStage.egg;
-    const headCx = 100.0;
-    final headCy = isEgg ? 100.0 : 92.0;
-    final eyesCy = isEgg ? 116.0 : 122.0;
-    final neckCy = isEgg ? 168.0 : 162.0;
-    const sideCx = 168.0;
     return switch (type) {
-      ShopItemType.hat => _Anchor(cx: headCx, cy: headCy),
-      ShopItemType.glasses => _Anchor(cx: headCx, cy: eyesCy),
-      ShopItemType.hairpin => _Anchor(cx: headCx + 24, cy: headCy + 6),
-      ShopItemType.accessory => _Anchor(cx: headCx, cy: neckCy),
-      ShopItemType.misc => const _Anchor(cx: sideCx, cy: 100),
-      ShopItemType.skin => null,
+      ShopItemType.hat => _Anchor(cx: 100, cy: isEgg ? 68 : 84),
+      ShopItemType.glasses => _Anchor(
+          cx: 100,
+          cy: isEgg ? 116 : 122,
+          gap: isEgg ? 12 : 14,
+        ),
+      ShopItemType.hairpin =>
+        _Anchor(cx: isEgg ? 132 : 130, cy: isEgg ? 94 : 100),
+      ShopItemType.accessory => _Anchor(cx: 100, cy: isEgg ? 162 : 156),
+      ShopItemType.misc => const _Anchor(cx: 164, cy: 104),
+      ShopItemType.skin || ShopItemType.background => null,
     };
   }
 
   // ── 개별 아이템 SVG 단편 (그라디언트 + 하이라이트로 입체감) ──────
+  // 안경류는 렌즈 중심을 [_Anchor.gap](눈 간격)에 맞춰 실제로 눈 위에 걸치고,
+  // 모자류는 anchor(착모점) 기준 base 가 y≈+2 에 오도록 그려 머리에 딱 앉는다.
 
-  String _glassesRound(_Anchor a) => '''
+  String _glassesRound(_Anchor a) {
+    final g = a.gap;
+    return '''
   <g transform="translate(${a.cx} ${a.cy})">
-    <circle cx="-10" cy="0" r="7.5" fill="#FFFFFF" fill-opacity="0.16" stroke="#2B2B2B" stroke-width="2.5"/>
-    <circle cx="10"  cy="0" r="7.5" fill="#FFFFFF" fill-opacity="0.16" stroke="#2B2B2B" stroke-width="2.5"/>
-    <line x1="-2.5" y1="0" x2="2.5" y2="0" stroke="#2B2B2B" stroke-width="2"/>
-    <path d="M-14 -3 Q-11 -5.5 -8 -4.5" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" opacity="0.7" fill="none"/>
-    <path d="M6 -3 Q9 -5.5 12 -4.5" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" opacity="0.7" fill="none"/>
+    <line x1="${-(g + 8)}" y1="0" x2="${-(g + 14)}" y2="-3.5" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round"/>
+    <line x1="${g + 8}" y1="0" x2="${g + 14}" y2="-3.5" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${-g}" cy="0" r="8.5" fill="#FFFFFF" fill-opacity="0.16" stroke="#2B2B2B" stroke-width="2.6"/>
+    <circle cx="$g" cy="0" r="8.5" fill="#FFFFFF" fill-opacity="0.16" stroke="#2B2B2B" stroke-width="2.6"/>
+    <path d="M${-g + 8.5} -1.5 Q0 -4.5 ${g - 8.5} -1.5" stroke="#2B2B2B" stroke-width="2.2" fill="none"/>
+    <path d="M${-g - 4.5} -3.5 Q${-g - 1} -6.5 ${-g + 2.5} -5" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.7" fill="none"/>
+    <path d="M${g - 4.5} -3.5 Q${g - 1} -6.5 ${g + 2.5} -5" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.7" fill="none"/>
   </g>
   ''';
+  }
 
-  String _glassesHeart(_Anchor a) => '''
+  String _glassesHeart(_Anchor a) {
+    final g = a.gap;
+    return '''
   <g transform="translate(${a.cx} ${a.cy})">
-    <path d="M-16 -2 C-16 -8 -10 -10 -10 -4 C-10 -10 -4 -8 -4 -2 C-4 3 -10 8 -10 8 C-10 8 -16 3 -16 -2 Z" fill="url(#aHeartGlass)" stroke="#A23838" stroke-width="1"/>
-    <path d="M4 -2 C4 -8 10 -10 10 -4 C10 -10 16 -8 16 -2 C16 3 10 8 10 8 C10 8 4 3 4 -2 Z" fill="url(#aHeartGlass)" stroke="#A23838" stroke-width="1"/>
-    <line x1="-4" y1="-2" x2="4" y2="-2" stroke="#A23838" stroke-width="2"/>
-    <circle cx="-13" cy="-4" r="1.2" fill="#FFFFFF" opacity="0.85"/>
-    <circle cx="7" cy="-4" r="1.2" fill="#FFFFFF" opacity="0.85"/>
+    <path d="M${-g - 8} -3 C${-g - 8} -10 ${-g} -12 ${-g} -5 C${-g} -12 ${-g + 8} -10 ${-g + 8} -3 C${-g + 8} 3 ${-g} 9 ${-g} 9 C${-g} 9 ${-g - 8} 3 ${-g - 8} -3 Z" fill="url(#aHeartGlass)" stroke="#A23838" stroke-width="1.1"/>
+    <path d="M${g - 8} -3 C${g - 8} -10 $g -12 $g -5 C$g -12 ${g + 8} -10 ${g + 8} -3 C${g + 8} 3 $g 9 $g 9 C$g 9 ${g - 8} 3 ${g - 8} -3 Z" fill="url(#aHeartGlass)" stroke="#A23838" stroke-width="1.1"/>
+    <line x1="${-g + 8}" y1="-3" x2="${g - 8}" y2="-3" stroke="#A23838" stroke-width="2.2"/>
+    <circle cx="${-g - 3.5}" cy="-5" r="1.5" fill="#FFFFFF" opacity="0.85"/>
+    <circle cx="${g - 3.5}" cy="-5" r="1.5" fill="#FFFFFF" opacity="0.85"/>
   </g>
   ''';
+  }
 
-  String _glassesSun(_Anchor a) => '''
+  String _glassesSun(_Anchor a) {
+    final g = a.gap;
+    return '''
   <g transform="translate(${a.cx} ${a.cy})">
-    <rect x="-17" y="-6" width="14" height="11" rx="3" fill="url(#aSunLens)"/>
-    <rect x="3" y="-6" width="14" height="11" rx="3" fill="url(#aSunLens)"/>
-    <line x1="-3" y1="-3" x2="3" y2="-3" stroke="#2B2B2B" stroke-width="2"/>
-    <line x1="-14" y1="-4" x2="-7" y2="-4" stroke="#9C9C9C" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
-    <line x1="6" y1="-4" x2="13" y2="-4" stroke="#9C9C9C" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+    <line x1="${-(g + 8)}" y1="-2" x2="${-(g + 14)}" y2="-5" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round"/>
+    <line x1="${g + 8}" y1="-2" x2="${g + 14}" y2="-5" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round"/>
+    <rect x="${-g - 8.5}" y="-7" width="17" height="13" rx="3.5" fill="url(#aSunLens)"/>
+    <rect x="${g - 8.5}" y="-7" width="17" height="13" rx="3.5" fill="url(#aSunLens)"/>
+    <path d="M${-g + 8.5} -3.5 Q0 -6.5 ${g - 8.5} -3.5" stroke="#2B2B2B" stroke-width="2.4" fill="none"/>
+    <line x1="${-g - 5}" y1="-4" x2="${-g + 3}" y2="-4" stroke="#9C9C9C" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+    <line x1="${g - 5}" y1="-4" x2="${g + 3}" y2="-4" stroke="#9C9C9C" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
   </g>
   ''';
+  }
+
+  String _glassesStar(_Anchor a) {
+    final g = a.gap;
+    String lens(double cx) =>
+        '<path d="M$cx -10 L${cx + 2.9} -3.1 L${cx + 10.4} -3.1 L${cx + 4.4} 1.8 L${cx + 6.4} 9.3 L$cx 4.9 L${cx - 6.4} 9.3 L${cx - 4.4} 1.8 L${cx - 10.4} -3.1 L${cx - 2.9} -3.1 Z" '
+        'fill="url(#mGold)" fill-opacity="0.92" stroke="#B8860B" stroke-width="1.1" stroke-linejoin="round"/>';
+    return '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    ${lens(-g)}
+    ${lens(g)}
+    <line x1="${-g + 6}" y1="-3" x2="${g - 6}" y2="-3" stroke="#B8860B" stroke-width="2.2"/>
+    <circle cx="${-g - 2.5}" cy="-4.5" r="1.4" fill="#FFFFFF" opacity="0.85"/>
+    <circle cx="${g - 2.5}" cy="-4.5" r="1.4" fill="#FFFFFF" opacity="0.85"/>
+  </g>
+  ''';
+  }
 
   String _hairpinFlower(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy})">
+  <g transform="translate(${a.cx} ${a.cy}) scale(1.4) rotate(12)">
     <circle cx="0" cy="-3.2" r="3" fill="url(#mPetalA)"/>
     <circle cx="3" cy="-0.5" r="3" fill="url(#mPetalA)"/>
     <circle cx="-3" cy="-0.5" r="3" fill="url(#mPetalA)"/>
@@ -564,14 +927,14 @@ class MochiCharacterView extends StatelessWidget {
   ''';
 
   String _hairpinStar(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy})">
+  <g transform="translate(${a.cx} ${a.cy}) scale(1.4) rotate(-10)">
     <path d="M0 -7 L2.2 -2 L7 -1.5 L3.4 2.3 L4.4 7.5 L0 5 L-4.4 7.5 L-3.4 2.3 L-7 -1.5 L-2.2 -2 Z" fill="url(#mGold)" stroke="#B8860B" stroke-width="0.8"/>
     <circle cx="-1.4" cy="-2.6" r="0.9" fill="#FFFFFF" opacity="0.8"/>
   </g>
   ''';
 
   String _hairpinRibbon(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy})">
+  <g transform="translate(${a.cx} ${a.cy}) scale(1.4) rotate(-14)">
     <path d="M-8 0 Q-2 -4 0 0 Q-2 4 -8 0 Z" fill="url(#aRibbonPink)" stroke="#A23854" stroke-width="0.8"/>
     <path d="M8 0 Q2 -4 0 0 Q2 4 8 0 Z" fill="url(#aRibbonPink)" stroke="#A23854" stroke-width="0.8"/>
     <circle cx="0" cy="0" r="2" fill="#A23854"/>
@@ -579,73 +942,129 @@ class MochiCharacterView extends StatelessWidget {
   </g>
   ''';
 
+  String _hairpinClover(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy}) scale(1.35) rotate(8)">
+    <circle cx="0" cy="-3.4" r="3.1" fill="url(#mLeafL)"/>
+    <circle cx="3.4" cy="0" r="3.1" fill="url(#mLeafR)"/>
+    <circle cx="0" cy="3.4" r="3.1" fill="url(#mLeafL)"/>
+    <circle cx="-3.4" cy="0" r="3.1" fill="url(#mLeafR)"/>
+    <circle cx="0" cy="0" r="1.4" fill="#3E8C33"/>
+    <circle cx="-1.2" cy="-4.2" r="0.9" fill="#FFFFFF" opacity="0.7"/>
+  </g>
+  ''';
+
   String _hatParty(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy - 32})">
-    <path d="M0 -22 L-12 6 L12 6 Z" fill="url(#aCone)" stroke="#A23838" stroke-width="1"/>
-    <path d="M-1.5 -18 L-8 3" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" opacity="0.45"/>
-    <circle cx="0" cy="-23" r="3" fill="url(#mGoldR)"/>
-    <circle cx="-0.8" cy="-23.8" r="0.9" fill="#FFFFFF" opacity="0.85"/>
-    <circle cx="-6" cy="-4" r="1.6" fill="#FFFFFF"/>
-    <circle cx="6" cy="-12" r="1.6" fill="#FFFFFF"/>
+  <g transform="translate(${a.cx} ${a.cy})">
+    <path d="M0 -28 L-13 2 L13 2 Z" fill="url(#aCone)" stroke="#A23838" stroke-width="1"/>
+    <path d="M-1.5 -23 L-9 -1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+    <circle cx="0" cy="-29" r="3.4" fill="url(#mGoldR)"/>
+    <circle cx="-0.9" cy="-29.9" r="1" fill="#FFFFFF" opacity="0.85"/>
+    <circle cx="-6" cy="-8" r="1.7" fill="#FFFFFF"/>
+    <circle cx="6" cy="-16" r="1.7" fill="#FFFFFF"/>
+    <path d="M-13 2 Q0 6 13 2" stroke="#A23838" stroke-width="1" fill="none" opacity="0.6"/>
   </g>
   ''';
 
   String _hatChef(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy - 30})">
-    <ellipse cx="-6" cy="-12" rx="7" ry="6" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
-    <ellipse cx="6" cy="-12" rx="7" ry="6" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
-    <ellipse cx="0" cy="-15" rx="7" ry="6" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
-    <rect x="-12" y="-6" width="24" height="10" rx="2" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
-    <ellipse cx="-3" cy="-17" rx="3" ry="1.8" fill="#FFFFFF" opacity="0.9"/>
+  <g transform="translate(${a.cx} ${a.cy})">
+    <ellipse cx="-7" cy="-18" rx="8" ry="7" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
+    <ellipse cx="7" cy="-18" rx="8" ry="7" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
+    <ellipse cx="0" cy="-22" rx="8" ry="7" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
+    <rect x="-13" y="-12" width="26" height="14" rx="3" fill="url(#aChef)" stroke="#9CA3AF" stroke-width="1"/>
+    <ellipse cx="-3" cy="-24" rx="3.4" ry="2" fill="#FFFFFF" opacity="0.9"/>
+    <line x1="-13" y1="-2.5" x2="13" y2="-2.5" stroke="#C9CDD6" stroke-width="1.2"/>
+  </g>
+  ''';
+
+  String _hatStraw(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <ellipse cx="0" cy="0.5" rx="22" ry="5.5" fill="url(#aStraw)" stroke="#C9A55A" stroke-width="1"/>
+    <path d="M-13 -1 C-13 -12 -8 -17 0 -17 C8 -17 13 -12 13 -1 Z" fill="url(#aStraw)" stroke="#C9A55A" stroke-width="1"/>
+    <path d="M-12.6 -2 L12.6 -2 L12.6 -5.6 L-12.6 -5.6 Z" fill="#FF6B6B"/>
+    <path d="M-12.6 -2 L12.6 -2" stroke="#D94A4A" stroke-width="0.8"/>
+    <path d="M-8 -13 Q-3 -16 3 -15" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.55" fill="none"/>
+  </g>
+  ''';
+
+  String _hatBeret(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy}) rotate(-6)">
+    <ellipse cx="0" cy="-4" rx="16" ry="8.5" fill="url(#aBeret)" stroke="#93262E" stroke-width="1"/>
+    <ellipse cx="0" cy="0.8" rx="11.5" ry="3.4" fill="#B03038"/>
+    <line x1="0" y1="-12" x2="0" y2="-15.5" stroke="#93262E" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="0" cy="-16.5" r="1.8" fill="#B03038"/>
+    <ellipse cx="-6" cy="-8" rx="4.5" ry="2.4" fill="#FFFFFF" opacity="0.4" transform="rotate(-14 -6 -8)"/>
+  </g>
+  ''';
+
+  String _hatWizard(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <path d="M0 -36 C5 -24 11 -12 14 0 L-14 0 C-11 -12 -5 -24 0 -36 Z" fill="url(#aWiz)" stroke="#4A3AA8" stroke-width="1"/>
+    <ellipse cx="0" cy="1" rx="19" ry="4.5" fill="url(#aWiz)" stroke="#4A3AA8" stroke-width="1"/>
+    <path d="M-12.5 -4 L12.5 -4 L13.4 -0.5 L-13.4 -0.5 Z" fill="url(#mGold)"/>
+    <path d="M-4 -14 L-2.8 -11.4 L-0.2 -11.4 L-2.3 -9.8 L-1.6 -7.2 L-4 -8.8 L-6.4 -7.2 L-5.7 -9.8 L-7.8 -11.4 L-5.2 -11.4 Z" fill="#FFF59D"/>
+    <path d="M5 -22 L5.9 -20 L7.9 -20 L6.3 -18.8 L6.9 -16.8 L5 -18 L3.1 -16.8 L3.7 -18.8 L2.1 -20 L4.1 -20 Z" fill="#FFF59D"/>
+    <circle cx="0" cy="-37" r="2.2" fill="url(#mGoldR)"/>
+    <path d="M-4 -28 Q-1 -31 2 -29" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" opacity="0.5" fill="none"/>
   </g>
   ''';
 
   String _bowtie(_Anchor a) => '''
   <g transform="translate(${a.cx} ${a.cy})">
-    <path d="M-14 -4 L-2 0 L-14 4 Z" fill="url(#aBow)" stroke="#5A1F30" stroke-width="0.8"/>
-    <path d="M14 -4 L2 0 L14 4 Z" fill="url(#aBow)" stroke="#5A1F30" stroke-width="0.8"/>
-    <rect x="-3" y="-3" width="6" height="6" rx="1.4" fill="#5A1F30"/>
-    <rect x="-2" y="-2" width="2.4" height="2.4" rx="0.8" fill="#FFFFFF" opacity="0.35"/>
+    <path d="M-16 -5.5 L-2.5 0 L-16 5.5 Z" fill="url(#aBow)" stroke="#5A1F30" stroke-width="0.9"/>
+    <path d="M16 -5.5 L2.5 0 L16 5.5 Z" fill="url(#aBow)" stroke="#5A1F30" stroke-width="0.9"/>
+    <rect x="-3.4" y="-3.4" width="6.8" height="6.8" rx="1.6" fill="#5A1F30"/>
+    <rect x="-2.3" y="-2.3" width="2.8" height="2.8" rx="0.9" fill="#FFFFFF" opacity="0.35"/>
   </g>
   ''';
 
   String _scarf(_Anchor a) => '''
   <g transform="translate(${a.cx} ${a.cy})">
-    <path d="M-20 -4 Q0 -10 20 -4 L20 4 Q0 -2 -20 4 Z" fill="url(#aScarf)" stroke="#2C5BA6" stroke-width="0.8"/>
-    <path d="M-8 4 L-12 22 L-4 18 Z" fill="url(#aScarf)" stroke="#2C5BA6" stroke-width="0.8"/>
-    <path d="M-16 -4 Q0 -9 16 -4" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.5" fill="none"/>
+    <path d="M-21 -4 Q0 -10 21 -4 L21 4 Q0 -2 -21 4 Z" fill="url(#aScarf)" stroke="#2C5BA6" stroke-width="0.8"/>
+    <path d="M-9 4 L-13 20 L-5 16 Z" fill="url(#aScarf)" stroke="#2C5BA6" stroke-width="0.8"/>
+    <path d="M-17 -4 Q0 -9 17 -4" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.5" fill="none"/>
   </g>
   ''';
 
   String _balloon(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy - 30})">
+  <g transform="translate(${a.cx} ${a.cy - 34})">
     <ellipse cx="0" cy="0" rx="14" ry="18" fill="url(#aBalloon)" stroke="#B8860B" stroke-width="0.8"/>
     <ellipse cx="-5" cy="-7" rx="4.5" ry="7" fill="#FFFFFF" opacity="0.5" transform="rotate(-18 -5 -7)"/>
     <path d="M-2 17 L0 22 L2 17 Z" fill="#B8860B"/>
-    <path d="M0 22 Q-4 36 4 50" stroke="#9CA3AF" stroke-width="1.2" fill="none"/>
+    <path d="M0 22 Q-4 40 4 56" stroke="#9CA3AF" stroke-width="1.2" fill="none"/>
   </g>
   ''';
 
   String _balloonHeart(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy - 30})">
+  <g transform="translate(${a.cx} ${a.cy - 34})">
     <path d="M0 18 C0 7 -15 5 -15 -5 C-15 -13 -5 -13 0 -5 C5 -13 15 -13 15 -5 C15 5 0 7 0 18 Z" fill="url(#aBalloonHeart)" stroke="#A23838" stroke-width="0.8"/>
     <ellipse cx="-7" cy="-6" rx="3.4" ry="4.6" fill="#FFFFFF" opacity="0.5" transform="rotate(-22 -7 -6)"/>
-    <path d="M0 18 Q-4 34 4 50" stroke="#9CA3AF" stroke-width="1.2" fill="none"/>
+    <path d="M0 18 Q-4 38 4 56" stroke="#9CA3AF" stroke-width="1.2" fill="none"/>
   </g>
   ''';
 
   String _necklace(_Anchor a) => '''
   <g transform="translate(${a.cx} ${a.cy})">
-    <path d="M-18 -3 Q0 14 18 -3" stroke="#E8E8EE" stroke-width="2" fill="none"/>
-    <circle cx="-8" cy="4" r="2" fill="#F2F2F7" stroke="#C9CBD6" stroke-width="0.6"/>
-    <circle cx="8" cy="4" r="2" fill="#F2F2F7" stroke="#C9CBD6" stroke-width="0.6"/>
-    <circle cx="0" cy="9" r="3.2" fill="url(#mGoldR)" stroke="#C9A227" stroke-width="0.7"/>
-    <circle cx="-0.9" cy="8.1" r="0.9" fill="#FFFFFF" opacity="0.85"/>
+    <path d="M-19 -3 Q0 15 19 -3" stroke="#E8E8EE" stroke-width="2.2" fill="none"/>
+    <circle cx="-9" cy="4.5" r="2.2" fill="#F2F2F7" stroke="#C9CBD6" stroke-width="0.6"/>
+    <circle cx="9" cy="4.5" r="2.2" fill="#F2F2F7" stroke="#C9CBD6" stroke-width="0.6"/>
+    <circle cx="0" cy="10" r="3.6" fill="url(#mGoldR)" stroke="#C9A227" stroke-width="0.7"/>
+    <circle cx="-1" cy="9" r="1" fill="#FFFFFF" opacity="0.85"/>
+  </g>
+  ''';
+
+  String _bellNecklace(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy})">
+    <path d="M-18 -3 Q0 12 18 -3" stroke="#C46A4A" stroke-width="2.4" fill="none"/>
+    <circle cx="0" cy="9" r="5" fill="url(#mGoldR)" stroke="#B8860B" stroke-width="0.8"/>
+    <line x1="-4.6" y1="9.5" x2="4.6" y2="9.5" stroke="#B8860B" stroke-width="1"/>
+    <line x1="0" y1="9.5" x2="0" y2="13" stroke="#B8860B" stroke-width="1.4" stroke-linecap="round"/>
+    <circle cx="0" cy="13.6" r="1.1" fill="#B8860B"/>
+    <circle cx="-1.6" cy="7" r="1.2" fill="#FFFFFF" opacity="0.85"/>
   </g>
   ''';
 
   String _starCharm(_Anchor a) => '''
-  <g transform="translate(${a.cx} ${a.cy})">
+  <g transform="translate(${a.cx} ${a.cy}) scale(1.25)">
     <path d="M0 -9 L2.6 -2.6 L9 -2.6 L3.8 1.6 L5.6 8 L0 4.2 L-5.6 8 L-3.8 1.6 L-9 -2.6 L-2.6 -2.6 Z" fill="url(#mGold)" stroke="#B8860B" stroke-width="0.8"/>
     <circle cx="0" cy="-0.5" r="1.6" fill="#FFF3B0"/>
     <circle cx="-1.8" cy="-3.6" r="0.9" fill="#FFFFFF" opacity="0.8"/>
@@ -653,16 +1072,46 @@ class MochiCharacterView extends StatelessWidget {
   ''';
 
   String _flowerSide(_Anchor a) => '''
-  <g transform="translate(${a.cx - 6} ${a.cy + 22})">
-    <line x1="0" y1="0" x2="0" y2="20" stroke="#4E9C41" stroke-width="2"/>
-    <line x1="-0.7" y1="2" x2="-0.7" y2="18" stroke="#83CF74" stroke-width="0.8" opacity="0.8"/>
-    <circle cx="0" cy="0" r="5" fill="url(#mPetalB)"/>
-    <circle cx="4" cy="-3" r="5" fill="url(#mPetalB)"/>
-    <circle cx="-4" cy="-3" r="5" fill="url(#mPetalB)"/>
-    <circle cx="2" cy="3" r="5" fill="url(#mPetalB)"/>
-    <circle cx="-2" cy="3" r="5" fill="url(#mPetalB)"/>
-    <circle cx="0" cy="0" r="2.2" fill="url(#mFlowerCore)"/>
-    <circle cx="-2" cy="-5" r="1.3" fill="#FFFFFF" opacity="0.65"/>
+  <g transform="translate(${a.cx - 4} ${a.cy + 18})">
+    <line x1="0" y1="0" x2="0" y2="44" stroke="#4E9C41" stroke-width="2.2"/>
+    <line x1="-0.8" y1="3" x2="-0.8" y2="40" stroke="#83CF74" stroke-width="0.9" opacity="0.8"/>
+    <path d="M0 26 Q8 20 12 24 Q7 29 0 26 Z" fill="url(#mLeafR)"/>
+    <circle cx="0" cy="0" r="5.5" fill="url(#mPetalB)"/>
+    <circle cx="4.4" cy="-3.3" r="5.5" fill="url(#mPetalB)"/>
+    <circle cx="-4.4" cy="-3.3" r="5.5" fill="url(#mPetalB)"/>
+    <circle cx="2.2" cy="3.3" r="5.5" fill="url(#mPetalB)"/>
+    <circle cx="-2.2" cy="3.3" r="5.5" fill="url(#mPetalB)"/>
+    <circle cx="0" cy="0" r="2.4" fill="url(#mFlowerCore)"/>
+    <circle cx="-2.2" cy="-5.5" r="1.4" fill="#FFFFFF" opacity="0.65"/>
+  </g>
+  ''';
+
+  String _butterfly(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy - 14}) rotate(-10)">
+    <ellipse cx="-5.5" cy="-3" rx="6" ry="4.5" fill="url(#aBfly)" stroke="#D98A2B" stroke-width="0.8" transform="rotate(-24 -5.5 -3)"/>
+    <ellipse cx="5.5" cy="-3" rx="6" ry="4.5" fill="url(#aBfly)" stroke="#D98A2B" stroke-width="0.8" transform="rotate(24 5.5 -3)"/>
+    <ellipse cx="-4.5" cy="3.5" rx="4.2" ry="3.2" fill="url(#aBfly)" stroke="#D98A2B" stroke-width="0.8" transform="rotate(-40 -4.5 3.5)"/>
+    <ellipse cx="4.5" cy="3.5" rx="4.2" ry="3.2" fill="url(#aBfly)" stroke="#D98A2B" stroke-width="0.8" transform="rotate(40 4.5 3.5)"/>
+    <ellipse cx="0" cy="0" rx="1.6" ry="5" fill="#5A4632"/>
+    <path d="M-1 -4.5 Q-3.5 -8.5 -5 -9.5 M1 -4.5 Q3.5 -8.5 5 -9.5" stroke="#5A4632" stroke-width="1" stroke-linecap="round" fill="none"/>
+    <circle cx="-6" cy="-4.5" r="1.2" fill="#FFFFFF" opacity="0.75"/>
+    <circle cx="6" cy="-4.5" r="1.2" fill="#FFFFFF" opacity="0.75"/>
+  </g>
+  ''';
+
+  String _musicNotes(_Anchor a) => '''
+  <g transform="translate(${a.cx} ${a.cy - 10})">
+    <g transform="rotate(-8)">
+      <ellipse cx="-4" cy="6" rx="3.4" ry="2.6" fill="#FF8FA3" stroke="#C25A72" stroke-width="0.8"/>
+      <line x1="-0.8" y1="5.4" x2="-0.8" y2="-8" stroke="#C25A72" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M-0.8 -8 Q4 -6.5 5 -2.5" stroke="#C25A72" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    </g>
+    <g transform="translate(12 16) rotate(10)">
+      <ellipse cx="-2.8" cy="5" rx="2.8" ry="2.2" fill="#7CB1F5" stroke="#4478C8" stroke-width="0.8"/>
+      <line x1="-0.2" y1="4.5" x2="-0.2" y2="-6.5" stroke="#4478C8" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M-0.2 -6.5 Q3.4 -5.2 4.2 -2" stroke="#4478C8" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+    </g>
+    ${_sparkle(-10, -6, 2, 0.8, color: '#FCD34D')}
   </g>
   ''';
 
@@ -861,9 +1310,13 @@ class MochiCharacterView extends StatelessWidget {
 }
 
 class _Anchor {
-  const _Anchor({required this.cx, required this.cy});
+  const _Anchor({required this.cx, required this.cy, this.gap = 14});
   final double cx;
   final double cy;
+
+  /// 안경류 전용 — 얼굴 중심에서 각 눈까지의 x 간격. 렌즈가 실제 눈 위에 오도록
+  /// 단계별(EGG 는 눈이 조금 안쪽) 로 조정된다.
+  final double gap;
 }
 
 /// GLOW 단계의 추가 외부 스파클 자리. 현재 캐릭터 SVG 안에 4개 포함돼 있어
