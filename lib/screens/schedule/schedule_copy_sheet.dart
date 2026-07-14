@@ -102,10 +102,37 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
     }
   }
 
-  String _selectedLabel() {
-    if (_selected.isEmpty) return '복사할 날짜를 선택해 주세요';
-    final parts = _selected.map((d) => '${d.month}월 ${d.day}일').join(', ');
-    return '선택: $parts';
+  /// 선택한 날짜 1개를 지울 수 있는 칩. 일정 색으로 은은하게 칠한다.
+  Widget _dateChip(DateTime d) {
+    final accent = _accent;
+    return GestureDetector(
+      onTap: () => _toggle(d),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${d.month}월 ${d.day}일',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: accent,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.close_rounded,
+                size: 14, color: accent.withValues(alpha: 0.7)),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -144,26 +171,35 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
               color: AppColors.gray900,
             ),
           ),
-          const SizedBox(height: 10),
-          // 선택 날짜 목록 — 고른 순서대로. 길어지면 이 블록 안에서만 스크롤.
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 88),
-            child: SingleChildScrollView(
-              child: Text(
-                _selectedLabel(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                  height: 1.5,
-                  color:
-                      _selected.isEmpty ? AppColors.gray400 : AppColors.gray600,
+          const SizedBox(height: 6),
+          Text(
+            _selected.isEmpty
+                ? '일정을 복사할 날짜를 골라 주세요'
+                : '${_selected.length}개 날짜 선택 · 최대 ${ScheduleCopySheet.maxDates}개',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: _selected.isEmpty ? AppColors.gray400 : AppColors.gray500,
+            ),
+          ),
+          // 선택 날짜 칩 — 고른 순서대로, 탭하면 해제. 길어지면 이 블록 안에서만 스크롤.
+          if (_selected.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 76),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _selected.map(_dateChip).toList(),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 14),
           const Divider(height: 1, thickness: 1, color: AppColors.gray100),
           const SizedBox(height: 12),
           _buildMonthHeader(),
@@ -201,7 +237,7 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
                   : Text(
                       _selected.isEmpty
                           ? '날짜를 선택해 주세요'
-                          : '선택한 날짜에 일정을 복사하기',
+                          : '${_selected.length}개 날짜에 복사',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w700,
@@ -225,10 +261,16 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
             _visibleMonth =
                 DateTime(_visibleMonth.year, _visibleMonth.month - 1, 1);
           }),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child:
-                Icon(Icons.chevron_left, size: 24, color: AppColors.gray500),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: AppColors.gray50,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.chevron_left,
+                size: 20, color: AppColors.gray600),
           ),
         ),
         SizedBox(
@@ -250,10 +292,16 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
             _visibleMonth =
                 DateTime(_visibleMonth.year, _visibleMonth.month + 1, 1);
           }),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child:
-                Icon(Icons.chevron_right, size: 24, color: AppColors.gray500),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: AppColors.gray50,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.chevron_right,
+                size: 20, color: AppColors.gray600),
           ),
         ),
       ],
