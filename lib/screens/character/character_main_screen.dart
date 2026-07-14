@@ -1414,8 +1414,8 @@ class _MochiCaptureCard extends StatelessWidget {
   }
 }
 
-/// 배경 + 모찌만 — 글자 없이 모서리 둥글지 않게 꽉 채운 내보내기용.
-/// 스킨 색을 가득 찬 정사각형 배경으로 깔고, 그 위에 모찌 본체(투명 배경)만 얹는다.
+/// 배경 + 모찌만 — 글자 없이 꽉 채운 내보내기용. 장착된 배경 씬 위에 꾸민 모찌를
+/// 그대로 캡처한다 (squircle 바깥은 스킨 톤으로 채워 모서리 빈틈을 없앤다).
 class _MochiCleanCard extends StatelessWidget {
   const _MochiCleanCard({required this.state});
   final CharacterState state;
@@ -1432,7 +1432,6 @@ class _MochiCleanCard extends StatelessWidget {
         appearance: appearance,
         stage: state.stage,
         size: 360,
-        part: MochiCharacterPart.body,
       ),
     );
   }

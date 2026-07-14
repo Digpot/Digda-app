@@ -30,6 +30,7 @@ enum CharacterStage {
 /// 상점 아이템 분류. 서버 [ShopItemType] enum 키와 일치.
 enum ShopItemType {
   skin,
+  background,
   hat,
   glasses,
   hairpin,
@@ -49,6 +50,7 @@ enum ShopItemType {
 
   String get displayName => switch (this) {
         ShopItemType.skin => '스킨',
+        ShopItemType.background => '배경',
         ShopItemType.hat => '모자',
         ShopItemType.glasses => '안경',
         ShopItemType.hairpin => '머리핀',
@@ -141,6 +143,16 @@ class CharacterState {
       ),
     );
     return skin.accentColor ?? '#FF6B6B';
+  }
+
+  /// 현재 장착된 배경 asset key. 미장착(구버전 서버 포함)이면 기본 풀밭 풍경.
+  String get backgroundAssetKey {
+    for (final e in equippedItems) {
+      if (e.itemType == ShopItemType.background && e.assetKey.isNotEmpty) {
+        return e.assetKey;
+      }
+    }
+    return 'bg/meadow';
   }
 
   /// 현재 장착된 스킨 asset key. 렌더러가 패턴(판다 등) 식별에 사용.
