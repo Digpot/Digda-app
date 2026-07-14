@@ -76,6 +76,96 @@ void main() {
       final view = MochiCharacterView(appearance: panda, stage: e.key);
       buf.write(card(view.debugSvgMarkup(), '${e.value} (panda)'));
     }
+    // 배경 씬 — 상점에서 파는 배경 6종을 코랄 BLOOM 모찌 기준으로 미리보기.
+    const bgLabels = {
+      'bg/meadow': 'BG — 풀밭 언덕 (기본)',
+      'bg/sakura': 'BG — 벚꽃동산',
+      'bg/beach': 'BG — 바닷가',
+      'bg/night': 'BG — 밤하늘',
+      'bg/winter': 'BG — 눈 내리는 언덕',
+      'bg/space': 'BG — 우주 여행',
+    };
+    buf.write('</div>\n<h2>배경 씬 — 6종</h2>\n<div class="row">\n');
+    for (final e in bgLabels.entries) {
+      final view = MochiCharacterView(
+        appearance: MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          backgroundAssetKey: e.key,
+        ),
+        stage: CharacterStage.bloom,
+      );
+      buf.write(card(view.debugSvgMarkup(), e.value));
+    }
+
+    // 아이템 착용 미리보기 — 사이즈/좌표가 본체와 맞는지 눈으로 검수하는 용도.
+    const itemLabels = {
+      'item/glasses_round': ShopItemType.glasses,
+      'item/glasses_heart': ShopItemType.glasses,
+      'item/glasses_sun': ShopItemType.glasses,
+      'item/glasses_star': ShopItemType.glasses,
+      'item/hairpin_star': ShopItemType.hairpin,
+      'item/hairpin_ribbon': ShopItemType.hairpin,
+      'item/hairpin_flower': ShopItemType.hairpin,
+      'item/hairpin_clover': ShopItemType.hairpin,
+      'item/hat_party': ShopItemType.hat,
+      'item/hat_chef': ShopItemType.hat,
+      'item/hat_straw': ShopItemType.hat,
+      'item/hat_beret': ShopItemType.hat,
+      'item/hat_wizard': ShopItemType.hat,
+      'item/bowtie': ShopItemType.accessory,
+      'item/scarf': ShopItemType.accessory,
+      'item/necklace': ShopItemType.accessory,
+      'item/bell': ShopItemType.accessory,
+      'item/balloon': ShopItemType.misc,
+      'item/balloon_heart': ShopItemType.misc,
+      'item/flower': ShopItemType.misc,
+      'item/star': ShopItemType.misc,
+      'item/butterfly': ShopItemType.misc,
+      'item/music_note': ShopItemType.misc,
+    };
+    buf.write('</div>\n<h2>아이템 착용 — BLOOM 기준</h2>\n<div class="row">\n');
+    for (final e in itemLabels.entries) {
+      final view = MochiCharacterView(
+        appearance: MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          overlays: [
+            EquippedItem(
+              itemType: e.value,
+              itemKey: e.key,
+              displayName: e.key,
+              assetKey: e.key,
+              layerOrder: 0,
+            ),
+          ],
+        ),
+        stage: CharacterStage.bloom,
+      );
+      buf.write(card(view.debugSvgMarkup(), e.key));
+    }
+    // EGG 단계 착용 검수 — 앵커가 단계별로 달라 알 모찌도 함께 확인한다.
+    buf.write('</div>\n<h2>아이템 착용 — EGG 기준</h2>\n<div class="row">\n');
+    for (final e in itemLabels.entries) {
+      final view = MochiCharacterView(
+        appearance: MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          overlays: [
+            EquippedItem(
+              itemType: e.value,
+              itemKey: e.key,
+              displayName: e.key,
+              assetKey: e.key,
+              layerOrder: 0,
+            ),
+          ],
+        ),
+        stage: CharacterStage.egg,
+      );
+      buf.write(card(view.debugSvgMarkup(), '${e.key} (egg)'));
+    }
+
     buf.write('</div>\n<h2>디코 — 3D 렌더</h2>\n<div class="row">\n');
     for (final e in dikoLabels.entries) {
       buf.write(

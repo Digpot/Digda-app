@@ -916,7 +916,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           children: [
             _MoreMenuRow(
               icon: Icons.copy_outlined,
-              label: '여러 날짜에 복사하기',
+              label: '날짜 복사',
               onTap: _onCopyTap,
             ),
             const Divider(

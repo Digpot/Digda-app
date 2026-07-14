@@ -25,18 +25,35 @@ void main() {
     'item/glasses_round',
     'item/glasses_heart',
     'item/glasses_sun',
+    'item/glasses_star',
     'item/hairpin_star',
     'item/hairpin_ribbon',
     'item/hairpin_flower',
+    'item/hairpin_clover',
     'item/hat_party',
     'item/hat_chef',
+    'item/hat_straw',
+    'item/hat_beret',
+    'item/hat_wizard',
     'item/bowtie',
     'item/scarf',
     'item/necklace',
+    'item/bell',
     'item/balloon',
     'item/balloon_heart',
     'item/flower',
     'item/star',
+    'item/butterfly',
+    'item/music_note',
+  ];
+
+  const allBackgrounds = [
+    'bg/meadow',
+    'bg/sakura',
+    'bg/beach',
+    'bg/night',
+    'bg/winter',
+    'bg/space',
   ];
 
   ShopItemType typeFor(String assetKey) {
@@ -45,7 +62,8 @@ void main() {
     if (assetKey.contains('hat')) return ShopItemType.hat;
     if (assetKey.contains('bowtie') ||
         assetKey.contains('scarf') ||
-        assetKey.contains('necklace')) {
+        assetKey.contains('necklace') ||
+        assetKey.contains('bell')) {
       return ShopItemType.accessory;
     }
     return ShopItemType.misc;
@@ -102,6 +120,37 @@ void main() {
         MochiCharacterView(appearance: appearance),
       );
     }
+  });
+
+  testWidgets('모찌 — 전 배경 씬 × 전 단계 렌더', (tester) async {
+    for (final bg in allBackgrounds) {
+      for (final stage in CharacterStage.values) {
+        await pumpCharacter(
+          tester,
+          MochiCharacterView(
+            appearance: MochiAppearance(
+              skinHex: '#FF6B6B',
+              skinAssetKey: 'skin/coral',
+              backgroundAssetKey: bg,
+            ),
+            stage: stage,
+          ),
+        );
+      }
+    }
+  });
+
+  testWidgets('모찌 — 알 수 없는 배경 키는 풀밭으로 폴백', (tester) async {
+    await pumpCharacter(
+      tester,
+      const MochiCharacterView(
+        appearance: MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          backgroundAssetKey: 'bg/unknown',
+        ),
+      ),
+    );
   });
 
   testWidgets('모찌 — 비정상 skinHex 는 코랄로 폴백', (tester) async {
