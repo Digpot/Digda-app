@@ -10,19 +10,19 @@ import 'character_speech_bubble.dart';
 import 'diko_character_view.dart';
 import 'mochi_character_view.dart';
 
-/// 메인 화면에서 모찌(중앙)와 디코(우측 작게)를 함께 보여주는 스테이지.
+/// 메인 화면의 모찌 홈 씬 — 세로 직사각형 "키우기 방" 카드.
 ///
-/// 디코는 [state.dikoUnlocked]==true 일 때만 렌더. 두 캐릭터 사이에는 둘이 번갈아
-/// 대화하는 듯한 [_MochiDikoChat] 말풍선이 떠 있는다 (showChat).
-class MochiDikoStage extends StatelessWidget {
-  const MochiDikoStage({
+/// 폭을 가득 채우는 배경 씬(하늘~언덕) 안에 모찌가 서 있고, 하단 잔디 위에
+/// 돌봄 툴바(물주기·간식·공놀이·목욕)가 떠 있다. 각 버튼은 모찌의 전용
+/// 리액션(감정+점프+파티클+대사)을 트리거하고 쓰다듬기와 같은 경험치 콜백을
+/// 공유한다. 디코([state.dikoUnlocked])는 카드 우하단에 함께 산다.
+class MochiHomeScene extends StatelessWidget {
+  const MochiHomeScene({
     super.key,
     required this.state,
     required this.mochiController,
     required this.onPet,
     this.onDikoTap,
-    this.mochiSize = 220,
-    this.dikoSize = 96,
     this.showChat = true,
   });
 
@@ -33,92 +33,181 @@ class MochiDikoStage extends StatelessWidget {
   /// 디코를 탭했을 때 부모에 알리는 콜백 (선택). 디코 자체의 반응 애니메이션은
   /// [_DikoIdleFloat] 내부에서 처리되며, 이 콜백은 부가 동작(예: 메시지)용.
   final VoidCallback? onDikoTap;
-  final double mochiSize;
-  final double dikoSize;
   final bool showChat;
+
+  /// 씬 세로 비율 — 200×260 직사각형 (정사각형 대비 1.3배).
+  static const double _heightFactor = 1.3;
 
   @override
   Widget build(BuildContext context) {
-    // 디코는 모찌 오른쪽으로 dikoPeek 만큼 삐져나오게 둔다. 예전엔 컨테이너 폭을
-    // mochiSize 로 두고 디코를 right:-dikoPeek 로 바깥에 그렸는데, Flutter 는 부모
-    // (SizedBox) 경계 '밖' 영역의 포인터를 자식에게 전달하지 않으므로(Clip.none 은
-    // 페인팅만 허용, 히트테스트는 부모 크기로 잘림) 디코의 보이는 부분 대부분이
-    // 탭 불가였다 — "디코를 터치해도 반응이 없다"의 원인.
-    //
-    // 그래서 컨테이너 폭에 dikoPeek 를 더해 디코를 '안쪽'에 완전히 담고(히트테스트 OK),
-    // 늘어난 폭만큼 부모 Center 가 왼쪽으로 밀어내는 것을 Transform 으로 되돌려
-    // 모찌·디코·말풍선이 기존과 동일한 화면 위치에 오도록 한다.
-    final dikoPeek = dikoSize * 0.65;
-    final containerWidth =
-        state.dikoUnlocked ? mochiSize + dikoPeek : mochiSize;
-    // 상단 영역(말풍선용) 56px:
-    //   - 디코 해금 전: 모찌 자체의 자동 말풍선(showBubble=true)이 위쪽 56px 를 사용.
-    //   - 디코 해금 후: 모찌 자동 말풍선은 끄고(showBubble=false) 같은 56px 를
-    //     Mochi↔Diko 채팅 밴드가 사용. 두 경우 모두 모찌 본체는 56만큼 내려 그려야
-    //     상단 말풍선과 겹치지 않는다.
-    const topBand = 56.0;
-    final mochiSelfHeight =
-        mochiSize + 24 + (state.dikoUnlocked ? 0 : topBand);
-    final totalHeight = state.dikoUnlocked
-        ? (topBand + mochiSize + 24)
-        : mochiSelfHeight;
-    final stage = SizedBox(
-      width: containerWidth,
-      height: totalHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: 0,
-            // 디코 해금 후 모찌 자체의 자동 말풍선을 끄면 모찌가 컨테이너 최상단부터
-            // 그려지므로, 상단 56px 채팅 밴드를 위해 명시적으로 내려준다.
-            top: state.dikoUnlocked ? topBand : 0,
-            child: AnimatedMochiWidget(
-              appearance: MochiAppearance.fromState(state),
-              stage: state.stage,
-              size: mochiSize,
-              happiness: state.progress,
-              controller: mochiController,
-              onPet: onPet,
-              // 디코가 등장한 뒤로는 둘이 함께 대화하는 새 말풍선 시스템(_MochiDikoChat)이
-              // 그 위에 떠 있으므로 모찌 단독 자동 말풍선은 끈다.
-              showBubble: !state.dikoUnlocked,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final canvasH = w * _heightFactor;
+        final dikoSize = w * 0.28;
+        // AnimatedMochiWidget 은 캔버스 아래 24px 여유(점프/파티클용)를 갖는다 —
+        // 카드 안 요소들의 bottom 좌표는 그만큼 보정한다.
+        const extraBottom = 24.0;
+        return SizedBox(
+          width: w,
+          height: canvasH + extraBottom,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedMochiWidget(
+                appearance: MochiAppearance.fromState(state),
+                stage: state.stage,
+                size: w,
+                heightFactor: _heightFactor,
+                clipRadius: 28,
+                bubbleInBounds: true,
+                happiness: state.progress,
+                controller: mochiController,
+                onPet: onPet,
+                // 디코 등장 후엔 둘이 대화하는 채팅(_MochiDikoChat)이 하늘에 떠
+                // 있으므로 모찌 단독 자동 말풍선은 끈다 (돌봄 대사는 강제 표시됨).
+                showBubble: !state.dikoUnlocked,
+              ),
+              if (state.dikoUnlocked)
+                // 디코는 카드 우하단 잔디 위 — 돌봄 툴바 위쪽에 떠 있는다.
+                Positioned(
+                  right: 12,
+                  bottom: extraBottom + 74,
+                  child: _DikoIdleFloat(size: dikoSize, onTap: onDikoTap),
+                ),
+              if (state.dikoUnlocked && showChat)
+                // 말풍선은 각자 머리 위 — 장식이라 IgnorePointer 로 감싸 아래
+                // 캐릭터 탭(쓰다듬기·디코 반응)을 막지 않는다.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: _MochiDikoChat(
+                      stage: state.stage,
+                      mochiSize: w,
+                      dikoSize: dikoSize,
+                      dikoBottom: extraBottom + 74,
+                    ),
+                  ),
+                ),
+              // 돌봄 툴바 — 카드 하단 잔디 위.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: extraBottom + 10,
+                child: _CareToolbar(
+                  onAction: mochiController.triggerCare,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 홈 씬 하단의 돌봄 버튼 줄 — 물주기/간식/공놀이/목욕.
+class _CareToolbar extends StatelessWidget {
+  const _CareToolbar({required this.onAction});
+
+  final void Function(MochiCareAction) onAction;
+
+  static const _actions = [
+    (MochiCareAction.water, '💧', '물주기'),
+    (MochiCareAction.snack, '🍡', '간식'),
+    (MochiCareAction.play, '⚽', '공놀이'),
+    (MochiCareAction.bubble, '🫧', '목욕'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (final (action, emoji, label) in _actions)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            child: _CareButton(
+              emoji: emoji,
+              label: label,
+              onTap: () => onAction(action),
             ),
           ),
-          if (state.dikoUnlocked)
-            // 모찌 오른쪽에 디코가 살짝 튀어나오게. 컨테이너가 dikoPeek 만큼 더 넓어졌으니
-            // right:0 이면 예전 right:-dikoPeek 과 같은 절대 위치이면서 '안쪽'에 들어와
-            // 탭이 정상 전달된다. 모찌의 발 높이에 맞춰 정렬.
-            Positioned(
-              right: 0,
-              bottom: 16,
-              child: _DikoIdleFloat(size: dikoSize, onTap: onDikoTap),
+      ],
+    );
+  }
+}
+
+class _CareButton extends StatefulWidget {
+  const _CareButton({
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_CareButton> createState() => _CareButtonState();
+}
+
+class _CareButtonState extends State<_CareButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.86 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.88),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Text(widget.emoji, style: const TextStyle(fontSize: 21)),
             ),
-          if (state.dikoUnlocked && showChat)
-            // 말풍선은 각자 자기 머리 위에서 뜬다 — 모찌 대사는 모찌 위(상단),
-            // 디코 대사는 디코 위(우측 하단)에 떠서 누가 말하는지 헷갈리지 않게 한다.
-            // 채팅 오버레이는 컨테이너 전체를 덮으므로, 버블이 모찌/디코 본체 위에
-            // 겹쳐도 탭(쓰다듬기·디코 반응)이 항상 아래 캐릭터로 전달되도록
-            // IgnorePointer 로 감싼다 — 말풍선 자체는 장식이라 입력이 필요 없다.
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _MochiDikoChat(
-                  stage: state.stage,
-                  mochiSize: mochiSize,
-                  dikoSize: dikoSize,
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                widget.label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  color: AppColors.gray700,
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
-    );
-    // 디코가 없을 땐 폭이 mochiSize 라 그대로 중앙 정렬. 디코가 있으면 컨테이너가
-    // 오른쪽으로 dikoPeek 만큼 넓어졌으므로, 부모 Center 가 추가로 왼쪽으로 미는
-    // dikoPeek/2 만큼 다시 오른쪽으로 보정해 모찌를 정확히 화면 중앙에 둔다.
-    if (!state.dikoUnlocked) return stage;
-    return Transform.translate(
-      offset: Offset(dikoPeek / 2, 0),
-      child: stage,
     );
   }
 }
@@ -246,10 +335,14 @@ class _MochiDikoChat extends StatefulWidget {
     required this.stage,
     required this.mochiSize,
     required this.dikoSize,
+    this.dikoBottom = 16,
   });
   final CharacterStage stage;
   final double mochiSize;
   final double dikoSize;
+
+  /// 디코 본체가 컨테이너 하단에서 떠 있는 높이 — 디코 말풍선의 기준점.
+  final double dikoBottom;
 
   @override
   State<_MochiDikoChat> createState() => _MochiDikoChatState();
@@ -408,7 +501,7 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
           // 기존(폭 mochiSize 기준 right:-dikoSize*0.62)과 동일한 화면 위치 부근에 오도록
           // dikoPeek 만큼 안쪽으로 당긴 지점(+0.03)을 기준으로 라인마다 살짝 변주한다.
           right: dikoSize * _dikoRightFactor,
-          bottom: 16 + dikoSize + 14 + _dikoLift,
+          bottom: widget.dikoBottom + dikoSize + 14 + _dikoLift,
           child: _slot(
             show: isDiko,
             line: line,
