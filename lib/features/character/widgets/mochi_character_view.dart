@@ -98,6 +98,8 @@ class MochiCharacterView extends StatelessWidget {
     this.expression = MochiEmotion.idle,
     this.eyeOpenness = 1.0,
     this.part = MochiCharacterPart.full,
+    this.heightFactor = 1.0,
+    this.clipRadius = 48,
   });
 
   final MochiAppearance appearance;
@@ -111,12 +113,21 @@ class MochiCharacterView extends StatelessWidget {
   /// 렌더할 레이어. 기본 [MochiCharacterPart.full].
   final MochiCharacterPart part;
 
+  /// 세로 확장 배율 — 1.0 이면 기존 정사각형(200×200), 1.3 이면 200×260 세로
+  /// 직사각형 씬. 캐릭터/지면은 상단 200 좌표계에 그대로 두고, 하늘과 언덕
+  /// 그라디언트가 아래로 자연스럽게 이어져 홈 화면의 "키우기 방" 느낌을 만든다.
+  final double heightFactor;
+
+  /// 씬 클리핑 모서리 반경. 정사각형 아바타는 48(squircle), 홈 카드는 28 권장.
+  final double clipRadius;
+
   @override
   Widget build(BuildContext context) {
+    final h = size * heightFactor;
     return SizedBox(
       width: size,
-      height: size,
-      child: SvgPicture.string(debugSvgMarkup(), width: size, height: size),
+      height: h,
+      child: SvgPicture.string(debugSvgMarkup(), width: size, height: h),
     );
   }
 
@@ -204,13 +215,14 @@ class MochiCharacterView extends StatelessWidget {
   // ─────────────────────────────────────────
 
   /// 말랑한 구체 본체. [patches] (판다 무늬 등) 는 바디 위·림 셰이딩 아래에 끼워
-  /// 무늬도 함께 음영을 받는다.
+  /// 무늬도 함께 음영을 받는다. [bodyFill] 로 스킨별 바디 그라디언트를 바꾼다.
   static String _body3d({
     required double cx,
     required double cy,
     required double rx,
     required double ry,
     String patches = '',
+    String bodyFill = 'mBody',
   }) {
     final hlCx = (cx - rx * 0.40).toStringAsFixed(1);
     final hlCy = (cy - ry * 0.48).toStringAsFixed(1);
@@ -220,12 +232,193 @@ class MochiCharacterView extends StatelessWidget {
     final dotCy = (cy - ry * 0.68).toStringAsFixed(1);
     final dotR = (rx * 0.05).toStringAsFixed(1);
     return '''
-  <ellipse cx="$cx" cy="$cy" rx="$rx" ry="$ry" fill="url(#mBody)"/>
+  <ellipse cx="$cx" cy="$cy" rx="$rx" ry="$ry" fill="url(#$bodyFill)"/>
   $patches
   <ellipse cx="$cx" cy="$cy" rx="$rx" ry="$ry" fill="url(#mRim)"/>
   <ellipse cx="$hlCx" cy="$hlCy" rx="$hlRx" ry="$hlRy" fill="#FFFFFF" opacity="0.6" transform="rotate(-16 $hlCx $hlCy)"/>
   <circle cx="$dotCx" cy="$dotCy" r="$dotR" fill="#FFFFFF" opacity="0.75"/>
 ''';
+  }
+
+  // ─────────────────────────────────────────
+  // 스킨 패턴 시스템 — assetKey 별로 (바디 그라디언트, 본체 위 무늬, 본체 뒤 장식)
+  // 3요소를 정의한다. 새 패턴 스킨은 이 3개 switch 에 케이스 추가로 끝난다.
+  // 서버 시드(ShopItemSeeder)와 assetKey 를 반드시 동기화할 것.
+  // ─────────────────────────────────────────
+
+  /// 단계별 본체 타원 지오메트리 — 패턴 좌표 계산의 기준.
+  static ({double cx, double cy, double rx, double ry}) _bodyGeom(
+      CharacterStage stage) {
+    return switch (stage) {
+      CharacterStage.egg => (cx: 100.0, cy: 120.0, rx: 52.0, ry: 58.0),
+      CharacterStage.sprout => (cx: 100.0, cy: 124.0, rx: 46.0, ry: 40.0),
+      _ => (cx: 100.0, cy: 124.0, rx: 50.0, ry: 44.0),
+    };
+  }
+
+  /// 스킨별 바디 그라디언트 id. 무늬 없는 색상 스킨(코랄/민트 등)은 기본 흰 바디.
+  static String _skinBodyFill(String skin) {
+    return switch (skin) {
+      'skin/tiger' => 'mTigerBody',
+      'skin/cat' => 'mCatBody',
+      'skin/bee' => 'mBeeBody',
+      'skin/frog' => 'mFrogBody',
+      _ => 'mBody',
+    };
+  }
+
+  /// 본체 위(림 셰이딩 아래)에 얹는 무늬 — 판다 눈패치, 호랑이 줄무늬 등.
+  static String _skinPatches(String skin, CharacterStage stage) {
+    final g = _bodyGeom(stage);
+    final cx = g.cx;
+    final cy = g.cy;
+    final rx = g.rx;
+    final ry = g.ry;
+    final top = cy - ry;
+    switch (skin) {
+      case 'skin/panda':
+        // 눈 주변 패치 — 기존 보정값 그대로 유지 (단계별 눈 위치에 맞춤).
+        return switch (stage) {
+          CharacterStage.egg =>
+            '<ellipse cx="78" cy="106" rx="13" ry="10" fill="url(#mPanda)"/>'
+                '<ellipse cx="122" cy="106" rx="13" ry="10" fill="url(#mPanda)"/>',
+          CharacterStage.sprout =>
+            '<ellipse cx="82" cy="118" rx="9" ry="6" fill="url(#mPanda)"/>'
+                '<ellipse cx="118" cy="118" rx="9" ry="6" fill="url(#mPanda)"/>',
+          _ => '<ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
+              '<ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>',
+        };
+      case 'skin/tiger':
+        // 이마 세로 줄 3개 + 양 옆구리 줄 — 호랑이 무늬.
+        final ft = (top + ry * 0.10).toStringAsFixed(1);
+        final fb = (top + ry * 0.34).toStringAsFixed(1);
+        final fm = (top + ry * 0.30).toStringAsFixed(1);
+        final sideY1 = (cy - ry * 0.16).toStringAsFixed(1);
+        final sideY2 = (cy + ry * 0.16).toStringAsFixed(1);
+        final lx = (cx - rx * 0.92).toStringAsFixed(1);
+        final lx2 = (cx - rx * 0.62).toStringAsFixed(1);
+        final rxx = (cx + rx * 0.92).toStringAsFixed(1);
+        final rx2 = (cx + rx * 0.62).toStringAsFixed(1);
+        return '''
+    <g stroke="#5B3A1E" stroke-width="${(rx * 0.09).toStringAsFixed(1)}" stroke-linecap="round" fill="none" opacity="0.88">
+      <path d="M${cx - rx * 0.18} $ft Q${cx - rx * 0.20} $fm ${cx - rx * 0.14} $fb"/>
+      <path d="M$cx ${(top + ry * 0.06).toStringAsFixed(1)} Q$cx $fm $cx $fb"/>
+      <path d="M${cx + rx * 0.18} $ft Q${cx + rx * 0.20} $fm ${cx + rx * 0.14} $fb"/>
+      <path d="M$lx $sideY1 Q$lx2 ${(cy).toStringAsFixed(1)} $lx $sideY2"/>
+      <path d="M$rxx $sideY1 Q$rx2 ${(cy).toStringAsFixed(1)} $rxx $sideY2"/>
+    </g>''';
+      case 'skin/cat':
+        // 볼 수염 3가닥씩 — 눈/입과 겹치지 않게 볼 옆 바깥쪽에.
+        final wy = (cy + ry * 0.10).toStringAsFixed(1);
+        final wy2 = (cy + ry * 0.24).toStringAsFixed(1);
+        final wy3 = (cy + ry * 0.38).toStringAsFixed(1);
+        final lo = (cx - rx * 0.96).toStringAsFixed(1);
+        final li = (cx - rx * 0.58).toStringAsFixed(1);
+        final ro = (cx + rx * 0.96).toStringAsFixed(1);
+        final ri = (cx + rx * 0.58).toStringAsFixed(1);
+        return '''
+    <g stroke="#8A8580" stroke-width="1.6" stroke-linecap="round" opacity="0.9">
+      <line x1="$lo" y1="$wy" x2="$li" y2="${(cy + ry * 0.16).toStringAsFixed(1)}"/>
+      <line x1="$lo" y1="$wy2" x2="$li" y2="$wy2"/>
+      <line x1="$lo" y1="$wy3" x2="$li" y2="${(cy + ry * 0.32).toStringAsFixed(1)}"/>
+      <line x1="$ro" y1="$wy" x2="$ri" y2="${(cy + ry * 0.16).toStringAsFixed(1)}"/>
+      <line x1="$ro" y1="$wy2" x2="$ri" y2="$wy2"/>
+      <line x1="$ro" y1="$wy3" x2="$ri" y2="${(cy + ry * 0.32).toStringAsFixed(1)}"/>
+    </g>''';
+      case 'skin/bee':
+        // 아랫배 가로 줄무늬 2줄 — 꿀벌 밴드.
+        final b1 = (cy + ry * 0.22).toStringAsFixed(1);
+        final b1q = (cy + ry * 0.44).toStringAsFixed(1);
+        final b2 = (cy + ry * 0.58).toStringAsFixed(1);
+        final b2q = (cy + ry * 0.80).toStringAsFixed(1);
+        return '''
+    <g stroke="#4A3B1E" stroke-linecap="round" fill="none" opacity="0.82">
+      <path d="M${(cx - rx * 0.90).toStringAsFixed(1)} $b1 Q$cx $b1q ${(cx + rx * 0.90).toStringAsFixed(1)} $b1" stroke-width="${(ry * 0.20).toStringAsFixed(1)}"/>
+      <path d="M${(cx - rx * 0.66).toStringAsFixed(1)} $b2 Q$cx $b2q ${(cx + rx * 0.66).toStringAsFixed(1)} $b2" stroke-width="${(ry * 0.17).toStringAsFixed(1)}"/>
+    </g>''';
+      case 'skin/frog':
+        // 밝은 배 — 개구리 배 패치.
+        return '<ellipse cx="$cx" cy="${(cy + ry * 0.42).toStringAsFixed(1)}" '
+            'rx="${(rx * 0.52).toStringAsFixed(1)}" ry="${(ry * 0.38).toStringAsFixed(1)}" '
+            'fill="#F2FFE6" opacity="0.85"/>';
+      default:
+        return '';
+    }
+  }
+
+  /// 본체 뒤(먼저 그림)에 붙는 장식 — 귀/더듬이/눈두덩 등.
+  /// EGG 단계는 아직 부화 전이라 무늬([_skinPatches])만 얹고 장식은 생략한다.
+  static String _skinBehind(String skin, CharacterStage stage) {
+    if (stage == CharacterStage.egg) return '';
+    final g = _bodyGeom(stage);
+    final cx = g.cx;
+    final cy = g.cy;
+    final rx = g.rx;
+    final ry = g.ry;
+    switch (skin) {
+      case 'skin/tiger':
+        // 둥근 귀 + 진한 안쪽 — 정수리 좌우.
+        final earY = (cy - ry * 0.82).toStringAsFixed(1);
+        final earR = (rx * 0.22).toStringAsFixed(1);
+        final inR = (rx * 0.11).toStringAsFixed(1);
+        final lX = (cx - rx * 0.58).toStringAsFixed(1);
+        final rX = (cx + rx * 0.58).toStringAsFixed(1);
+        return '''
+    <circle cx="$lX" cy="$earY" r="$earR" fill="url(#mTigerBody)" stroke="#C98A3B" stroke-width="1"/>
+    <circle cx="$lX" cy="$earY" r="$inR" fill="#5B3A1E" opacity="0.85"/>
+    <circle cx="$rX" cy="$earY" r="$earR" fill="url(#mTigerBody)" stroke="#C98A3B" stroke-width="1"/>
+    <circle cx="$rX" cy="$earY" r="$inR" fill="#5B3A1E" opacity="0.85"/>''';
+      case 'skin/cat':
+        // 쫑긋 세모 귀 + 분홍 속귀.
+        final baseY = (cy - ry * 0.62).toStringAsFixed(1);
+        final tipY = (cy - ry * 1.18).toStringAsFixed(1);
+        final lOut = (cx - rx * 0.72).toStringAsFixed(1);
+        final lTip = (cx - rx * 0.52).toStringAsFixed(1);
+        final lIn = (cx - rx * 0.26).toStringAsFixed(1);
+        final rOut = (cx + rx * 0.72).toStringAsFixed(1);
+        final rTip = (cx + rx * 0.52).toStringAsFixed(1);
+        final rIn = (cx + rx * 0.26).toStringAsFixed(1);
+        final inTipY = (cy - ry * 1.02).toStringAsFixed(1);
+        return '''
+    <path d="M$lOut $baseY Q$lTip $tipY $lIn $baseY Z" fill="url(#mCatBody)" stroke="#B4A99E" stroke-width="1"/>
+    <path d="M${(cx - rx * 0.62).toStringAsFixed(1)} $baseY Q$lTip $inTipY ${(cx - rx * 0.36).toStringAsFixed(1)} $baseY Z" fill="url(#mCatEarIn)"/>
+    <path d="M$rOut $baseY Q$rTip $tipY $rIn $baseY Z" fill="url(#mCatBody)" stroke="#B4A99E" stroke-width="1"/>
+    <path d="M${(cx + rx * 0.62).toStringAsFixed(1)} $baseY Q$rTip $inTipY ${(cx + rx * 0.36).toStringAsFixed(1)} $baseY Z" fill="url(#mCatEarIn)"/>''';
+      case 'skin/bee':
+        // 더듬이 2개 + 반투명 날개.
+        final headY = (cy - ry * 0.92).toStringAsFixed(1);
+        final antY = (cy - ry * 1.32).toStringAsFixed(1);
+        final lA = (cx - rx * 0.24).toStringAsFixed(1);
+        final lAt = (cx - rx * 0.42).toStringAsFixed(1);
+        final rA = (cx + rx * 0.24).toStringAsFixed(1);
+        final rAt = (cx + rx * 0.42).toStringAsFixed(1);
+        final wingY = (cy - ry * 0.46).toStringAsFixed(1);
+        final wingL = (cx - rx * 0.94).toStringAsFixed(1);
+        final wingR = (cx + rx * 0.94).toStringAsFixed(1);
+        final wRx = (rx * 0.34).toStringAsFixed(1);
+        final wRy = (ry * 0.22).toStringAsFixed(1);
+        return '''
+    <ellipse cx="$wingL" cy="$wingY" rx="$wRx" ry="$wRy" fill="#FFFFFF" opacity="0.8" stroke="#D7E3F2" stroke-width="1" transform="rotate(-28 $wingL $wingY)"/>
+    <ellipse cx="$wingR" cy="$wingY" rx="$wRx" ry="$wRy" fill="#FFFFFF" opacity="0.8" stroke="#D7E3F2" stroke-width="1" transform="rotate(28 $wingR $wingY)"/>
+    <path d="M$lA $headY Q$lAt ${(cy - ry * 1.16).toStringAsFixed(1)} $lAt $antY" stroke="#4A3B1E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <circle cx="$lAt" cy="$antY" r="2.6" fill="#4A3B1E"/>
+    <path d="M$rA $headY Q$rAt ${(cy - ry * 1.16).toStringAsFixed(1)} $rAt $antY" stroke="#4A3B1E" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <circle cx="$rAt" cy="$antY" r="2.6" fill="#4A3B1E"/>''';
+      case 'skin/frog':
+        // 정수리 눈두덩 2개 — 개구리 특유의 볼록한 눈.
+        final bumpY = (cy - ry * 0.94).toStringAsFixed(1);
+        final bumpR = (rx * 0.20).toStringAsFixed(1);
+        final hlR = (rx * 0.07).toStringAsFixed(1);
+        final lB = (cx - rx * 0.34).toStringAsFixed(1);
+        final rB = (cx + rx * 0.34).toStringAsFixed(1);
+        return '''
+    <circle cx="$lB" cy="$bumpY" r="$bumpR" fill="url(#mFrogBody)" stroke="#5FA544" stroke-width="1"/>
+    <circle cx="${(cx - rx * 0.40).toStringAsFixed(1)}" cy="${(cy - ry * 1.00).toStringAsFixed(1)}" r="$hlR" fill="#FFFFFF" opacity="0.8"/>
+    <circle cx="$rB" cy="$bumpY" r="$bumpR" fill="url(#mFrogBody)" stroke="#5FA544" stroke-width="1"/>
+    <circle cx="${(cx + rx * 0.28).toStringAsFixed(1)}" cy="${(cy - ry * 1.00).toStringAsFixed(1)}" r="$hlR" fill="#FFFFFF" opacity="0.8"/>''';
+      default:
+        return '';
+    }
   }
 
   // ─────────────────────────────────────────
@@ -236,12 +429,18 @@ class MochiCharacterView extends StatelessWidget {
     final safeHex = RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(hex)
         ? hex.toUpperCase()
         : '#FF6B6B';
+    // 세로 확장 — 캐릭터/지면 좌표(상단 200×200)는 그대로 두고 하늘 rect 와 언덕
+    // 그라디언트만 h 까지 늘린다. 씬의 지면(언덕 타원)은 원래 y≈280 까지 뻗어 있어
+    // h=260 확장에도 빈틈없이 이어진다 (바닷가 모래사장만 h 로 마감을 늘림).
+    final h = (200 * heightFactor).round();
     // 배경 씬 — 장착된 BACKGROUND 아이템의 assetKey 로 결정. 기본 풀밭(meadow)은
     // 스킨색이 하늘 톤에 스며들어 스킨 구매 가치를 유지한다.
-    final scene = _scene(app.backgroundAssetKey, safeHex);
+    final scene = _scene(app.backgroundAssetKey, safeHex, h);
     final defs = _defs(
       shadowCol: scene.shadowHex,
       sceneDefs: scene.defs,
+      height: h,
+      clipRadius: clipRadius,
     );
     final isEgg = stage == CharacterStage.egg;
     // 접지 그림자 — 본체 바닥에 맞춰 단계별 위치 보정. background 레이어에 있어
@@ -253,20 +452,21 @@ class MochiCharacterView extends StatelessWidget {
     };
     final ground =
         '<ellipse cx="100" cy="${(bodyBottom + 3.5).toStringAsFixed(1)}" rx="${isEgg ? 44 : 42}" ry="7.5" fill="url(#mGround)"/>';
-    // 씬 전체를 squircle 로 클리핑하고, 캐릭터 뒤 스포트라이트와 접지 그림자를 얹는다.
+    // 씬 전체를 클리핑하고, 캐릭터 뒤 스포트라이트와 접지 그림자를 얹는다.
     final bg = '<g clip-path="url(#mClip)">\n'
+        '  <rect width="200" height="$h" fill="url(#bgSky)"/>\n'
         '  ${scene.markup}\n'
         '  <ellipse cx="100" cy="106" rx="82" ry="76" fill="url(#mSpot)"/>\n'
         '  $ground\n'
         '  </g>';
-    final isPanda = app.skinAssetKey == 'skin/panda';
+    final skin = app.skinAssetKey;
     final body = switch (stage) {
-      CharacterStage.egg => _egg(isPanda: isPanda),
-      CharacterStage.sprout => _sprout(isPanda: isPanda),
-      CharacterStage.bloom => _bloom(isPanda: isPanda),
-      CharacterStage.blossom => _blossom(isPanda: isPanda),
-      CharacterStage.glow => _glow(isPanda: isPanda),
-      CharacterStage.master => _master(isPanda: isPanda),
+      CharacterStage.egg => _egg(skin: skin),
+      CharacterStage.sprout => _sprout(skin: skin),
+      CharacterStage.bloom => _bloom(skin: skin),
+      CharacterStage.blossom => _blossom(skin: skin),
+      CharacterStage.glow => _glow(skin: skin),
+      CharacterStage.master => _master(skin: skin),
     };
     final overlays = _buildOverlays(stage, app.overlays);
     final layers = switch (part) {
@@ -275,7 +475,7 @@ class MochiCharacterView extends StatelessWidget {
       MochiCharacterPart.body => '$body\n  $overlays',
     };
     return '''
-<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="200" height="$h" viewBox="0 0 200 $h" fill="none" xmlns="http://www.w3.org/2000/svg">
   $defs
   $layers
 </svg>
@@ -302,11 +502,13 @@ class MochiCharacterView extends StatelessWidget {
 
   /// [key] 배경 씬의 (전용 defs, 본문 마크업, 접지 그림자색). 알 수 없는 키는
   /// 기본 풀밭으로 fallback — 구버전 앱이 신규 배경을 만나도 렌더가 깨지지 않는다.
+  /// 하늘 rect(id=bgSky) 는 세로 확장을 위해 호출부(_buildStageSvg)가 그린다.
+  /// [h] 는 씬 캔버스 높이 — 지면을 캔버스 바닥까지 마감해야 하는 씬(바닷가)이 쓴다.
   static ({String defs, String markup, String shadowHex}) _scene(
-      String key, String skinHex) {
+      String key, String skinHex, int h) {
     return switch (key) {
       'bg/sakura' => _sceneSakura(),
-      'bg/beach' => _sceneBeach(),
+      'bg/beach' => _sceneBeach(h),
       'bg/night' => _sceneNight(),
       'bg/winter' => _sceneWinter(),
       'bg/space' => _sceneSpace(),
@@ -341,8 +543,7 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="100%" stop-color="#7FC95B"/>
     </linearGradient>''',
       markup: '''
-<rect width="200" height="200" fill="url(#bgSky)"/>
-  <circle cx="160" cy="38" r="30" fill="url(#bgSun)"/>
+<circle cx="160" cy="38" r="30" fill="url(#bgSun)"/>
   <circle cx="160" cy="38" r="12" fill="#FFF2B8"/>
   <circle cx="156" cy="34" r="4" fill="#FFFFFF" opacity="0.6"/>
   <g opacity="0.92">
@@ -393,8 +594,7 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="100%" stop-color="#84CB60"/>
     </linearGradient>''',
       markup: '''
-<rect width="200" height="200" fill="url(#bgSky)"/>
-  <circle cx="48" cy="40" r="24" fill="url(#bgGlow)"/>
+<circle cx="48" cy="40" r="24" fill="url(#bgGlow)"/>
   <path d="M204 14 Q166 26 142 50" stroke="#8A5A44" stroke-width="5" stroke-linecap="round" fill="none"/>
   <path d="M172 28 Q160 38 156 48" stroke="#8A5A44" stroke-width="3" stroke-linecap="round" fill="none"/>
   <circle cx="142" cy="52" r="7" fill="#FFB3C7"/>
@@ -423,7 +623,8 @@ class MochiCharacterView extends StatelessWidget {
   }
 
   /// 바닷가 — 하늘·수평선·반짝이는 바다·모래사장, 불가사리와 조개.
-  static ({String defs, String markup, String shadowHex}) _sceneBeach() {
+  /// [h] 캔버스 높이 — 모래사장을 캔버스 바닥까지 마감한다 (세로 확장 대응).
+  static ({String defs, String markup, String shadowHex}) _sceneBeach(int h) {
     return (
       defs: '''
     <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
@@ -444,8 +645,7 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="100%" stop-color="#FFEFA8" stop-opacity="0"/>
     </radialGradient>''',
       markup: '''
-<rect width="200" height="200" fill="url(#bgSky)"/>
-  <circle cx="42" cy="36" r="28" fill="url(#bgSun)"/>
+<circle cx="42" cy="36" r="28" fill="url(#bgSun)"/>
   <circle cx="42" cy="36" r="11" fill="#FFF2B8"/>
   <g opacity="0.85">
     <ellipse cx="138" cy="40" rx="14" ry="7" fill="#FFFFFF"/>
@@ -459,7 +659,7 @@ class MochiCharacterView extends StatelessWidget {
   <path d="M150 126 Q158 123 166 126" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" opacity="0.7" fill="none"/>
   ${_sparkle(120, 120, 2.4, 0.8)}
   ${_sparkle(178, 136, 2, 0.7)}
-  <path d="M0 156 Q50 146 100 152 Q150 158 200 150 L200 200 L0 200 Z" fill="url(#bgSand)"/>
+  <path d="M0 156 Q50 146 100 152 Q150 158 200 150 L200 $h L0 $h Z" fill="url(#bgSand)"/>
   <path d="M0 156 Q50 146 100 152 Q150 158 200 150" stroke="#FFFFFF" stroke-width="2" opacity="0.55" fill="none"/>
   <path d="M32 186 L35 179 L40 184 L38 177 L45 178 L39 174 L44 170 L37 172 L36 165 L33 171 L27 168 L31 174 L25 176 L32 177 Z" fill="#FF9E6B" opacity="0.9"/>
   <circle cx="170" cy="180" r="5" fill="#FFD9B0"/>
@@ -496,8 +696,7 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="100%" stop-color="#D9F07F" stop-opacity="0"/>
     </radialGradient>''',
       markup: '''
-<rect width="200" height="200" fill="url(#bgSky)"/>
-  <circle cx="152" cy="44" r="27" fill="url(#bgMoonGlow)"/>
+<circle cx="152" cy="44" r="27" fill="url(#bgMoonGlow)"/>
   <circle cx="152" cy="44" r="13" fill="#FFF3C2"/>
   <circle cx="147" cy="40" r="11" fill="#232C55"/>
   ${_sparkle(36, 30, 4, 0.9)}
@@ -543,8 +742,7 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="100%" stop-color="#DFEAF7"/>
     </linearGradient>''',
       markup: '''
-<rect width="200" height="200" fill="url(#bgSky)"/>
-  <circle cx="160" cy="36" r="22" fill="url(#bgGlow)"/>
+<circle cx="160" cy="36" r="22" fill="url(#bgGlow)"/>
   <g>
     <path d="M28 96 L14 126 L42 126 Z" fill="#5B8E68"/>
     <path d="M28 110 L12 142 L44 142 Z" fill="#4F7D5B"/>
@@ -597,8 +795,7 @@ class MochiCharacterView extends StatelessWidget {
       <stop offset="100%" stop-color="#352A66"/>
     </linearGradient>''',
       markup: '''
-<rect width="200" height="200" fill="url(#bgSky)"/>
-  <circle cx="44" cy="44" r="15" fill="url(#bgPlanet)"/>
+<circle cx="44" cy="44" r="15" fill="url(#bgPlanet)"/>
   <ellipse cx="44" cy="46" rx="25" ry="6.5" stroke="#E8D9A8" stroke-width="2.4" fill="none" opacity="0.9" transform="rotate(-16 44 46)"/>
   <circle cx="38" cy="38" r="3.4" fill="#FFFFFF" opacity="0.45"/>
   <circle cx="172" cy="84" r="7" fill="#7EE0D0"/>
@@ -628,9 +825,11 @@ class MochiCharacterView extends StatelessWidget {
   static String _defs({
     required String shadowCol,
     required String sceneDefs,
+    int height = 200,
+    double clipRadius = 48,
   }) => '''
 <defs>
-    <clipPath id="mClip"><rect width="200" height="200" rx="48"/></clipPath>
+    <clipPath id="mClip"><rect width="200" height="$height" rx="${clipRadius.toStringAsFixed(0)}"/></clipPath>
 $sceneDefs
     <radialGradient id="mSpot" cx="0.5" cy="0.42" r="0.58">
       <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.30"/>
@@ -661,6 +860,34 @@ $sceneDefs
       <stop offset="0%" stop-color="#565656"/>
       <stop offset="60%" stop-color="#343434"/>
       <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <radialGradient id="mTigerBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFEDCC"/>
+      <stop offset="46%" stop-color="#FFD79E"/>
+      <stop offset="78%" stop-color="#F5B25F"/>
+      <stop offset="100%" stop-color="#DB8F33"/>
+    </radialGradient>
+    <radialGradient id="mCatBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#F4F0EB"/>
+      <stop offset="78%" stop-color="#E4DCD3"/>
+      <stop offset="100%" stop-color="#C9BEB2"/>
+    </radialGradient>
+    <radialGradient id="mCatEarIn" cx="0.40" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FBD3DA"/>
+      <stop offset="100%" stop-color="#EE9AAB"/>
+    </radialGradient>
+    <radialGradient id="mBeeBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFF9DB"/>
+      <stop offset="46%" stop-color="#FFEE9E"/>
+      <stop offset="78%" stop-color="#F8D75C"/>
+      <stop offset="100%" stop-color="#DCB22F"/>
+    </radialGradient>
+    <radialGradient id="mFrogBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#EFFFE0"/>
+      <stop offset="46%" stop-color="#CFF3A9"/>
+      <stop offset="78%" stop-color="#9FDB72"/>
+      <stop offset="100%" stop-color="#71B84C"/>
     </radialGradient>
     <linearGradient id="mLeafL" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#A5E793"/>
@@ -1120,13 +1347,9 @@ $sceneDefs
   // ─────────────────────────────────────────
 
   /// EGG (Lv 1): 잠자고 있는 알 모찌. 눈은 ‿ 처럼 감겨 있고, 우상단에 zZz.
-  String _egg({required bool isPanda}) {
-    final pandaPatches = isPanda
-        ? '<ellipse cx="78" cy="106" rx="13" ry="10" fill="url(#mPanda)"/>'
-            '<ellipse cx="122" cy="106" rx="13" ry="10" fill="url(#mPanda)"/>'
-        : '';
+  String _egg({required String skin}) {
     return '''
-  ${_body3d(cx: 100, cy: 120, rx: 52, ry: 58, patches: pandaPatches)}
+  ${_body3d(cx: 100, cy: 120, rx: 52, ry: 58, patches: _skinPatches(skin, CharacterStage.egg), bodyFill: _skinBodyFill(skin))}
   <path d="M82 116 Q88 119 94 116" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
   <path d="M106 116 Q112 119 118 116" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
   <path d="M92 134 Q100 140 108 134" stroke="#2B2B2B" stroke-width="2.4" stroke-linecap="round" fill="none"/>
@@ -1137,11 +1360,7 @@ $sceneDefs
   ''';
   }
 
-  String _sprout({required bool isPanda}) {
-    final pandaPatches = isPanda
-        ? '<ellipse cx="82" cy="118" rx="9" ry="6" fill="url(#mPanda)"/>'
-            '<ellipse cx="118" cy="118" rx="9" ry="6" fill="url(#mPanda)"/>'
-        : '';
+  String _sprout({required String skin}) {
     return '''
   <g>
     <path d="M100 56 Q86 48 92 64 Q98 68 100 64 Z" fill="url(#mLeafL)"/>
@@ -1149,7 +1368,8 @@ $sceneDefs
     <line x1="100" y1="66" x2="100" y2="84" stroke="#6FBF5E" stroke-width="3" stroke-linecap="round"/>
     <line x1="99" y1="68" x2="99" y2="80" stroke="#A5E793" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
   </g>
-  ${_body3d(cx: 100, cy: 124, rx: 46, ry: 40, patches: pandaPatches)}
+  ${_skinBehind(skin, CharacterStage.sprout)}
+  ${_body3d(cx: 100, cy: 124, rx: 46, ry: 40, patches: _skinPatches(skin, CharacterStage.sprout), bodyFill: _skinBodyFill(skin))}
   ${_eye(88, 122, 2.8, 3.6)}
   ${_eye(112, 122, 2.8, 3.6)}
   ${_mouth(93, 136, 100, 142, 107, 136, 2.4)}
@@ -1158,14 +1378,11 @@ $sceneDefs
   }
 
   /// BLOOM (Lv 6) — 꽃 모찌: 머리에 막 피어난 작은 벚꽃. 단독 모찌.
-  String _bloom({required bool isPanda}) {
-    final patches = isPanda
-        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-        : '';
+  String _bloom({required String skin}) {
     return '''
   <g>
-    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: patches)}
+    ${_skinBehind(skin, CharacterStage.bloom)}
+    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: _skinPatches(skin, CharacterStage.bloom), bodyFill: _skinBodyFill(skin))}
     <g transform="translate(100 72)">
       ${_flower(scale: 0.85, petalId: 'mPetalA')}
     </g>
@@ -1178,14 +1395,11 @@ $sceneDefs
   }
 
   /// BLOSSOM (Lv 10) — 활짝 모찌: 큰 벚꽃 + 옆에 작은 봉오리. 디코는 이 단계부터 별개로 등장.
-  String _blossom({required bool isPanda}) {
-    final patches = isPanda
-        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-        : '';
+  String _blossom({required String skin}) {
     return '''
   <g>
-    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: patches)}
+    ${_skinBehind(skin, CharacterStage.blossom)}
+    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: _skinPatches(skin, CharacterStage.blossom), bodyFill: _skinBodyFill(skin))}
     <g transform="translate(100 62)">
       ${_flower(scale: 1.35, petalId: 'mPetalA')}
     </g>
@@ -1204,11 +1418,7 @@ $sceneDefs
   }
 
   /// GLOW (Lv 15) — 왕관과 함께 빛나는 단독 모찌. 주변 스파클 4 점 (glow halo 포함).
-  String _glow({required bool isPanda}) {
-    final patches = isPanda
-        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-        : '';
+  String _glow({required String skin}) {
     return '''
   <g opacity="0.95">
     <circle cx="32" cy="44" r="9" fill="url(#mSparkGlow)"/>
@@ -1221,7 +1431,8 @@ $sceneDefs
     <circle cx="170" cy="148" r="3" fill="#FFF59D"/>
   </g>
   <g>
-    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: patches)}
+    ${_skinBehind(skin, CharacterStage.glow)}
+    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: _skinPatches(skin, CharacterStage.glow), bodyFill: _skinBodyFill(skin))}
     <g transform="translate(100 70)">
       ${_crown()}
     </g>
@@ -1234,11 +1445,7 @@ $sceneDefs
   }
 
   /// MASTER (Lv 20) — 마스터 모찌: 큰 후광 + 별빛 + 디럭스 왕관. 단독 모찌.
-  String _master({required bool isPanda}) {
-    final patches = isPanda
-        ? '<ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-            '<ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-        : '';
+  String _master({required String skin}) {
     return '''
   <circle cx="100" cy="118" r="92" fill="url(#masterHalo)"/>
   <g opacity="0.95">
@@ -1251,7 +1458,8 @@ $sceneDefs
     <circle cx="186" cy="100" r="2.4" fill="#FFE066"/>
   </g>
   <g>
-    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: patches)}
+    ${_skinBehind(skin, CharacterStage.master)}
+    ${_body3d(cx: 100, cy: 124, rx: 50, ry: 44, patches: _skinPatches(skin, CharacterStage.master), bodyFill: _skinBodyFill(skin))}
     <g transform="translate(100 68)">
       ${_crownDeluxe()}
     </g>
