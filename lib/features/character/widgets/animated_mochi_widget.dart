@@ -18,7 +18,13 @@ class MochiAnimationController {
   void triggerExcited() => _state?.triggerExcited();
   void triggerHappy() => _state?.triggerHappy();
   void triggerProud() => _state?.triggerProud();
+
+  /// 돌봄 액션(물주기·간식 등) 리액션 — 감정 + 점프 + 전용 파티클 + 대사.
+  void triggerCare(MochiCareAction action) => _state?.triggerCare(action);
 }
+
+/// 홈 씬 하단 돌봄 툴바의 액션 종류. 각자 고유한 파티클/대사 리액션을 가진다.
+enum MochiCareAction { water, snack, play, bubble }
 
 // ─────────────────────────────────────────────
 // 메인 애니메이션 위젯
@@ -34,6 +40,9 @@ class AnimatedMochiWidget extends StatefulWidget {
     this.controller,
     this.onPet,
     this.showBubble = false,
+    this.heightFactor = 1.0,
+    this.clipRadius = 48,
+    this.bubbleInBounds = false,
   });
 
   final MochiAppearance appearance;
@@ -51,6 +60,16 @@ class AnimatedMochiWidget extends StatefulWidget {
   /// true 면 10초 주기로 자동 말풍선이 뜨고, 터치 시 즉시 새 말풍선이 뜬다.
   /// 위젯 size 위쪽으로 추가 영역(48px)을 차지한다.
   final bool showBubble;
+
+  /// 씬 세로 확장 배율 — 홈 화면 직사각형 씬은 1.3. [MochiCharacterView.heightFactor].
+  final double heightFactor;
+
+  /// 씬 클리핑 모서리 반경 — 홈 카드는 28 권장. [MochiCharacterView.clipRadius].
+  final double clipRadius;
+
+  /// true 면 말풍선을 위젯 위 추가 밴드 대신 씬 캔버스 안(하늘 영역)에 띄운다.
+  /// 세로 확장 씬에서 하늘 여백이 충분할 때 사용.
+  final bool bubbleInBounds;
 
   @override
   State<AnimatedMochiWidget> createState() => _AnimatedMochiWidgetState();
@@ -375,6 +394,48 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     );
   }
 
+  /// 돌봄 액션 리액션 — 액션별 감정/파티클/대사가 다르다. 말풍선은 showBubble
+  /// 여부와 무관하게 강제로 띄워, 디코 채팅 모드에서도 반응이 보이게 한다.
+  void triggerCare(MochiCareAction action) {
+    _lastInteraction = DateTime.now();
+    final (MochiEmotion emotion, String emoji, int count, List<String> lines) =
+        switch (action) {
+      MochiCareAction.water => (
+          MochiEmotion.happy,
+          '💧',
+          5,
+          const ['시원해~! 고마워', '물 최고야!', '쑥쑥 자랄게!'],
+        ),
+      MochiCareAction.snack => (
+          MochiEmotion.excited,
+          '🍡',
+          4,
+          const ['냠냠 맛있어!', '간식 최고~!', '한 입만 더...!'],
+        ),
+      MochiCareAction.play => (
+          MochiEmotion.excited,
+          '⚽',
+          3,
+          const ['슛~ 골인!', '재밌다! 한 번 더!', '공놀이 좋아!'],
+        ),
+      MochiCareAction.bubble => (
+          MochiEmotion.happy,
+          '🫧',
+          6,
+          const ['보글보글~', '간지러워 히히', '반짝반짝 목욕시간!'],
+        ),
+    };
+    _setEmotion(emotion, resetAfter: const Duration(seconds: 3));
+    _jump();
+    _spawnParticles(
+      Offset(widget.size / 2, widget.size * 0.5),
+      count: count,
+      forceEmoji: emoji,
+    );
+    _showBubbleMessage(lines[_rng.nextInt(lines.length)], forced: true);
+    _tryPetCallback();
+  }
+
   // ── 제스처 ──
 
   void _onTapDown(TapDownDetails d) {
@@ -426,10 +487,17 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       } while (index == _lastBubbleIndex);
     }
     _lastBubbleIndex = index;
+    _showBubbleMessage(messages[index]);
+  }
+
+  /// [message] 말풍선을 띄운다. [forced]=true 면 showBubble=false 여도 띄운다
+  /// (돌봄 리액션 등 1회성 강제 대사용).
+  void _showBubbleMessage(String message, {bool forced = false}) {
+    if (!mounted || (!widget.showBubble && !forced)) return;
     _bubbleHideTimer?.cancel();
     setState(() {
       _bubbleSeq++;
-      _bubbleMessage = messages[index];
+      _bubbleMessage = message;
       _pickBubbleSlot();
     });
     _bubbleHideTimer = Timer(const Duration(milliseconds: 4500), () {
@@ -483,10 +551,15 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       stage: widget.stage,
       size: widget.size,
       part: MochiCharacterPart.background,
+      heightFactor: widget.heightFactor,
+      clipRadius: widget.clipRadius,
     );
 
     // 말풍선이 활성화돼 있으면 위쪽 영역을 추가로 확보한다.
-    final topPad = widget.showBubble ? 56.0 : 0.0;
+    // (bubbleInBounds 면 씬 캔버스 안 하늘 영역에 띄우므로 추가 밴드 불필요)
+    final topPad =
+        (widget.showBubble && !widget.bubbleInBounds) ? 56.0 : 0.0;
+    final canvasHeight = widget.size * widget.heightFactor;
 
     final mochi = AnimatedBuilder(
       animation: Listenable.merge([_swayCtrl, _floatCtrl, _jumpCtrl]),
@@ -512,6 +585,8 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
                   expression: _emotion,
                   eyeOpenness: _eyeOpenness,
                   part: MochiCharacterPart.body,
+                  heightFactor: widget.heightFactor,
+                  clipRadius: widget.clipRadius,
                 ),
               ),
             ),
@@ -531,7 +606,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       onLongPress: _onLongPress,
       child: SizedBox(
         width: widget.size,
-        height: widget.size + 24 + topPad,
+        height: canvasHeight + 24 + topPad,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -542,7 +617,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
               bottom: 0,
               child: mochi,
             ),
-            if (widget.showBubble)
+            if (widget.showBubble || _bubbleMessage != null)
               Positioned(
                 top: _bubbleSlot.top,
                 left: _bubbleSlot.left,

@@ -558,12 +558,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         children: [
           const SizedBox(height: 12),
-          Center(
-            child: MochiDikoStage(
-              state: s,
-              mochiController: _mochiCtrl,
-              onPet: _handlePet,
-            ),
+          MochiHomeScene(
+            state: s,
+            mochiController: _mochiCtrl,
+            onPet: _handlePet,
           ),
           const SizedBox(height: 6),
           Text(

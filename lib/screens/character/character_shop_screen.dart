@@ -385,11 +385,14 @@ class _CharacterShopScreenState extends State<CharacterShopScreen>
     final stage = character?.stage ?? CharacterStage.bloom;
     final appearance = _buildPreviewAppearance();
 
+    // 하단 패딩에 시스템 제스처/네비 인셋을 더해, 각 탭의 마지막 아이템(하늘 모찌 등)이
+    // 화면 아래에 살짝 잘리지 않게 한다.
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 48 + bottomInset),
         children: [
           _PreviewCard(appearance: appearance, stage: stage),
           const SizedBox(height: 16),

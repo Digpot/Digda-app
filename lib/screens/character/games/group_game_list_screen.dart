@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
 import '../../../widgets/center_title_header.dart';
-import 'memory_match_screen.dart';
-import 'reaction_duel_screen.dart';
+import 'omok_invite_screen.dart';
 import 'tap_battle_screen.dart';
 
-/// 그룹원들이 한 폰으로 함께 즐기는 미니게임 목록.
+/// 그룹원들과 즐기는 미니게임 목록.
 ///
-/// 전부 로컬(패스&플레이) 게임이라 서버·소켓 없이 동작한다 — 실시간 온라인
-/// 대전이 필요해지면 그때 별도 인프라를 붙인다.
+/// - 오목: 그룹 멤버를 초대해 각자 폰으로 실시간 대전 (서버 WebSocket).
+/// - 탭 배틀: 한 폰을 나눠 잡고 즉석 대결 (로컬).
 class GroupGameListScreen extends StatelessWidget {
   const GroupGameListScreen({super.key});
 
@@ -26,7 +25,7 @@ class GroupGameListScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
                 children: [
                   const Text(
-                    '폰 하나로 그룹원들과 바로 대결해요!',
+                    '그룹원들과 바로 대결해요!',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w400,
@@ -36,12 +35,12 @@ class GroupGameListScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   _GameCard(
-                    emoji: '⚡',
-                    title: '반응속도 대결',
-                    subtitle: '초록불이 켜지면 먼저 탭! 3판 먼저 이기면 승리',
-                    players: '2인 · 한 폰',
-                    gradient: const [Color(0xFFFFD700), Color(0xFFFF8A65)],
-                    onTap: () => _push(context, const ReactionDuelScreen()),
+                    emoji: '⚫',
+                    title: '오목',
+                    subtitle: '그룹원을 초대해 실시간 온라인 대국! 5목을 먼저 완성하면 승리',
+                    players: '2인 · 온라인',
+                    gradient: const [Color(0xFF8D6E63), Color(0xFFEFB261)],
+                    onTap: () => _push(context, const OmokInviteScreen()),
                   ),
                   const SizedBox(height: 12),
                   _GameCard(
@@ -51,15 +50,6 @@ class GroupGameListScreen extends StatelessWidget {
                     players: '2인 · 한 폰',
                     gradient: const [Color(0xFFFF6B6B), Color(0xFFB794F6)],
                     onTap: () => _push(context, const TapBattleScreen()),
-                  ),
-                  const SizedBox(height: 12),
-                  _GameCard(
-                    emoji: '🃏',
-                    title: '기억력 카드',
-                    subtitle: '같은 그림 카드를 찾아요. 맞추면 한 번 더!',
-                    players: '2~4인 · 턴제',
-                    gradient: const [Color(0xFF45B7D1), Color(0xFF34D399)],
-                    onTap: () => _push(context, const MemoryMatchScreen()),
                   ),
                 ],
               ),
