@@ -26,10 +26,13 @@ void main() {
       DikoMood.curious: 'DIKO — curious',
       DikoMood.wink: 'DIKO — wink',
     };
-    const panda = MochiAppearance(
-      skinHex: '#9CA3AF',
-      skinAssetKey: 'skin/panda',
-    );
+    const patternSkins = {
+      'skin/panda': ('판다', '#9CA3AF'),
+      'skin/tiger': ('호랑이', '#F59E0B'),
+      'skin/cat': ('고양이', '#B0A8A2'),
+      'skin/bee': ('꿀벌', '#FCD34D'),
+      'skin/frog': ('개구리', '#4ADE80'),
+    };
 
     // 한 HTML 문서에 SVG 를 여러 개 인라인하면 그라디언트 id 가 중복돼 브라우저가
     // 첫 정의만 참조한다 (flutter_svg 는 SVG 별 격리라 앱에서는 무관). 카드마다
@@ -42,8 +45,8 @@ void main() {
           .replaceAll('url(#', 'url(#$prefix');
     }
 
-    String card(String svg, String label) =>
-        '<div class="card">\n${isolateIds(svg)}<div class="label">$label</div>\n</div>\n';
+    String card(String svg, String label, {String cls = ''}) =>
+        '<div class="card $cls">\n${isolateIds(svg)}<div class="label">$label</div>\n</div>\n';
 
     final buf = StringBuffer('''
 <!doctype html>
@@ -56,6 +59,7 @@ void main() {
   .row { display:flex; gap:16px; flex-wrap: wrap; }
   .card { width: 220px; text-align: center; }
   .card svg { width:200px; height:200px; display:block; }
+  .card.tall svg { width:200px; height:260px; }
   .card.small svg { width:120px; height:120px; margin: 40px auto; }
   .label { margin-top: 6px; font-size: 13px; color: #4E5968; font-weight: 700; }
 </style>
@@ -71,10 +75,17 @@ void main() {
       );
       buf.write(card(view.debugSvgMarkup(), e.value));
     }
-    buf.write('</div>\n<h2>모찌 — 판다 스킨</h2>\n<div class="row">\n');
-    for (final e in stageLabels.entries) {
-      final view = MochiCharacterView(appearance: panda, stage: e.key);
-      buf.write(card(view.debugSvgMarkup(), '${e.value} (panda)'));
+    for (final skin in patternSkins.entries) {
+      final (label, hex) = skin.value;
+      buf.write('</div>\n<h2>모찌 — $label 스킨</h2>\n<div class="row">\n');
+      final appearance = MochiAppearance(
+        skinHex: hex,
+        skinAssetKey: skin.key,
+      );
+      for (final e in stageLabels.entries) {
+        final view = MochiCharacterView(appearance: appearance, stage: e.key);
+        buf.write(card(view.debugSvgMarkup(), '${e.value} ($label)'));
+      }
     }
     // 배경 씬 — 상점에서 파는 배경 6종을 코랄 BLOOM 모찌 기준으로 미리보기.
     const bgLabels = {
@@ -96,6 +107,22 @@ void main() {
         stage: CharacterStage.bloom,
       );
       buf.write(card(view.debugSvgMarkup(), e.value));
+    }
+
+    // 홈 씬(세로 1.3 직사각형) — 하늘/언덕 확장이 자연스러운지 검수.
+    buf.write('</div>\n<h2>홈 씬 — 세로 직사각형 (1.3)</h2>\n<div class="row">\n');
+    for (final e in bgLabels.entries) {
+      final view = MochiCharacterView(
+        appearance: MochiAppearance(
+          skinHex: '#FF6B6B',
+          skinAssetKey: 'skin/coral',
+          backgroundAssetKey: e.key,
+        ),
+        stage: CharacterStage.bloom,
+        heightFactor: 1.3,
+        clipRadius: 28,
+      );
+      buf.write(card(view.debugSvgMarkup(), '${e.value} (홈)', cls: 'tall'));
     }
 
     // 아이템 착용 미리보기 — 사이즈/좌표가 본체와 맞는지 눈으로 검수하는 용도.
