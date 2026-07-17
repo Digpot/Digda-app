@@ -33,6 +33,11 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
   bool _resultShown = false;
   OmokSocketSession? _socket;
 
+  /// 착수 확인 대기 좌표 — 탭하면 바로 두지 않고 반투명 미리보기 돌을 놓고
+  /// 확인을 받는다(작은 화면 오터치 방지). 같은 칸 재탭 = 확정.
+  int? _pendingX;
+  int? _pendingY;
+
   String get _myId => Di.userSession.profile?.id ?? '';
 
   @override
@@ -92,7 +97,14 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
 
   void _onEvent(OmokEvent event) {
     if (!mounted) return;
-    setState(() => _game = event.game);
+    setState(() {
+      _game = event.game;
+      // 내 착수가 반영됐거나 턴이 넘어갔으면 미리보기는 무효.
+      if (!event.game.isMyTurn(_myId)) {
+        _pendingX = null;
+        _pendingY = null;
+      }
+    });
     final game = event.game;
     switch (game.status) {
       case OmokStatus.finished:
@@ -163,8 +175,43 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
     final game = _game;
     if (game == null || !game.isMyTurn(_myId)) return;
     if (game.board[y][x] != 0) return;
+    // 같은 칸 재탭 = 확정, 다른 칸 = 미리보기 이동.
+    if (_pendingX == x && _pendingY == y) {
+      _confirmMove();
+      return;
+    }
+    HapticFeedback.selectionClick();
+    setState(() {
+      _pendingX = x;
+      _pendingY = y;
+    });
+  }
+
+  void _confirmMove() {
+    final x = _pendingX;
+    final y = _pendingY;
+    final game = _game;
+    if (x == null || y == null || game == null || !game.isMyTurn(_myId)) return;
+    if (game.board[y][x] != 0) {
+      setState(() {
+        _pendingX = null;
+        _pendingY = null;
+      });
+      return;
+    }
     HapticFeedback.lightImpact();
+    setState(() {
+      _pendingX = null;
+      _pendingY = null;
+    });
     _socket?.sendMove(x, y);
+  }
+
+  void _cancelPendingMove() {
+    setState(() {
+      _pendingX = null;
+      _pendingY = null;
+    });
   }
 
   void _confirmForfeit() {
@@ -467,20 +514,32 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: AspectRatio(
             aspectRatio: 1,
-            child: _OmokBoard(game: game, onCellTap: _onCellTap),
+            child: _OmokBoard(
+              game: game,
+              onCellTap: _onCellTap,
+              pendingX: _pendingX,
+              pendingY: _pendingY,
+              pendingStone: game.stoneOf(_myId),
+            ),
           ),
         ),
         const SizedBox(height: 12),
         if (!finished)
-          Text(
-            game.isMyTurn(_myId) ? '내 차례예요 — 돌을 놓아보세요!' : '상대의 차례를 기다리는 중...',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: 13.5,
-              color: game.isMyTurn(_myId) ? AppColors.primary : AppColors.gray500,
-            ),
-          ),
+          _pendingX != null
+              ? _buildMoveConfirmBar()
+              : Text(
+                  game.isMyTurn(_myId)
+                      ? '내 차례예요 — 자리를 골라주세요!'
+                      : '상대의 차례를 기다리는 중...',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                    color: game.isMyTurn(_myId)
+                        ? AppColors.primary
+                        : AppColors.gray500,
+                  ),
+                ),
         const Spacer(),
         if (!finished)
           Padding(
@@ -526,6 +585,71 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  /// 미리보기 돌 확정 바 — "여기에 둘까요?" + 취소/착수.
+  Widget _buildMoveConfirmBar() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          '여기에 둘까요?',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 13.5,
+            color: AppColors.gray900,
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          height: 36,
+          child: OutlinedButton(
+            onPressed: _cancelPendingMove,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.gray600,
+              side: const BorderSide(color: AppColors.gray200),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            child: const Text(
+              '취소',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          height: 36,
+          child: ElevatedButton(
+            onPressed: _confirmMove,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            child: const Text(
+              '착수!',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -625,11 +749,22 @@ class _PlayersBar extends StatelessWidget {
 }
 
 /// 오목판 — 탭 좌표를 교차점 셀로 환산해 [onCellTap] 으로 전달.
+/// [pendingX]/[pendingY] 가 있으면 그 자리에 내 돌([pendingStone])의
+/// 반투명 미리보기 + 하이라이트 링을 그린다.
 class _OmokBoard extends StatelessWidget {
-  const _OmokBoard({required this.game, required this.onCellTap});
+  const _OmokBoard({
+    required this.game,
+    required this.onCellTap,
+    this.pendingX,
+    this.pendingY,
+    this.pendingStone = OmokGame.black,
+  });
 
   final OmokGame game;
   final void Function(int x, int y) onCellTap;
+  final int? pendingX;
+  final int? pendingY;
+  final int pendingStone;
 
   @override
   Widget build(BuildContext context) {
@@ -651,7 +786,12 @@ class _OmokBoard extends StatelessWidget {
           },
           child: CustomPaint(
             size: Size.square(size),
-            painter: _OmokBoardPainter(game: game),
+            painter: _OmokBoardPainter(
+              game: game,
+              pendingX: pendingX,
+              pendingY: pendingY,
+              pendingStone: pendingStone,
+            ),
           ),
         );
       },
@@ -660,9 +800,17 @@ class _OmokBoard extends StatelessWidget {
 }
 
 class _OmokBoardPainter extends CustomPainter {
-  _OmokBoardPainter({required this.game});
+  _OmokBoardPainter({
+    required this.game,
+    this.pendingX,
+    this.pendingY,
+    this.pendingStone = OmokGame.black,
+  });
 
   final OmokGame game;
+  final int? pendingX;
+  final int? pendingY;
+  final int pendingStone;
 
   static const _n = OmokGame.boardSize;
 
@@ -735,6 +883,42 @@ class _OmokBoardPainter extends CustomPainter {
           canvas.drawCircle(center, r, border);
         }
       }
+    }
+
+    // 착수 미리보기 — 반투명 내 돌 + 코랄 하이라이트 링.
+    final px = pendingX;
+    final py = pendingY;
+    if (px != null && py != null && game.board[py][px] == 0) {
+      final center = Offset(half + px * cell, half + py * cell);
+      final r = half * 0.82;
+      final ring = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..color = const Color(0xFFFF6B6B);
+      canvas.drawCircle(center, half * 1.02, ring);
+      final ghost = Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.4, -0.4),
+          colors: pendingStone == OmokGame.black
+              ? const [Color(0xFF5A5A5A), Color(0xFF101010)]
+              : const [Colors.white, Color(0xFFC9C9C9)],
+        ).createShader(Rect.fromCircle(center: center, radius: r));
+      canvas.saveLayer(
+        Rect.fromCircle(center: center, radius: r + 2),
+        Paint()..color = Colors.white.withValues(alpha: 0.45),
+      );
+      canvas.drawCircle(center, r, ghost);
+      if (pendingStone == OmokGame.white) {
+        canvas.drawCircle(
+          center,
+          r,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8
+            ..color = const Color(0xFF9F9F9F),
+        );
+      }
+      canvas.restore();
     }
   }
 
