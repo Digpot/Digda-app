@@ -46,6 +46,17 @@ class KoreaBasePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 무대 비네트 — 흰 카드 위에 지도가 그냥 떠 있지 않고, 중앙이 밝고 가장자리로
+    // 갈수록 옅은 슬레이트로 가라앉는 부드러운 무대 배경을 깐다.
+    final stage = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset(size.width * 0.5, size.height * 0.45),
+        size.longestSide * 0.72,
+        KoreaMapTokens.stageRadial,
+        const [0.0, 0.62, 1.0],
+      );
+    canvas.drawRect(Offset.zero & size, stage);
+
     canvas.save();
     canvas.translate(dx, dy);
     canvas.scale(scale);
@@ -166,9 +177,19 @@ class KoreaBasePainter extends CustomPainter {
     canvas.translate(0, 7);
     canvas.drawPath(nk.outline, Paint()..color = KoreaMapTokens.sideWall);
     canvas.restore();
-    // top face — 빈 지도와 같은 웜/슬레이트 + '예정'을 위해 흰 베일로 살짝 띄움.
+    // top face — 남한과 같은 웜 베이스 위에 안개 낀 듯한 흰 베일을 얹어
+    // "아직 잠긴 땅" 분위기를 만든다.
     canvas.drawPath(nk.outline, Paint()..shader = warm);
-    canvas.drawPath(nk.outline, Paint()..color = const Color(0x40FFFFFF));
+    final bounds = nk.bounds;
+    canvas.drawPath(
+      nk.outline,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          bounds.topCenter,
+          bounds.bottomCenter,
+          const [Color(0x8CFFFFFF), Color(0x33FFFFFF)],
+        ),
+    );
     // 시·군 분할선 — 실루엣 안쪽으로만.
     final grooveHi = Paint()
       ..style = PaintingStyle.stroke
@@ -184,6 +205,19 @@ class KoreaBasePainter extends CustomPainter {
       canvas.drawPath(d, grooveHi);
       canvas.drawPath(d, grooveLo);
     }
+    // 사선 해치 — "준비 중 구역" 시그널. 은은하게 전체 실루엣 위로.
+    final hatch = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = const Color(0x2E8D9EB8);
+    final span = bounds.width + bounds.height;
+    for (double o = 0; o < span; o += 30) {
+      canvas.drawLine(
+        Offset(bounds.left + o, bounds.top),
+        Offset(bounds.left, bounds.top + o),
+        hatch,
+      );
+    }
     canvas.restore();
     // 외곽선
     canvas.drawPath(nk.outline, grooveLo);
@@ -198,30 +232,43 @@ class KoreaBasePainter extends CustomPainter {
         text: text,
         style: TextStyle(
           fontFamily: 'Inter',
-          fontSize: 24,
+          fontSize: 21,
           fontWeight: FontWeight.w800,
           height: 1.0,
-          color: Color(0xFF5B6677),
+          letterSpacing: 0.5,
+          color: Color(0xFF64748B),
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    const padH = 18.0;
+    // 자물쇠 점 아이콘 자리(원) + 텍스트를 담는 알약.
+    const dotR = 10.0;
+    const gap = 9.0;
+    const padH = 17.0;
     const padV = 11.0;
+    final contentW = dotR * 2 + gap + tp.width;
     final rect = Rect.fromCenter(
       center: center,
-      width: tp.width + padH * 2,
+      width: contentW + padH * 2,
       height: tp.height + padV * 2,
     );
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(22));
-    // 그림자 + 흰 알약
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(24));
+    // 그림자 + 흰 알약(위→아래로 아주 옅은 슬레이트 그라디언트)
     canvas.drawRRect(
       rrect.shift(const Offset(0, 3)),
       Paint()
-        ..color = const Color(0x33000000)
+        ..color = const Color(0x26000000)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
     );
-    canvas.drawRRect(rrect, Paint()..color = Colors.white);
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          rect.topCenter,
+          rect.bottomCenter,
+          const [Colors.white, Color(0xFFF2F5F9)],
+        ),
+    );
     canvas.drawRRect(
       rrect,
       Paint()
@@ -229,7 +276,29 @@ class KoreaBasePainter extends CustomPainter {
         ..strokeWidth = 1.2
         ..color = const Color(0xFFD7DEE8),
     );
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    // 자물쇠 느낌의 슬레이트 점 + 흰 열쇠구멍.
+    final dotC = Offset(rect.left + padH + dotR, center.dy);
+    canvas.drawCircle(
+      dotC,
+      dotR,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          dotC.translate(0, -dotR),
+          dotC.translate(0, dotR),
+          const [Color(0xFFAFBCCC), Color(0xFF8D9EB8)],
+        ),
+    );
+    canvas.drawCircle(
+        dotC.translate(0, -1.5), 2.2, Paint()..color = Colors.white);
+    canvas.drawRect(
+      Rect.fromCenter(
+          center: dotC.translate(0, 1.8), width: 2.4, height: 4.6),
+      Paint()..color = Colors.white,
+    );
+    tp.paint(
+      canvas,
+      Offset(rect.left + padH + dotR * 2 + gap, center.dy - tp.height / 2),
+    );
   }
 
   @override
