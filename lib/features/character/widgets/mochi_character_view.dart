@@ -256,9 +256,11 @@ class MochiCharacterView extends StatelessWidget {
     };
   }
 
-  /// 스킨별 바디 그라디언트 id. 무늬 없는 색상 스킨(코랄/민트 등)은 기본 흰 바디.
+  /// 스킨별 바디 그라디언트 id. 무늬 없는 색상 스킨(코랄 등)은 기본 흰 바디.
   static String _skinBodyFill(String skin) {
     return switch (skin) {
+      'skin/panda' => 'mPandaBody',
+      'skin/mole' => 'mMoleBody',
       'skin/tiger' => 'mTigerBody',
       'skin/cat' => 'mCatBody',
       'skin/bee' => 'mBeeBody',
@@ -277,17 +279,76 @@ class MochiCharacterView extends StatelessWidget {
     final top = cy - ry;
     switch (skin) {
       case 'skin/panda':
-        // 눈 주변 패치 — 기존 보정값 그대로 유지 (단계별 눈 위치에 맞춤).
-        return switch (stage) {
+        // 진짜 판다 룩 — 비스듬한 눈 패치 + 검정 코 + 양팔 어깨 패치.
+        // 눈 패치는 바깥위→안쪽아래로 기울여(±22°) 실제 판다의 팔(八)자 무늬를 재현.
+        final eyePatches = switch (stage) {
           CharacterStage.egg =>
-            '<ellipse cx="78" cy="106" rx="13" ry="10" fill="url(#mPanda)"/>'
-                '<ellipse cx="122" cy="106" rx="13" ry="10" fill="url(#mPanda)"/>',
+            '<ellipse cx="78" cy="106" rx="13" ry="10" fill="url(#mPanda)" transform="rotate(-22 78 106)"/>'
+                '<ellipse cx="122" cy="106" rx="13" ry="10" fill="url(#mPanda)" transform="rotate(22 122 106)"/>',
           CharacterStage.sprout =>
-            '<ellipse cx="82" cy="118" rx="9" ry="6" fill="url(#mPanda)"/>'
-                '<ellipse cx="118" cy="118" rx="9" ry="6" fill="url(#mPanda)"/>',
-          _ => '<ellipse cx="86" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>'
-              '<ellipse cx="114" cy="116" rx="11" ry="8" fill="url(#mPanda)"/>',
+            '<ellipse cx="83" cy="119" rx="9.5" ry="7" fill="url(#mPanda)" transform="rotate(-22 83 119)"/>'
+                '<ellipse cx="117" cy="119" rx="9.5" ry="7" fill="url(#mPanda)" transform="rotate(22 117 119)"/>',
+          _ =>
+            '<ellipse cx="85" cy="118" rx="11.5" ry="8.5" fill="url(#mPanda)" transform="rotate(-22 85 118)"/>'
+                '<ellipse cx="115" cy="118" rx="11.5" ry="8.5" fill="url(#mPanda)" transform="rotate(22 115 118)"/>',
         };
+        if (stage == CharacterStage.egg) return eyePatches;
+        // 코: 두 눈 사이 아래 — 하이라이트로 말랑한 젤리 코.
+        final noseY = (cy + ry * 0.11).toStringAsFixed(1);
+        final nose =
+            '<ellipse cx="$cx" cy="$noseY" rx="3.6" ry="2.6" fill="url(#mPanda)"/>'
+            '<circle cx="${(cx - 1.2).toStringAsFixed(1)}" cy="${(cy + ry * 0.07).toStringAsFixed(1)}" r="0.9" fill="#FFFFFF" opacity="0.55"/>';
+        // 양팔 — 본체 좌우 하단을 감싸는 검정 초승달 패치 (판다의 앞다리).
+        final armY = (cy + ry * 0.38).toStringAsFixed(1);
+        final armLx = (cx - rx * 0.74).toStringAsFixed(1);
+        final armRx = (cx + rx * 0.74).toStringAsFixed(1);
+        final armRxV = (rx * 0.34).toStringAsFixed(1);
+        final armRyV = (ry * 0.46).toStringAsFixed(1);
+        final arms =
+            '<ellipse cx="$armLx" cy="$armY" rx="$armRxV" ry="$armRyV" fill="url(#mPanda)" transform="rotate(24 $armLx $armY)"/>'
+            '<ellipse cx="$armRx" cy="$armY" rx="$armRxV" ry="$armRyV" fill="url(#mPanda)" transform="rotate(-24 $armRx $armY)"/>';
+        return '$arms$eyePatches$nose';
+      case 'skin/mole':
+        // 두더지 — 밝은 주둥이 + 분홍 젤리코 + 수염 + 굴착 발톱 앞발.
+        // 주둥이는 눈(cy-2 근처)을 덮지 않게 코~입 주변만 밝힌다.
+        final muzzleY = (cy + ry * 0.26).toStringAsFixed(1);
+        final muzzle =
+            '<ellipse cx="$cx" cy="$muzzleY" rx="${(rx * 0.30).toStringAsFixed(1)}" ry="${(ry * 0.20).toStringAsFixed(1)}" fill="#EBD3B4" opacity="0.95"/>';
+        final noseY = (cy + ry * 0.10).toStringAsFixed(1);
+        final nose =
+            '<ellipse cx="$cx" cy="$noseY" rx="4.2" ry="3.1" fill="url(#mMoleNose)"/>'
+            '<circle cx="${(cx - 1.4).toStringAsFixed(1)}" cy="${(cy + ry * 0.055).toStringAsFixed(1)}" r="1.1" fill="#FFFFFF" opacity="0.7"/>';
+        // 수염 — 주둥이 양 옆 2가닥씩, 짧고 아래로 처지게.
+        final wy1 = (cy + ry * 0.14).toStringAsFixed(1);
+        final wy2 = (cy + ry * 0.28).toStringAsFixed(1);
+        final wLo = (cx - rx * 0.78).toStringAsFixed(1);
+        final wLi = (cx - rx * 0.44).toStringAsFixed(1);
+        final wRo = (cx + rx * 0.78).toStringAsFixed(1);
+        final wRi = (cx + rx * 0.44).toStringAsFixed(1);
+        final whiskers = '''
+    <g stroke="#6B4A32" stroke-width="1.3" stroke-linecap="round" opacity="0.75">
+      <line x1="$wLo" y1="$wy1" x2="$wLi" y2="${(cy + ry * 0.18).toStringAsFixed(1)}"/>
+      <line x1="$wLo" y1="$wy2" x2="$wLi" y2="$wy2"/>
+      <line x1="$wRo" y1="$wy1" x2="$wRi" y2="${(cy + ry * 0.18).toStringAsFixed(1)}"/>
+      <line x1="$wRo" y1="$wy2" x2="$wRi" y2="$wy2"/>
+    </g>''';
+        if (stage == CharacterStage.egg) return '$muzzle$nose';
+        // 앞발 — 크림색 굴착 발 + 발톱 3개. 두더지의 상징.
+        final pawY = (cy + ry * 0.52).toStringAsFixed(1);
+        final pawLx = (cx - rx * 0.68).toStringAsFixed(1);
+        final pawRx = (cx + rx * 0.68).toStringAsFixed(1);
+        final pawR = (rx * 0.22).toStringAsFixed(1);
+        String claw(double px, double py, double dx) =>
+            '<path d="M${px.toStringAsFixed(1)} ${py.toStringAsFixed(1)} q${dx.toStringAsFixed(1)} 2.4 ${(dx * 0.6).toStringAsFixed(1)} 5.2" stroke="#F5EAD8" stroke-width="1.7" stroke-linecap="round" fill="none"/>';
+        final pawLxD = cx - rx * 0.68;
+        final pawRxD = cx + rx * 0.68;
+        final pawYD = cy + ry * 0.44;
+        final paws =
+            '<circle cx="$pawLx" cy="$pawY" r="$pawR" fill="url(#mMolePaw)"/>'
+            '${claw(pawLxD - 4.5, pawYD, -1.6)}${claw(pawLxD, pawYD - 1.5, 0)}${claw(pawLxD + 4.5, pawYD, 1.6)}'
+            '<circle cx="$pawRx" cy="$pawY" r="$pawR" fill="url(#mMolePaw)"/>'
+            '${claw(pawRxD - 4.5, pawYD, -1.6)}${claw(pawRxD, pawYD - 1.5, 0)}${claw(pawRxD + 4.5, pawYD, 1.6)}';
+        return '$paws$muzzle$whiskers$nose';
       case 'skin/tiger':
         // 이마 세로 줄 3개 + 양 옆구리 줄 — 호랑이 무늬.
         final ft = (top + ry * 0.10).toStringAsFixed(1);
@@ -356,6 +417,30 @@ class MochiCharacterView extends StatelessWidget {
     final rx = g.rx;
     final ry = g.ry;
     switch (skin) {
+      case 'skin/panda':
+        // 동그란 검정 귀 — 판다의 상징. 정수리 좌우에 큼직하게.
+        final earY = (cy - ry * 0.84).toStringAsFixed(1);
+        final earR = (rx * 0.26).toStringAsFixed(1);
+        final lX = (cx - rx * 0.56).toStringAsFixed(1);
+        final rX = (cx + rx * 0.56).toStringAsFixed(1);
+        final hlR = (rx * 0.08).toStringAsFixed(1);
+        return '''
+    <circle cx="$lX" cy="$earY" r="$earR" fill="url(#mPanda)"/>
+    <circle cx="${(cx - rx * 0.62).toStringAsFixed(1)}" cy="${(cy - ry * 0.92).toStringAsFixed(1)}" r="$hlR" fill="#FFFFFF" opacity="0.35"/>
+    <circle cx="$rX" cy="$earY" r="$earR" fill="url(#mPanda)"/>
+    <circle cx="${(cx + rx * 0.50).toStringAsFixed(1)}" cy="${(cy - ry * 0.92).toStringAsFixed(1)}" r="$hlR" fill="#FFFFFF" opacity="0.35"/>''';
+      case 'skin/mole':
+        // 작고 동그란 귀 — 두더지는 귀가 아주 작다. 속귀는 분홍.
+        final earY = (cy - ry * 0.78).toStringAsFixed(1);
+        final earR = (rx * 0.15).toStringAsFixed(1);
+        final inR = (rx * 0.075).toStringAsFixed(1);
+        final lX = (cx - rx * 0.60).toStringAsFixed(1);
+        final rX = (cx + rx * 0.60).toStringAsFixed(1);
+        return '''
+    <circle cx="$lX" cy="$earY" r="$earR" fill="url(#mMoleBody)" stroke="#6B4A32" stroke-width="1"/>
+    <circle cx="$lX" cy="$earY" r="$inR" fill="url(#mMoleNose)" opacity="0.75"/>
+    <circle cx="$rX" cy="$earY" r="$earR" fill="url(#mMoleBody)" stroke="#6B4A32" stroke-width="1"/>
+    <circle cx="$rX" cy="$earY" r="$inR" fill="url(#mMoleNose)" opacity="0.75"/>''';
       case 'skin/tiger':
         // 둥근 귀 + 진한 안쪽 — 정수리 좌우.
         final earY = (cy - ry * 0.82).toStringAsFixed(1);
@@ -516,7 +601,7 @@ class MochiCharacterView extends StatelessWidget {
     };
   }
 
-  /// 기본 풀밭 언덕 — 하늘 톤이 스킨색을 따라간다 (코랄=살구빛, 민트=청록빛 하늘).
+  /// 기본 풀밭 언덕 — 하늘 톤이 스킨색을 따라간다 (코랄=살구빛 하늘).
   static ({String defs, String markup, String shadowHex}) _sceneMeadow(
       String skinHex) {
     final skyTop = _mixHex(skinHex, 0.80, toWhite: true);
@@ -860,6 +945,28 @@ $sceneDefs
       <stop offset="0%" stop-color="#565656"/>
       <stop offset="60%" stop-color="#343434"/>
       <stop offset="100%" stop-color="#1E1E1E"/>
+    </radialGradient>
+    <radialGradient id="mPandaBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="46%" stop-color="#F8F8F6"/>
+      <stop offset="78%" stop-color="#E9E9E4"/>
+      <stop offset="100%" stop-color="#CFCFC8"/>
+    </radialGradient>
+    <radialGradient id="mMoleBody" cx="0.38" cy="0.30" r="0.88">
+      <stop offset="0%" stop-color="#D9B896"/>
+      <stop offset="46%" stop-color="#BC9068"/>
+      <stop offset="78%" stop-color="#9A6F4B"/>
+      <stop offset="100%" stop-color="#7A5336"/>
+    </radialGradient>
+    <radialGradient id="mMoleNose" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#FFC2CF"/>
+      <stop offset="60%" stop-color="#F58BA3"/>
+      <stop offset="100%" stop-color="#D95E7E"/>
+    </radialGradient>
+    <radialGradient id="mMolePaw" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0%" stop-color="#F2E3CB"/>
+      <stop offset="60%" stop-color="#E3C9A4"/>
+      <stop offset="100%" stop-color="#C8A578"/>
     </radialGradient>
     <radialGradient id="mTigerBody" cx="0.38" cy="0.30" r="0.88">
       <stop offset="0%" stop-color="#FFEDCC"/>

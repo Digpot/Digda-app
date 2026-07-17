@@ -92,6 +92,7 @@ void main() {
   testWidgets('모찌 — 패턴 스킨 전종 × 전 단계 렌더 (+눈 감김)', (tester) async {
     const patternSkins = {
       'skin/panda': '#8B8B8B',
+      'skin/mole': '#8B6547',
       'skin/tiger': '#F59E0B',
       'skin/cat': '#B0A8A2',
       'skin/bee': '#FCD34D',

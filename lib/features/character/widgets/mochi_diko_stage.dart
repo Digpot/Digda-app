@@ -16,7 +16,7 @@ import 'mochi_character_view.dart';
 /// 돌봄 툴바(물주기·간식·공놀이·목욕)가 떠 있다. 각 버튼은 모찌의 전용
 /// 리액션(감정+점프+파티클+대사)을 트리거하고 쓰다듬기와 같은 경험치 콜백을
 /// 공유한다. 디코([state.dikoUnlocked])는 카드 우하단에 함께 산다.
-class MochiHomeScene extends StatelessWidget {
+class MochiHomeScene extends StatefulWidget {
   const MochiHomeScene({
     super.key,
     required this.state,
@@ -39,11 +39,32 @@ class MochiHomeScene extends StatelessWidget {
   static const double _heightFactor = 1.3;
 
   @override
+  State<MochiHomeScene> createState() => _MochiHomeSceneState();
+}
+
+class _MochiHomeSceneState extends State<MochiHomeScene> {
+  /// 돌봄 액션 신호 — 값이 오를 때마다 채팅([_MochiDikoChat])이 잠시 입을 다물어,
+  /// 돌봄 리액션의 강제 말풍선과 채팅 말풍선이 같은 하늘 밴드에 겹치지 않는다.
+  final ValueNotifier<int> _careSeq = ValueNotifier(0);
+
+  @override
+  void dispose() {
+    _careSeq.dispose();
+    super.dispose();
+  }
+
+  void _handleCare(MochiCareAction action) {
+    widget.mochiController.triggerCare(action);
+    _careSeq.value++;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final canvasH = w * _heightFactor;
+        final canvasH = w * MochiHomeScene._heightFactor;
         final dikoSize = w * 0.28;
         // AnimatedMochiWidget 은 캔버스 아래 24px 여유(점프/파티클용)를 갖는다 —
         // 카드 안 요소들의 bottom 좌표는 그만큼 보정한다.
@@ -58,12 +79,12 @@ class MochiHomeScene extends StatelessWidget {
                 appearance: MochiAppearance.fromState(state),
                 stage: state.stage,
                 size: w,
-                heightFactor: _heightFactor,
+                heightFactor: MochiHomeScene._heightFactor,
                 clipRadius: 28,
                 bubbleInBounds: true,
                 happiness: state.progress,
-                controller: mochiController,
-                onPet: onPet,
+                controller: widget.mochiController,
+                onPet: widget.onPet,
                 // 디코 등장 후엔 둘이 대화하는 채팅(_MochiDikoChat)이 하늘에 떠
                 // 있으므로 모찌 단독 자동 말풍선은 끈다 (돌봄 대사는 강제 표시됨).
                 showBubble: !state.dikoUnlocked,
@@ -73,18 +94,18 @@ class MochiHomeScene extends StatelessWidget {
                 Positioned(
                   right: 12,
                   bottom: extraBottom + 74,
-                  child: _DikoIdleFloat(size: dikoSize, onTap: onDikoTap),
+                  child: _DikoIdleFloat(size: dikoSize, onTap: widget.onDikoTap),
                 ),
-              if (state.dikoUnlocked && showChat)
-                // 말풍선은 각자 머리 위 — 장식이라 IgnorePointer 로 감싸 아래
-                // 캐릭터 탭(쓰다듬기·디코 반응)을 막지 않는다.
+              if (state.dikoUnlocked && widget.showChat)
+                // 말풍선은 캐릭터를 가리지 않는 상단 하늘 밴드 — 장식이라
+                // IgnorePointer 로 감싸 아래 캐릭터 탭(쓰다듬기·디코 반응)을 막지 않는다.
                 Positioned.fill(
                   child: IgnorePointer(
                     child: _MochiDikoChat(
                       stage: state.stage,
                       mochiSize: w,
                       dikoSize: dikoSize,
-                      dikoBottom: extraBottom + 74,
+                      muteSignal: _careSeq,
                     ),
                   ),
                 ),
@@ -94,7 +115,7 @@ class MochiHomeScene extends StatelessWidget {
                 right: 0,
                 bottom: extraBottom + 10,
                 child: _CareToolbar(
-                  onAction: mochiController.triggerCare,
+                  onAction: _handleCare,
                 ),
               ),
             ],
@@ -335,14 +356,15 @@ class _MochiDikoChat extends StatefulWidget {
     required this.stage,
     required this.mochiSize,
     required this.dikoSize,
-    this.dikoBottom = 16,
+    this.muteSignal,
   });
   final CharacterStage stage;
   final double mochiSize;
   final double dikoSize;
 
-  /// 디코 본체가 컨테이너 하단에서 떠 있는 높이 — 디코 말풍선의 기준점.
-  final double dikoBottom;
+  /// 값이 바뀔 때마다 채팅을 잠시 숨긴다 — 돌봄 리액션의 강제 말풍선
+  /// (AnimatedMochiWidget, 4.5초 노출)과 겹치지 않게 하기 위한 신호.
+  final ValueNotifier<int>? muteSignal;
 
   @override
   State<_MochiDikoChat> createState() => _MochiDikoChatState();
@@ -351,36 +373,57 @@ class _MochiDikoChat extends StatefulWidget {
 class _MochiDikoChatState extends State<_MochiDikoChat> {
   Timer? _ticker;
   Timer? _firstShowTimer;
+  Timer? _muteTimer;
+  bool _muted = false;
   // null 이면 아직 첫 라인 등장 전이라 빈 화면. 1200ms 후 0 으로 전환되며
   // 주기적 ticker 가 그 뒤를 이어받는다 — Mochi/Diko 가 먼저 등장한 다음 대화가
   // 시작되는 느낌을 준다.
   int? _index;
 
-  // 말풍선 위치 변주 — 매 라인마다 머리 위 기준으로 조금씩 다른 자리에 떠서
-  // 항상 같은 자리에 박혀 보이지 않게 한다(2.0.0). 캐릭터 본체를 가리지 않도록
-  // 각자 머리 위 범위 안에서만 흔들되, 꼬리는 항상 화자 쪽을 가리킨다.
+  // 말풍선 위치 변주 — 매 라인마다 조금씩 다른 자리에 떠서 박제된 느낌을 없앤다.
+  // 두 말풍선 모두 캐릭터가 없는 상단 하늘 밴드 안에서만 움직여 모찌/디코의
+  // 얼굴을 절대 가리지 않는다. 꼬리는 항상 화자 쪽(모찌=중앙 아래, 디코=우하단)을
+  // 가리킨다.
   final math.Random _rng = math.Random();
-  double _mochiLeftFactor = 0.04; // mochiSize 대비 0.02~0.38
-  double _mochiTop = 0; // 0~12px
+  double _mochiLeftFactor = 0.04; // mochiSize 대비 0.02~0.30
+  double _mochiTop = 0; // 0~10px
   BubbleTailDirection _mochiTail = BubbleTailDirection.bottomCenter;
-  double _dikoRightFactor = 0.03; // dikoSize 대비 0.03~0.28
-  double _dikoLift = 0; // 0~12px 추가로 띄움
+  double _dikoRight = 8; // 8~8+0.06w px
+  double _dikoTop = 0; // 0~10px
 
   void _shuffleSlots() {
-    _mochiLeftFactor = 0.02 + _rng.nextDouble() * 0.36;
-    _mochiTop = _rng.nextDouble() * 12;
+    _mochiLeftFactor = 0.02 + _rng.nextDouble() * 0.28;
+    _mochiTop = _rng.nextDouble() * 10;
     // 말풍선이 모찌 머리 중심(≈0.5)보다 왼쪽으로 치우칠수록 꼬리를 오른쪽에 둬
     // 머리를 가리키게 한다.
     _mochiTail = _mochiLeftFactor < 0.16
         ? BubbleTailDirection.bottomRight
         : BubbleTailDirection.bottomCenter;
-    _dikoRightFactor = 0.03 + _rng.nextDouble() * 0.25;
-    _dikoLift = _rng.nextDouble() * 12;
+    _dikoRight = 8 + _rng.nextDouble() * widget.mochiSize * 0.06;
+    _dikoTop = _rng.nextDouble() * 10;
+  }
+
+  void _handleMute() {
+    if (!mounted) return;
+    // 돌봄 강제 말풍선 노출(4500ms) + 여유를 두고 침묵 — 겹침 원천 차단.
+    setState(() => _muted = true);
+    _muteTimer?.cancel();
+    _muteTimer = Timer(const Duration(milliseconds: 5200), () {
+      if (!mounted) return;
+      setState(() {
+        _muted = false;
+        _shuffleSlots();
+        if (_index != null) {
+          _index = (_index! + 1) % _corpus(widget.stage).length;
+        }
+      });
+    });
   }
 
   @override
   void initState() {
     super.initState();
+    widget.muteSignal?.addListener(_handleMute);
     _firstShowTimer = Timer(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       setState(() {
@@ -389,7 +432,7 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
       });
     });
     _ticker = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted || _index == null) return;
+      if (!mounted || _index == null || _muted) return;
       setState(() {
         _shuffleSlots();
         _index = (_index! + 1) % _corpus(widget.stage).length;
@@ -400,6 +443,10 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
   @override
   void didUpdateWidget(_MochiDikoChat old) {
     super.didUpdateWidget(old);
+    if (old.muteSignal != widget.muteSignal) {
+      old.muteSignal?.removeListener(_handleMute);
+      widget.muteSignal?.addListener(_handleMute);
+    }
     if (old.stage != widget.stage) {
       // 단계가 변하면 인덱스 초기화 — 다른 톤의 라인으로 즉시 갈아치움.
       // 단, 아직 첫 라인 등장 전(null) 이면 null 을 유지해 1200ms 지연을 보장.
@@ -411,8 +458,10 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
 
   @override
   void dispose() {
+    widget.muteSignal?.removeListener(_handleMute);
     _ticker?.cancel();
     _firstShowTimer?.cancel();
+    _muteTimer?.cancel();
     super.dispose();
   }
 
@@ -471,16 +520,17 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
     final lines = _corpus(widget.stage);
     // 첫 라인 지연 중에는 빈 영역으로 두고, 1200ms 후 첫 라인이 fade-in.
     // 인덱스가 corpus 길이를 넘는 비정상 케이스(이론상 없음)도 안전하게 모듈로.
+    // 돌봄 리액션 침묵(_muted) 중에는 양쪽 다 접는다.
     final idx = _index;
-    final line = idx == null ? null : lines[idx % lines.length];
+    final line =
+        (idx == null || _muted) ? null : lines[idx % lines.length];
     final isMochi = line?.speaker == _Speaker.mochi;
     final isDiko = line?.speaker == _Speaker.diko;
     final mochiSize = widget.mochiSize;
-    final dikoSize = widget.dikoSize;
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // 모찌 말풍선 — 모찌 머리 위(상단 밴드). 라인마다 좌우/상하로 살짝 변주.
+        // 모찌 말풍선 — 모찌 머리 위 하늘 밴드(좌측). 라인마다 좌우/상하로 살짝 변주.
         Positioned(
           top: _mochiTop,
           left: mochiSize * _mochiLeftFactor,
@@ -488,26 +538,23 @@ class _MochiDikoChatState extends State<_MochiDikoChat> {
             show: isMochi,
             line: line,
             keyId: 'mochi-$idx',
-            maxWidth: mochiSize * 0.78,
+            maxWidth: mochiSize * 0.62,
             tail: _mochiTail,
           ),
         ),
-        // 디코 말풍선 — 디코 머리 위(우측). 디코는 bottom:16, 높이 dikoSize 로 컨테이너
-        // 오른쪽에 매달려 있다. 버블을 디코 쪽으로 더 붙이고(우측) 위로 더 띄워(상단)
-        // 모찌 본체와 덜 겹치게 한다. 단 버블 오른쪽 끝이 디코 오른쪽 끝(≈ +dikoSize*0.65)
-        // 을 넘으면 작은 화면에서 ListView 가 가로로 잘라먹으므로 그 안쪽으로 둔다.
+        // 디코 말풍선 — 같은 하늘 밴드의 우측. 예전엔 디코 머리 바로 위(카드 중단)에
+        // 띄웠는데 그 높이가 정확히 모찌 얼굴이라 대화 내내 얼굴을 가렸다. 지금은
+        // 캐릭터가 없는 상단 하늘에만 떠 있고, 오른쪽 아래로 향한 꼬리가 우하단의
+        // 디코를 가리켜 화자를 구분한다.
         Positioned(
-          // 컨테이너가 오른쪽으로 dikoPeek(=dikoSize*0.65) 넓어졌으므로, 디코 말풍선이
-          // 기존(폭 mochiSize 기준 right:-dikoSize*0.62)과 동일한 화면 위치 부근에 오도록
-          // dikoPeek 만큼 안쪽으로 당긴 지점(+0.03)을 기준으로 라인마다 살짝 변주한다.
-          right: dikoSize * _dikoRightFactor,
-          bottom: widget.dikoBottom + dikoSize + 14 + _dikoLift,
+          top: _dikoTop,
+          right: _dikoRight,
           child: _slot(
             show: isDiko,
             line: line,
             keyId: 'diko-$idx',
-            maxWidth: mochiSize * 0.58,
-            // 디코는 항상 버블 오른쪽 아래에 있으므로 꼬리도 오른쪽.
+            maxWidth: mochiSize * 0.55,
+            // 디코는 항상 카드 우하단에 있으므로 꼬리도 오른쪽 아래.
             tail: BubbleTailDirection.bottomRight,
           ),
         ),
