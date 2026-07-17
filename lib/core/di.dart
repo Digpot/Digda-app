@@ -24,6 +24,7 @@ import '../features/report/data/report_repository.dart';
 import '../features/block/data/block_repository.dart';
 import '../features/inquiry/data/inquiry_repository.dart';
 import '../features/omok/data/omok_repository.dart';
+import '../features/minigame/data/minigame_repository.dart';
 
 /// 외부 의존성 주입 프레임워크 없이 단일 인스턴스를 공유하기 위한 가벼운 로케이터.
 class Di {
@@ -52,6 +53,7 @@ class Di {
   static late final BlockRepository blockRepository;
   static late final InquiryRepository inquiryRepository;
   static late final OmokRepository omokRepository;
+  static late final MinigameRepository minigameRepository;
   static late final AuthSession authSession;
   static late final UserSession userSession;
   static late final ActiveGroupSession activeGroup;
@@ -81,6 +83,7 @@ class Di {
     blockRepository = BlockRepository(apiClient: apiClient);
     inquiryRepository = InquiryRepository(apiClient: apiClient);
     omokRepository = OmokRepository(apiClient: apiClient);
+    minigameRepository = MinigameRepository(apiClient: apiClient);
     authSession = AuthSession(
       repository: authRepository,
       api: apiClient,

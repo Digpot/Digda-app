@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../screens/character/games/catchmind_game_screen.dart';
 import '../screens/character/games/omok_game_screen.dart';
+import '../screens/character/games/tap_battle_screen.dart';
 import 'di.dart';
 
 /// 앱 전역 Navigator 키 — 푸시 알림 탭 등 위젯 밖에서 화면을 전환할 때 쓴다.
@@ -78,15 +80,22 @@ class NotificationRouter {
 
     final name = Di.activeGroup.groupRoomName ?? '';
 
-    // 오목 초대 — 모찌 탭 위에 대국 화면(수락/거절 포함)을 바로 띄운다.
+    // 게임 초대(오목/캐치마인드/탭배틀) — 모찌 탭 위에 해당 게임 화면
+    // (수락/거절/참가 포함)을 바로 띄운다.
     final relatedType = _stringOf(data['relatedType'])?.toUpperCase();
-    if (relatedType == 'OMOK') {
+    if (relatedType == 'OMOK' ||
+        relatedType == 'CATCHMIND' ||
+        relatedType == 'TAP_BATTLE') {
       final gameId = int.tryParse(_stringOf(data['relatedId']) ?? '');
       if (gameId != null) {
         nav.pushNamedAndRemoveUntil('/character', (r) => false,
             arguments: {'name': name});
         nav.push(MaterialPageRoute(
-          builder: (_) => OmokGameScreen(gameId: gameId),
+          builder: (_) => switch (relatedType) {
+            'CATCHMIND' => CatchmindGameScreen(gameId: gameId),
+            'TAP_BATTLE' => TapBattleScreen(gameId: gameId),
+            _ => OmokGameScreen(gameId: gameId),
+          },
         ));
         return;
       }

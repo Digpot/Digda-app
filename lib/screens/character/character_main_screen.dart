@@ -577,13 +577,11 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             ),
           ),
           _buildEquippedTitleChip(),
+          const SizedBox(height: 16),
+          // 레벨·단계·코인·EXP 를 한 장의 상태 카드로 — 흩어진 칩 3개(레벨/EXP/코인)
+          // 가 세로로 늘어지던 걸 상용 키우기 게임처럼 응집시킨다.
+          _StatusCard(state: s),
           const SizedBox(height: 20),
-          _LevelStageRow(state: s),
-          const SizedBox(height: 12),
-          _ExpProgress(state: s),
-          const SizedBox(height: 28),
-          _CoinChip(coin: s.coin),
-          const SizedBox(height: 24),
           if (s.canChallengeMaster) ...[
             _MasterGameCta(
               onTap: _openMasterGame,
@@ -960,202 +958,218 @@ class _MiniTile extends StatelessWidget {
   }
 }
 
-class _LevelStageRow extends StatelessWidget {
-  const _LevelStageRow({required this.state});
+/// 상태 카드 — 레벨 배지·단계 이름·코인을 한 줄에, 아래에 EXP 진행 바.
+/// (레벨/EXP/코인 칩이 각각 떠 있던 이전 레이아웃을 응집)
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({required this.state});
   final CharacterState state;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(999),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.gray100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          child: Text(
-            'Lv. ${state.level}',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              color: AppColors.white,
-            ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Lv. ${state.level}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  state.stageDisplayName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppColors.gray900,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E2),
+                  borderRadius: BorderRadius.circular(999),
+                  border:
+                      Border.all(color: const Color(0xFFFCD34D), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 17,
+                      height: 17,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFCD34D),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'C',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${state.coin}',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: AppColors.gray900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          state.stageDisplayName,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-            color: AppColors.gray900,
-          ),
-        ),
-      ],
+          const SizedBox(height: 13),
+          _buildExpArea(),
+        ],
+      ),
     );
   }
-}
 
-class _ExpProgress extends StatelessWidget {
-  const _ExpProgress({required this.state});
-  final CharacterState state;
-
-  @override
-  Widget build(BuildContext context) {
-    // 레벨 20 도달했지만 아직 진화 시험을 통과하지 못한 상태 — 트로피 대신 시험 안내.
+  Widget _buildExpArea() {
+    // 레벨 20 도달했지만 아직 진화 시험을 통과하지 못한 상태 — 바 대신 시험 안내.
     if (state.maxLevelReached && state.stage != CharacterStage.master) {
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF7E2),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFFCD34D), width: 1),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('✨', style: TextStyle(fontSize: 15)),
-              SizedBox(width: 6),
-              Text(
-                'Lv.20 · 진화 시험에 도전하세요',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: AppColors.gray900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    final atMax = state.maxLevelReached;
-    if (atMax) {
-      // 마스터 — 추가 EXP 불가. 진행도 바 대신 트로피 배지로 마무리.
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFD700), Color(0xFFFFB347)],
-            ),
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFB347).withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('🏆', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 6),
-              Text(
-                '마스터 도달!',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  color: Colors.white,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return Column(
-      children: [
-        Container(
-          height: 10,
-          decoration: BoxDecoration(
-            color: AppColors.gray100,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: state.progress,
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'EXP ${state.exp} / ${state.expForNextLevel}',
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-            color: AppColors.gray700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CoinChip extends StatelessWidget {
-  const _CoinChip({required this.coin});
-  final int coin;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFFFF7E2),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFFCD34D), width: 1),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFCD34D),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'C',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
+            Text('✨', style: TextStyle(fontSize: 14)),
+            SizedBox(width: 6),
             Text(
-              '$coin 코인',
-              style: const TextStyle(
+              'Lv.20 · 진화 시험에 도전하세요',
+              style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontSize: 12.5,
                 color: AppColors.gray900,
               ),
             ),
           ],
         ),
-      ),
+      );
+    }
+    if (state.maxLevelReached) {
+      // 마스터 — 추가 EXP 불가. 진행도 바 대신 트로피 배지로 마무리.
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFFFB347)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('🏆', style: TextStyle(fontSize: 14)),
+            SizedBox(width: 6),
+            Text(
+              '마스터 도달!',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+                color: Colors.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            height: 10,
+            color: AppColors.gray100,
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: state.progress.clamp(0.0, 1.0),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFF9A86), AppColors.primary],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Text(
+              'EXP',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 10.5,
+                letterSpacing: 0.5,
+                color: AppColors.gray400,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${state.exp} / ${state.expForNextLevel}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 11.5,
+                color: AppColors.gray600,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
