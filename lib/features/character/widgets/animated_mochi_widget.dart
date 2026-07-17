@@ -152,6 +152,11 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   final List<_ParticleData> _particles = [];
   int _pid = 0;
 
+  // ── 돌봄 연출 ──
+  _CareShowData? _careShow;
+  int _careSeq = 0;
+  Timer? _careReactTimer;
+
   // ── 쓰다듬 쿨다운 ──
   DateTime _lastPetCall = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -268,6 +273,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     _sleepCheckTimer?.cancel();
     _bubbleAutoTimer?.cancel();
     _bubbleHideTimer?.cancel();
+    _careReactTimer?.cancel();
     super.dispose();
   }
 
@@ -394,45 +400,47 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     );
   }
 
-  /// 돌봄 액션 리액션 — 액션별 감정/파티클/대사가 다르다. 말풍선은 showBubble
-  /// 여부와 무관하게 강제로 띄워, 디코 채팅 모드에서도 반응이 보이게 한다.
+  /// 돌봄 액션 리액션 — 이모지 파티클 한 줌으로 끝나던 걸 액션별 연출
+  /// 시퀀스([_CareShow])로 바꿨다: 공이 굴러와 모찌가 차올리고, 구름이 와서
+  /// 비를 뿌리고, 간식이 떨어져 냠냠 사라지고, 비눗방울이 차오른다.
+  /// 감정 변화·점프·대사는 연출 타이밍에 맞춰 지연 트리거된다.
+  /// 말풍선은 showBubble 여부와 무관하게 강제로 띄워, 디코 채팅 모드에서도
+  /// 반응이 보이게 한다.
   void triggerCare(MochiCareAction action) {
     _lastInteraction = DateTime.now();
-    final (MochiEmotion emotion, String emoji, int count, List<String> lines) =
-        switch (action) {
+    final (MochiEmotion emotion, List<String> lines) = switch (action) {
       MochiCareAction.water => (
           MochiEmotion.happy,
-          '💧',
-          5,
           const ['시원해~! 고마워', '물 최고야!', '쑥쑥 자랄게!'],
         ),
       MochiCareAction.snack => (
           MochiEmotion.excited,
-          '🍡',
-          4,
           const ['냠냠 맛있어!', '간식 최고~!', '한 입만 더...!'],
         ),
       MochiCareAction.play => (
           MochiEmotion.excited,
-          '⚽',
-          3,
           const ['슛~ 골인!', '재밌다! 한 번 더!', '공놀이 좋아!'],
         ),
       MochiCareAction.bubble => (
           MochiEmotion.happy,
-          '🫧',
-          6,
           const ['보글보글~', '간지러워 히히', '반짝반짝 목욕시간!'],
         ),
     };
-    _setEmotion(emotion, resetAfter: const Duration(seconds: 3));
-    _jump();
-    _spawnParticles(
-      Offset(widget.size / 2, widget.size * 0.5),
-      count: count,
-      forceEmoji: emoji,
-    );
-    _showBubbleMessage(lines[_rng.nextInt(lines.length)], forced: true);
+    // 연출 시작 — 같은 액션 연타 시 새 시퀀스로 교체.
+    setState(() => _careShow = _CareShowData(id: _careSeq++, action: action));
+    // 리액션(감정+점프+대사)은 소품이 모찌에 닿는 순간에 맞춘다.
+    _careReactTimer?.cancel();
+    _careReactTimer = Timer(_CareShow.reactDelay(action), () {
+      if (!mounted) return;
+      _setEmotion(emotion, resetAfter: const Duration(seconds: 3));
+      _jump();
+      _spawnParticles(
+        Offset(widget.size / 2, widget.size * 0.5),
+        count: 3,
+        forceEmoji: _CareShow.burstEmoji(action),
+      );
+      _showBubbleMessage(lines[_rng.nextInt(lines.length)], forced: true);
+    });
     _tryPetCallback();
   }
 
@@ -590,6 +598,17 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
                 ),
               ),
             ),
+            // 돌봄 연출 소품 — 공/구름/간식/비눗방울이 씬 안에서 살아 움직인다.
+            if (_careShow != null)
+              _CareShow(
+                key: ValueKey('care-${_careShow!.id}'),
+                action: _careShow!.action,
+                size: widget.size,
+                onDone: () {
+                  if (!mounted) return;
+                  setState(() => _careShow = null);
+                },
+              ),
             for (final p in List.of(_particles))
               _ParticleWidget(
                 key: ValueKey(p.id),
@@ -752,6 +771,271 @@ class _ParticleWidgetState extends State<_ParticleWidget>
         ),
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────
+// 돌봄 연출 — 액션별 스크립트 애니메이션 소품
+// ─────────────────────────────────────────────
+
+class _CareShowData {
+  const _CareShowData({required this.id, required this.action});
+  final int id;
+  final MochiCareAction action;
+}
+
+/// 돌봄 액션의 소품 연출. 이모지 소품이 씬 안에서 경로를 따라 움직인다:
+/// - 공놀이: 공이 왼쪽에서 굴러와 튀어오르고, 모찌가 차올려 오른쪽 하늘로 날아간다
+/// - 물주기: 구름이 머리 위로 흘러와 빗방울을 뿌리고 지나간다
+/// - 간식: 간식이 톡 떨어져 통통 튀고, 한 입씩 사라진다
+/// - 목욕: 비눗방울들이 아래에서 차올라 흔들리며 톡톡 터진다
+///
+/// 좌표계는 씬 상단 정사각형(폭 [size]) 기준 — 지면 y≈0.80·size, 모찌 중심
+/// x=0.5·size. 시퀀스가 끝나면 [onDone] 으로 자신을 제거한다.
+class _CareShow extends StatefulWidget {
+  const _CareShow({
+    super.key,
+    required this.action,
+    required this.size,
+    required this.onDone,
+  });
+
+  final MochiCareAction action;
+  final double size;
+  final VoidCallback onDone;
+
+  /// 소품이 모찌에 닿아 리액션(감정/점프/대사)을 시작할 시점.
+  static Duration reactDelay(MochiCareAction action) => switch (action) {
+        MochiCareAction.play => const Duration(milliseconds: 850),
+        MochiCareAction.snack => const Duration(milliseconds: 720),
+        MochiCareAction.water => const Duration(milliseconds: 800),
+        MochiCareAction.bubble => const Duration(milliseconds: 700),
+      };
+
+  /// 리액션 순간 터지는 파티클 이모지.
+  static String burstEmoji(MochiCareAction action) => switch (action) {
+        MochiCareAction.play => '⭐',
+        MochiCareAction.snack => '❤️',
+        MochiCareAction.water => '✨',
+        MochiCareAction.bubble => '✨',
+      };
+
+  static Duration _duration(MochiCareAction action) => switch (action) {
+        MochiCareAction.play => const Duration(milliseconds: 1700),
+        MochiCareAction.snack => const Duration(milliseconds: 1900),
+        MochiCareAction.water => const Duration(milliseconds: 2100),
+        MochiCareAction.bubble => const Duration(milliseconds: 2100),
+      };
+
+  @override
+  State<_CareShow> createState() => _CareShowState();
+}
+
+class _CareShowState extends State<_CareShow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: _CareShow._duration(widget.action),
+    )
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed) widget.onDone();
+      })
+      ..forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  /// [t] 를 [a, b] 구간에서 0→1 로 정규화. 구간 밖은 0/1 로 클램프.
+  static double _seg(double t, double a, double b) =>
+      ((t - a) / (b - a)).clamp(0.0, 1.0);
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget.size;
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        final t = _ctrl.value;
+        final props = switch (widget.action) {
+          MochiCareAction.play => _play(t, w),
+          MochiCareAction.snack => _snack(t, w),
+          MochiCareAction.water => _water(t, w),
+          MochiCareAction.bubble => _bubble(t, w),
+        };
+        return Stack(clipBehavior: Clip.none, children: props);
+      },
+    );
+  }
+
+  Widget _prop(
+    double x,
+    double y,
+    String emoji, {
+    double scale = 1.0,
+    double angle = 0.0,
+    double opacity = 1.0,
+    double fontSize = 30,
+  }) {
+    return Positioned(
+      left: x - fontSize / 2,
+      top: y - fontSize / 2,
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: Transform.rotate(
+          angle: angle,
+          child: Transform.scale(
+            scale: scale,
+            child: Text(emoji, style: TextStyle(fontSize: fontSize)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 공놀이 — 굴러오기(0~0.38) → 튀어오르기(0.38~0.52) → 슛(0.52~1).
+  List<Widget> _play(double t, double w) {
+    final ground = w * 0.80;
+    double x;
+    double y;
+    double angle;
+    var opacity = 1.0;
+    if (t < 0.38) {
+      final p = Curves.easeOut.transform(_seg(t, 0.0, 0.38));
+      x = -w * 0.12 + p * w * 0.48; // → 0.36w
+      // 굴러오며 낮게 두 번 통통.
+      y = ground - (math.sin(p * math.pi * 2).abs() * w * 0.05);
+      angle = p * math.pi * 3;
+    } else if (t < 0.52) {
+      final p = Curves.easeOut.transform(_seg(t, 0.38, 0.52));
+      x = w * 0.36 + p * w * 0.10;
+      y = ground - p * w * 0.16; // 모찌 발치로 살짝 떠오름
+      angle = math.pi * 3 + p * math.pi;
+    } else {
+      // 슛! 오른쪽 하늘로 포물선 비행 + 빠른 회전.
+      final p = Curves.easeIn.transform(_seg(t, 0.52, 1.0));
+      x = w * 0.46 + p * w * 0.72;
+      y = ground - w * 0.16 - math.sin(p * math.pi * 0.5) * w * 0.62;
+      angle = math.pi * 4 + p * math.pi * 5;
+      opacity = 1.0 - _seg(p, 0.85, 1.0);
+    }
+    return [
+      // 지면 그림자 — 공 높이에 따라 작아진다.
+      if (opacity > 0)
+        Positioned(
+          left: x - 12,
+          top: ground + 8,
+          child: Opacity(
+            opacity: 0.18 * opacity * (1.0 - _seg(ground - y, 0, w * 0.5)),
+            child: Container(
+              width: 24,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ),
+      _prop(x, y, '⚽', angle: angle, opacity: opacity, fontSize: 26),
+    ];
+  }
+
+  /// 간식 — 낙하(0~0.32) → 착지 바운스(0.32~0.45) → 한 입씩 냠냠(0.45~0.95).
+  List<Widget> _snack(double t, double w) {
+    final landY = w * 0.64; // 모찌 입가 근처
+    const x0 = 0.50;
+    if (t < 0.32) {
+      final p = Curves.easeIn.transform(_seg(t, 0.0, 0.32));
+      return [_prop(w * x0, -w * 0.06 + p * (landY + w * 0.06), '🍡')];
+    }
+    if (t < 0.45) {
+      final p = _seg(t, 0.32, 0.45);
+      final squash = 1.0 + math.sin(p * math.pi) * 0.18;
+      final hop = math.sin(p * math.pi) * w * 0.03;
+      return [_prop(w * x0, landY - hop, '🍡', scale: squash)];
+    }
+    // 세 입에 나눠 먹기 — 단계적으로 작아지며 좌우로 옴찔.
+    final p = _seg(t, 0.45, 0.95);
+    final bite = (p * 3).floor().clamp(0, 2);
+    final scale = (1.0 - (bite + 1) * 0.3) + 0.3 * (1.0 - (p * 3 - bite));
+    final wiggle = math.sin(p * math.pi * 6) * w * 0.012;
+    final fade = 1.0 - _seg(p, 0.92, 1.0);
+    return [
+      _prop(w * x0 + wiggle, landY, '🍡',
+          scale: scale.clamp(0.0, 1.0), opacity: fade),
+    ];
+  }
+
+  /// 물주기 — 구름 등장(0~0.25) → 비 뿌리기(0.25~0.8) → 퇴장(0.8~1).
+  List<Widget> _water(double t, double w) {
+    final cloudY = w * 0.20;
+    double cloudX;
+    if (t < 0.25) {
+      cloudX = -w * 0.15 + Curves.easeOut.transform(_seg(t, 0, 0.25)) * w * 0.65;
+    } else if (t < 0.80) {
+      cloudX = w * 0.50 + math.sin(_seg(t, 0.25, 0.80) * math.pi * 2) * w * 0.03;
+    } else {
+      cloudX = w * 0.50 + Curves.easeIn.transform(_seg(t, 0.80, 1.0)) * w * 0.70;
+    }
+    final props = <Widget>[
+      _prop(cloudX, cloudY, '🌧️', fontSize: 40,
+          opacity: 1.0 - _seg(t, 0.92, 1.0)),
+    ];
+    // 빗방울 4줄 — 구름에서 모찌 정수리까지 시차 낙하.
+    for (var i = 0; i < 4; i++) {
+      final start = 0.28 + i * 0.11;
+      final p = _seg(t, start, start + 0.22);
+      if (p <= 0 || p >= 1) continue;
+      final dx = (i - 1.5) * w * 0.07;
+      props.add(_prop(
+        cloudX * 0.4 + w * 0.5 * 0.6 + dx, // 구름과 모찌 사이 보간 위치
+        cloudY + w * 0.06 + p * w * 0.30,
+        '💧',
+        fontSize: 16,
+        opacity: 1.0 - _seg(p, 0.7, 1.0),
+      ));
+    }
+    return props;
+  }
+
+  /// 목욕 — 비눗방울 3개가 차올라 흔들리다 톡 터진다 (시차).
+  List<Widget> _bubble(double t, double w) {
+    final props = <Widget>[];
+    const xs = [0.30, 0.52, 0.70];
+    for (var i = 0; i < xs.length; i++) {
+      final start = i * 0.12;
+      final p = _seg(t, start, start + 0.66);
+      if (p <= 0) continue;
+      final rise = Curves.easeOut.transform(p);
+      final y = w * 0.82 - rise * w * 0.44;
+      final sway = math.sin(p * math.pi * 3 + i) * w * 0.035;
+      // 마지막 12% 구간에서 팝 — 커지며 사라지고 반짝이가 남는다.
+      final popP = _seg(p, 0.88, 1.0);
+      final scale = 0.7 + rise * 0.5 + popP * 0.6;
+      final opacity = 1.0 - popP;
+      props.add(_prop(
+        w * xs[i] + sway,
+        y,
+        '🫧',
+        scale: scale,
+        opacity: opacity,
+        fontSize: 24 + i * 4.0,
+      ));
+      if (popP > 0 && popP < 1) {
+        props.add(_prop(w * xs[i] + sway, y, '✨',
+            scale: 0.5 + popP * 0.7, opacity: 1.0 - popP, fontSize: 18));
+      }
+    }
+    return props;
   }
 }
 

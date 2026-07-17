@@ -28,6 +28,7 @@ void main() {
     };
     const patternSkins = {
       'skin/panda': ('판다', '#9CA3AF'),
+      'skin/mole': ('두더지', '#8B6547'),
       'skin/tiger': ('호랑이', '#F59E0B'),
       'skin/cat': ('고양이', '#B0A8A2'),
       'skin/bee': ('꿀벌', '#FCD34D'),

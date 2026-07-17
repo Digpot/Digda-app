@@ -1023,26 +1023,27 @@ class _ItemTile extends StatelessWidget {
     final disabledByOther =
         pendingKey != null && !pendingBuy && !pendingEquip;
 
-    final Border? tileBorder = item.equipped
+    final Border tileBorder = item.equipped
         ? Border.all(color: AppColors.primary, width: 2)
         : isPreviewing
             ? Border.all(
                 color: AppColors.primary.withValues(alpha: 0.45), width: 1.5)
-            : null;
+            : Border.all(color: AppColors.gray100);
 
     return Material(
-      color: AppColors.gray50,
-      borderRadius: BorderRadius.circular(14),
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: item.owned ? onSelect : null,
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: tileBorder,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _ItemThumb(item: item),
               const SizedBox(width: 14),
@@ -1086,21 +1087,11 @@ class _ItemTile extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.owned
-                          ? (item.isDefault ? '기본 아이템' : '보유 중')
-                          : '${item.cost} 코인',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 12,
-                        color: AppColors.gray500,
-                      ),
-                    ),
+                    // 가격은 우측 구매 버튼(코인 필)에만 표시 — 여기 중복 표기하지
+                    // 않아 정보가 한 줄씩 깔끔하게 정렬된다.
                     if (item.description != null &&
                         item.description!.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         item.description!,
                         overflow: TextOverflow.ellipsis,
@@ -1108,7 +1099,19 @@ class _ItemTile extends StatelessWidget {
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w400,
-                          fontSize: 11,
+                          fontSize: 11.5,
+                          color: AppColors.gray500,
+                        ),
+                      ),
+                    ],
+                    if (item.owned && !item.equipped) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        item.isDefault ? '기본 아이템' : '보유 중',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10.5,
                           color: AppColors.gray400,
                         ),
                       ),
@@ -1163,11 +1166,15 @@ class _ItemThumb extends StatelessWidget {
           overlays: [item.toEquipped()],
         ),
     };
-    return SizedBox(
+    return Container(
       width: 56,
       height: 56,
-      child: ClipRRect(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
         child: MochiCharacterView(
           appearance: appearance,
           stage: CharacterStage.bloom,
@@ -1208,11 +1215,93 @@ class _ActionButton extends StatelessWidget {
         onPressed: (pendingEquip || disabled) ? null : onEquip,
       );
     }
+    // 미보유 — 가격이 곧 버튼. 빨간 사각 버튼에 숫자만 있던 걸 코인 아이콘이
+    // 함께 있는 골드 필로 바꿔 "코인으로 산다" 는 게 한 눈에 읽히게 한다.
     final canAfford = coin >= item.cost;
-    return _filledButton(
-      label: pendingBuy ? '구매 중...' : '${item.cost}',
-      onPressed: (!canAfford || pendingBuy || disabled) ? null : onBuy,
-      background: canAfford ? AppColors.primary : AppColors.gray300,
+    return _pricePill(
+      cost: item.cost,
+      enabled: canAfford && !pendingBuy && !disabled,
+      pending: pendingBuy,
+      onTap: (!canAfford || pendingBuy || disabled) ? null : onBuy,
+    );
+  }
+
+  /// 골드 코인 가격 필 — [enabled] 면 골드 그라디언트, 코인 부족이면 회색.
+  Widget _pricePill({
+    required int cost,
+    required bool enabled,
+    required bool pending,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          gradient: enabled
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFD166), Color(0xFFF5A623)],
+                )
+              : null,
+          color: enabled ? null : AppColors.gray200,
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFF5A623).withValues(alpha: 0.30),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (pending)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            else
+              Container(
+                width: 17,
+                height: 17,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: enabled
+                      ? Colors.white.withValues(alpha: 0.30)
+                      : AppColors.gray300,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  'C',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 10,
+                    color: enabled ? Colors.white : AppColors.gray500,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 6),
+            Text(
+              '$cost',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 13.5,
+                color: enabled ? Colors.white : AppColors.gray500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
