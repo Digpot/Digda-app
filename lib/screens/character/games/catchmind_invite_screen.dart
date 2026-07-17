@@ -24,6 +24,16 @@ class _CatchmindInviteScreenState extends State<CatchmindInviteScreen> {
   String? _errorMessage;
   bool _creating = false;
 
+  /// 방장이 고르는 게임 설정 — 서버에서 한 번 더 클램프된다.
+  int _totalRounds = 10;
+  int _roundSeconds = 90;
+
+  static const List<int> _roundOptions = [5, 10, 15, 20];
+  static const List<int> _timeOptions = [30, 60, 90, 120, 180, 300];
+
+  static String _timeLabel(int sec) =>
+      sec < 60 ? '$sec초' : sec % 60 == 0 ? '${sec ~/ 60}분' : '${sec ~/ 60}분 ${sec % 60}초';
+
   String get _myId => Di.userSession.profile?.id ?? '';
 
   @override
@@ -71,6 +81,8 @@ class _CatchmindInviteScreenState extends State<CatchmindInviteScreen> {
       final game = await Di.minigameRepository.createCatchmind(
         groupRoomId: groupId,
         inviteeUserIds: _selected.toList(),
+        roundSeconds: _roundSeconds,
+        totalRounds: _totalRounds,
       );
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
@@ -95,9 +107,111 @@ class _CatchmindInviteScreenState extends State<CatchmindInviteScreen> {
           children: [
             const CenterTitleHeader(title: '캐치마인드 초대'),
             Expanded(child: _buildBody()),
+            if (!_loading && _errorMessage == null && _members.isNotEmpty)
+              _buildSettings(),
             _buildBottomBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 게임 설정 — 라운드 수·라운드 시간 칩 선택 (방장 전용 권한).
+  Widget _buildSettings() {
+    Widget chipRow<T>({
+      required String label,
+      required List<T> options,
+      required T selected,
+      required String Function(T) text,
+      required void Function(T) onPick,
+    }) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 58,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+                color: AppColors.gray700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final o in options) ...[
+                    GestureDetector(
+                      onTap: () => setState(() => onPick(o)),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: o == selected
+                              ? AppColors.primary
+                              : AppColors.gray50,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: o == selected
+                                ? AppColors.primary
+                                : AppColors.gray200,
+                          ),
+                        ),
+                        child: Text(
+                          text(o),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: o == selected
+                                ? Colors.white
+                                : AppColors.gray600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Column(
+        children: [
+          chipRow<int>(
+            label: '라운드',
+            options: _roundOptions,
+            selected: _totalRounds,
+            text: (v) => '$v판',
+            onPick: (v) => _totalRounds = v,
+          ),
+          const SizedBox(height: 10),
+          chipRow<int>(
+            label: '시간',
+            options: _timeOptions,
+            selected: _roundSeconds,
+            text: _timeLabel,
+            onPick: (v) => _roundSeconds = v,
+          ),
+        ],
       ),
     );
   }

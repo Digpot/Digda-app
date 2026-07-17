@@ -145,6 +145,7 @@ class CatchmindGame {
     required this.players,
     required this.roundIndex,
     required this.totalRounds,
+    this.roundSeconds = 90,
     this.drawerUserId,
     this.word,
     this.wordLength,
@@ -160,6 +161,9 @@ class CatchmindGame {
   final List<CatchmindPlayer> players;
   final int roundIndex;
   final int totalRounds;
+
+  /// 방장이 고른 라운드 제한시간(초) — 로비 표시용.
+  final int roundSeconds;
   final String? drawerUserId;
 
   /// 내가 출제자일 때만 서버가 채워준다.
@@ -192,6 +196,7 @@ class CatchmindGame {
             .toList(),
         roundIndex: (json['roundIndex'] as num?)?.toInt() ?? -1,
         totalRounds: (json['totalRounds'] as num?)?.toInt() ?? 0,
+        roundSeconds: (json['roundSeconds'] as num?)?.toInt() ?? 90,
         drawerUserId: json['drawerUserId']?.toString(),
         word: json['word'] as String?,
         wordLength: (json['wordLength'] as num?)?.toInt(),
@@ -317,6 +322,104 @@ class TapBattleGame {
             (json['countdownStartEpochMs'] as num?)?.toInt(),
         battleEndEpochMs: (json['battleEndEpochMs'] as num?)?.toInt(),
         winnerUserId: json['winnerUserId']?.toString(),
+      );
+}
+
+// ── 두더지 잡기 ───────────────────────────────────────────────
+
+enum MoleBattleStatus {
+  waiting,
+  active,
+  finished,
+  declined,
+  canceled,
+  expired;
+
+  static MoleBattleStatus fromKey(String? key) {
+    final lower = key?.toLowerCase();
+    return MoleBattleStatus.values.firstWhere(
+      (s) => s.name == lower,
+      orElse: () => MoleBattleStatus.expired,
+    );
+  }
+}
+
+class MoleBattleGame {
+  MoleBattleGame({
+    required this.gameId,
+    required this.groupRoomId,
+    required this.status,
+    required this.inviterUserId,
+    required this.inviterName,
+    required this.inviteeUserId,
+    required this.inviteeName,
+    required this.inviterScore,
+    required this.inviteeScore,
+    this.spawnSeed,
+    this.countdownStartEpochMs,
+    this.battleEndEpochMs,
+    this.winnerUserId,
+  });
+
+  final int gameId;
+  final int groupRoomId;
+  final MoleBattleStatus status;
+  final String inviterUserId;
+  final String inviterName;
+  final String inviteeUserId;
+  final String inviteeName;
+  final int inviterScore;
+  final int inviteeScore;
+
+  /// 공유 스폰 시드 — 양쪽이 같은 두더지 순서를 재현한다.
+  final int? spawnSeed;
+  final int? countdownStartEpochMs;
+  final int? battleEndEpochMs;
+  final String? winnerUserId;
+
+  bool isParticipant(String userId) =>
+      userId == inviterUserId || userId == inviteeUserId;
+
+  String nameOf(String userId) =>
+      userId == inviterUserId ? inviterName : inviteeName;
+
+  int scoreOf(String userId) =>
+      userId == inviterUserId ? inviterScore : inviteeScore;
+
+  String opponentIdOf(String userId) =>
+      userId == inviterUserId ? inviteeUserId : inviterUserId;
+
+  factory MoleBattleGame.fromJson(Map<String, dynamic> json) => MoleBattleGame(
+        gameId: (json['gameId'] as num).toInt(),
+        groupRoomId: (json['groupRoomId'] as num).toInt(),
+        status: MoleBattleStatus.fromKey(json['status'] as String?),
+        inviterUserId: json['inviterUserId'].toString(),
+        inviterName: json['inviterName'] as String? ?? '',
+        inviteeUserId: json['inviteeUserId'].toString(),
+        inviteeName: json['inviteeName'] as String? ?? '',
+        inviterScore: (json['inviterScore'] as num?)?.toInt() ?? 0,
+        inviteeScore: (json['inviteeScore'] as num?)?.toInt() ?? 0,
+        spawnSeed: (json['spawnSeed'] as num?)?.toInt(),
+        countdownStartEpochMs:
+            (json['countdownStartEpochMs'] as num?)?.toInt(),
+        battleEndEpochMs: (json['battleEndEpochMs'] as num?)?.toInt(),
+        winnerUserId: json['winnerUserId']?.toString(),
+      );
+}
+
+/// `/topic/molebattle/{gameId}` 이벤트 — 스냅샷이 항상 실린다.
+class MoleBattleEvent {
+  MoleBattleEvent({required this.type, required this.game});
+
+  /// ACCEPTED / DECLINED / CANCELED / SCORE / FINISHED / EXPIRED
+  final String type;
+  final MoleBattleGame game;
+
+  factory MoleBattleEvent.fromJson(Map<String, dynamic> json) =>
+      MoleBattleEvent(
+        type: json['type'] as String? ?? '',
+        game: MoleBattleGame.fromJson(
+            (json['game'] as Map).cast<String, dynamic>()),
       );
 }
 
