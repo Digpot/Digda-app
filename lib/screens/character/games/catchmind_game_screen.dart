@@ -253,6 +253,7 @@ class _CatchmindGameScreenState extends State<CatchmindGameScreen> {
               players: game.players,
               roundIndex: game.roundIndex,
               totalRounds: game.totalRounds,
+              roundSeconds: game.roundSeconds,
               drawerUserId: game.drawerUserId,
               word: _game!.word,
               wordLength: game.wordLength,
@@ -546,6 +547,25 @@ class _CatchmindGameScreenState extends State<CatchmindGameScreen> {
             fontWeight: FontWeight.w500,
             fontSize: 12.5,
             color: AppColors.gray500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // 방장이 고른 게임 설정 — 라운드 수와 라운드 제한시간.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            '총 ${game.totalRounds}라운드 · 라운드당 '
+            '${game.roundSeconds >= 60 ? '${game.roundSeconds ~/ 60}분${game.roundSeconds % 60 == 0 ? '' : ' ${game.roundSeconds % 60}초'}' : '${game.roundSeconds}초'}',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: AppColors.primary,
+            ),
           ),
         ),
         const SizedBox(height: 14),

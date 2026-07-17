@@ -24,11 +24,17 @@ class MinigameRepository {
   Future<CatchmindGame> createCatchmind({
     required int groupRoomId,
     required List<String> inviteeUserIds,
+    int roundSeconds = 90,
+    int totalRounds = 10,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/catchmind/games',
       query: {'groupRoomId': groupRoomId},
-      body: {'inviteeUserIds': inviteeUserIds},
+      body: {
+        'inviteeUserIds': inviteeUserIds,
+        'roundSeconds': roundSeconds,
+        'totalRounds': totalRounds,
+      },
     );
     return CatchmindGame.fromJson(res.data!);
   }
@@ -61,6 +67,44 @@ class MinigameRepository {
     final res = await _api
         .post<Map<String, dynamic>>('/catchmind/games/$gameId/start');
     return CatchmindGame.fromJson(res.data!);
+  }
+
+  // ── 두더지 잡기 ────────────────────────────────────────────
+
+  Future<MoleBattleGame> createMoleBattle({
+    required int groupRoomId,
+    required String inviteeUserId,
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/molebattle/games',
+      query: {'groupRoomId': groupRoomId},
+      body: {'inviteeUserId': inviteeUserId},
+    );
+    return MoleBattleGame.fromJson(res.data!);
+  }
+
+  Future<MoleBattleGame> getMoleBattle(int gameId) async {
+    final res =
+        await _api.get<Map<String, dynamic>>('/molebattle/games/$gameId');
+    return MoleBattleGame.fromJson(res.data!);
+  }
+
+  Future<MoleBattleGame> acceptMoleBattle(int gameId) async {
+    final res = await _api
+        .post<Map<String, dynamic>>('/molebattle/games/$gameId/accept');
+    return MoleBattleGame.fromJson(res.data!);
+  }
+
+  Future<MoleBattleGame> declineMoleBattle(int gameId) async {
+    final res = await _api
+        .post<Map<String, dynamic>>('/molebattle/games/$gameId/decline');
+    return MoleBattleGame.fromJson(res.data!);
+  }
+
+  Future<MoleBattleGame> cancelMoleBattle(int gameId) async {
+    final res = await _api
+        .post<Map<String, dynamic>>('/molebattle/games/$gameId/cancel');
+    return MoleBattleGame.fromJson(res.data!);
   }
 
   // ── 탭배틀 ────────────────────────────────────────────────
