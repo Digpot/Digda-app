@@ -46,17 +46,8 @@ class KoreaBasePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 무대 비네트 — 흰 카드 위에 지도가 그냥 떠 있지 않고, 중앙이 밝고 가장자리로
-    // 갈수록 옅은 슬레이트로 가라앉는 부드러운 무대 배경을 깐다.
-    final stage = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(size.width * 0.5, size.height * 0.45),
-        size.longestSide * 0.72,
-        KoreaMapTokens.stageRadial,
-        const [0.0, 0.62, 1.0],
-      );
-    canvas.drawRect(Offset.zero & size, stage);
-
+    // 배경은 깔끔한 흰 카드 그대로 둔다 — 슬레이트(푸른빛) 비네트를 깔았더니
+    // 지도 전체가 탁해 보인다는 피드백으로 제거(2026-07-17).
     canvas.save();
     canvas.translate(dx, dy);
     canvas.scale(scale);
