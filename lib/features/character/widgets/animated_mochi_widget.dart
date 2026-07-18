@@ -927,7 +927,32 @@ class _CareShowState extends State<_CareShow>
       angle = math.pi * 4 + p * math.pi * 5;
       opacity = 1.0 - _seg(p, 0.85, 1.0);
     }
+    // 슛 구간의 별 꼬리 — 공이 지나온 자리에 흐릿한 별이 남는다.
+    final trail = <Widget>[
+      if (t >= 0.52)
+        for (var i = 1; i <= 3; i++)
+          if (Curves.easeIn.transform(_seg(t, 0.52, 1.0)) - i * 0.10 > 0)
+            _prop(
+              w * 0.46 +
+                  (Curves.easeIn.transform(_seg(t, 0.52, 1.0)) - i * 0.10) *
+                      w *
+                      0.72,
+              ground -
+                  w * 0.16 -
+                  math.sin(
+                          (Curves.easeIn.transform(_seg(t, 0.52, 1.0)) -
+                                  i * 0.10) *
+                              math.pi *
+                              0.5) *
+                      w *
+                      0.62,
+              '⭐',
+              fontSize: 14,
+              opacity: (0.6 - i * 0.16) * opacity,
+            ),
+    ];
     return [
+      ...trail,
       // 지면 그림자 — 공 높이에 따라 작아진다.
       if (opacity > 0)
         Positioned(
@@ -966,12 +991,22 @@ class _CareShowState extends State<_CareShow>
     // 세 입에 나눠 먹기 — 단계적으로 작아지며 좌우로 옴찔.
     final p = _seg(t, 0.45, 0.95);
     final bite = (p * 3).floor().clamp(0, 2);
-    final scale = (1.0 - (bite + 1) * 0.3) + 0.3 * (1.0 - (p * 3 - bite));
+    final biteP = (p * 3 - bite).clamp(0.0, 1.0);
+    final scale = (1.0 - (bite + 1) * 0.3) + 0.3 * (1.0 - biteP);
     final wiggle = math.sin(p * math.pi * 6) * w * 0.012;
     final fade = 1.0 - _seg(p, 0.92, 1.0);
     return [
       _prop(w * x0 + wiggle, landY, '🍡',
           scale: scale.clamp(0.0, 1.0), opacity: fade),
+      // 한 입 먹을 때마다 작은 하트가 뽀글 떠오른다.
+      if (biteP < 0.6)
+        _prop(
+          w * (x0 + 0.09) + wiggle,
+          landY - w * 0.06 - biteP * w * 0.14,
+          '❤️',
+          fontSize: 14,
+          opacity: (1.0 - biteP / 0.6) * fade,
+        ),
     ];
   }
 
@@ -1002,6 +1037,25 @@ class _CareShowState extends State<_CareShow>
         '💧',
         fontSize: 16,
         opacity: 1.0 - _seg(p, 0.7, 1.0),
+      ));
+    }
+    // 비가 갠 뒤 무지개 — 마지막에 스르륵 떠올라 마무리.
+    final rainbowP = _seg(t, 0.74, 0.90);
+    if (rainbowP > 0) {
+      props.add(_prop(
+        w * 0.66,
+        w * 0.34 - rainbowP * w * 0.04,
+        '🌈',
+        fontSize: 34,
+        scale: 0.6 + rainbowP * 0.4,
+        opacity: rainbowP * (1.0 - _seg(t, 0.94, 1.0)),
+      ));
+      props.add(_prop(
+        w * 0.38,
+        w * 0.44,
+        '✨',
+        fontSize: 16,
+        opacity: rainbowP * (1.0 - _seg(t, 0.92, 1.0)),
       ));
     }
     return props;

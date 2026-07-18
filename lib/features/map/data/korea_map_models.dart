@@ -279,16 +279,17 @@ class KoreaKeyMeta {
 class KoreaMapTokens {
   KoreaMapTokens._();
 
-  // 빈 지도(쿨 슬레이트 — 코랄 채색이 또렷이 떠 보이도록)
+  // 빈 지도(웜 클레이/그레이지 — 푸른빛 배제, 코랄 채색과 같은 웜 패밀리).
+  // 실기기에서 쿨 슬레이트가 "파란 지도"로 읽힌다는 피드백으로 교체(2026-07-18).
   static const List<Color> topFace = [
-    Color(0xFFEDF1F7),
-    Color(0xFFDCE4EF),
-    Color(0xFFC7D3E3),
+    Color(0xFFF7F4EF),
+    Color(0xFFEEE7DD),
+    Color(0xFFDFD3C3),
   ];
-  static const Color sideWall = Color(0xFFB1BFD2);
-  static const Color grooveLo = Color(0xFF8D9EB8); // 또렷한 경계선(슬레이트)
+  static const Color sideWall = Color(0xFFC9BAA6);
+  static const Color grooveLo = Color(0xFFA6937D); // 또렷한 경계선(웜 토프)
   static const Color grooveHi = Color(0x66FFFFFF); // 은은한 하이라이트
-  static const Color ambientShadow = Color(0x55708096);
+  static const Color ambientShadow = Color(0x55857462);
   static const List<Color> stageRadial = [
     Color(0xFFF1F4F9),
     Color(0xFFE4EAF2),

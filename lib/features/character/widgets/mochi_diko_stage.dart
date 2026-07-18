@@ -132,11 +132,12 @@ class _CareToolbar extends StatelessWidget {
 
   final void Function(MochiCareAction) onAction;
 
+  // 액션별 파스텔 틴트 — 버튼만 봐도 무슨 돌봄인지 읽히는 색 코드.
   static const _actions = [
-    (MochiCareAction.water, '💧', '물주기'),
-    (MochiCareAction.snack, '🍡', '간식'),
-    (MochiCareAction.play, '⚽', '공놀이'),
-    (MochiCareAction.bubble, '🫧', '목욕'),
+    (MochiCareAction.water, '💧', '물주기', Color(0xFFE3F4F1)),
+    (MochiCareAction.snack, '🍡', '간식', Color(0xFFFFF0DE)),
+    (MochiCareAction.play, '⚽', '공놀이', Color(0xFFEAF7E3)),
+    (MochiCareAction.bubble, '🫧', '목욕', Color(0xFFF3EDFA)),
   ];
 
   @override
@@ -144,12 +145,13 @@ class _CareToolbar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (final (action, emoji, label) in _actions)
+        for (final (action, emoji, label, tint) in _actions)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 9),
             child: _CareButton(
               emoji: emoji,
               label: label,
+              tint: tint,
               onTap: () => onAction(action),
             ),
           ),
@@ -162,11 +164,13 @@ class _CareButton extends StatefulWidget {
   const _CareButton({
     required this.emoji,
     required this.label,
+    required this.tint,
     required this.onTap,
   });
 
   final String emoji;
   final String label;
+  final Color tint;
   final VoidCallback onTap;
 
   @override
@@ -197,8 +201,10 @@ class _CareButtonState extends State<_CareButton> {
               height: 46,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.88),
+                color: widget.tint.withValues(alpha: 0.92),
                 shape: BoxShape.circle,
+                border:
+                    Border.all(color: Colors.white.withValues(alpha: 0.9)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.10),

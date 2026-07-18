@@ -8,6 +8,7 @@ import '../../../core/network/error_message.dart';
 import '../../../features/minigame/data/game_socket.dart';
 import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
+import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/center_title_header.dart';
 
@@ -290,6 +291,8 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
             children: [
               CenterTitleHeader(title: '탭배틀', onBack: _onExit),
               Expanded(child: _buildBody()),
+              // 배너 광고 — 대결 화면 하단 고정(미로드 시 공간 0).
+              const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
             ],
           ),
         ),
