@@ -10,6 +10,7 @@ import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/center_title_header.dart';
+import 'game_ui_common.dart';
 
 /// 끝말잇기 화면 — 로비(참가 대기)/진행(단어 잇기 서든데스)/우승 결과를 한 화면에서.
 ///
@@ -426,9 +427,11 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
               final p = game.players[i];
               return Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: p.joined
+                      ? AppColors.primary.withValues(alpha: 0.04)
+                      : AppColors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: p.joined ? AppColors.primary : AppColors.gray100,
@@ -437,6 +440,8 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
                 ),
                 child: Row(
                   children: [
+                    GamePlayerAvatar(name: p.name, dimmed: p.declined),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         p.userId == _myId ? '${p.name} (나)' : p.name,
