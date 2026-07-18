@@ -69,42 +69,52 @@ class MinigameRepository {
     return CatchmindGame.fromJson(res.data!);
   }
 
-  // ── 두더지 잡기 ────────────────────────────────────────────
+  // ── 끝말잇기 ──────────────────────────────────────────────
 
-  Future<MoleBattleGame> createMoleBattle({
+  Future<WordChainGame> createWordChain({
     required int groupRoomId,
-    required String inviteeUserId,
+    required List<String> inviteeUserIds,
+    int turnSeconds = 15,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
-      '/molebattle/games',
+      '/wordchain/games',
       query: {'groupRoomId': groupRoomId},
-      body: {'inviteeUserId': inviteeUserId},
+      body: {
+        'inviteeUserIds': inviteeUserIds,
+        'turnSeconds': turnSeconds,
+      },
     );
-    return MoleBattleGame.fromJson(res.data!);
+    return WordChainGame.fromJson(res.data!);
   }
 
-  Future<MoleBattleGame> getMoleBattle(int gameId) async {
+  Future<WordChainGame> getWordChain(int gameId) async {
     final res =
-        await _api.get<Map<String, dynamic>>('/molebattle/games/$gameId');
-    return MoleBattleGame.fromJson(res.data!);
+        await _api.get<Map<String, dynamic>>('/wordchain/games/$gameId');
+    return WordChainGame.fromJson(res.data!);
   }
 
-  Future<MoleBattleGame> acceptMoleBattle(int gameId) async {
+  Future<WordChainGame> joinWordChain(int gameId) async {
     final res = await _api
-        .post<Map<String, dynamic>>('/molebattle/games/$gameId/accept');
-    return MoleBattleGame.fromJson(res.data!);
+        .post<Map<String, dynamic>>('/wordchain/games/$gameId/join');
+    return WordChainGame.fromJson(res.data!);
   }
 
-  Future<MoleBattleGame> declineMoleBattle(int gameId) async {
+  Future<WordChainGame> declineWordChain(int gameId) async {
     final res = await _api
-        .post<Map<String, dynamic>>('/molebattle/games/$gameId/decline');
-    return MoleBattleGame.fromJson(res.data!);
+        .post<Map<String, dynamic>>('/wordchain/games/$gameId/decline');
+    return WordChainGame.fromJson(res.data!);
   }
 
-  Future<MoleBattleGame> cancelMoleBattle(int gameId) async {
+  Future<WordChainGame> cancelWordChain(int gameId) async {
     final res = await _api
-        .post<Map<String, dynamic>>('/molebattle/games/$gameId/cancel');
-    return MoleBattleGame.fromJson(res.data!);
+        .post<Map<String, dynamic>>('/wordchain/games/$gameId/cancel');
+    return WordChainGame.fromJson(res.data!);
+  }
+
+  Future<WordChainGame> startWordChain(int gameId) async {
+    final res = await _api
+        .post<Map<String, dynamic>>('/wordchain/games/$gameId/start');
+    return WordChainGame.fromJson(res.data!);
   }
 
   // ── 탭배틀 ────────────────────────────────────────────────
