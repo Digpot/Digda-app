@@ -93,12 +93,22 @@ class KoreaBasePainter extends CustomPainter {
     final warmPaint = Paint()..shader = warmShader;
     final coralPaint = Paint()..shader = coralShader;
     final softPaint = Paint()..color = KoreaMapTokens.coralSoft;
+    // 채색(코랄) 조각 전용 웜 글로스 — 좌상단에서 내려오는 옅은 흰 광택으로
+    // 채운 지역이 도자기처럼 반질하게 떠 보인다(전역 1개 공유, 한색 아님).
+    final coralGloss = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(w * 0.35, 0),
+        Offset(w * 0.55, h * 0.85),
+        const [Color(0x40FFFFFF), Color(0x00FFFFFF)],
+        const [0.0, 0.65],
+      );
     for (final r in data.regions) {
       final count = counts[r.key] ?? 0;
       final metro = data.keyMetro[r.key] == true;
       final threshold = metro ? 10 : 1;
+      final achieved = count >= threshold;
       final Paint p;
-      if (count >= threshold) {
+      if (achieved) {
         p = coralPaint; // 달성 → 코랄
       } else if (count > 0) {
         p = softPaint; // 진행 중(광역시 1~9) → 소프트
@@ -106,6 +116,7 @@ class KoreaBasePainter extends CustomPainter {
         p = warmPaint; // 미시작 → 웜
       }
       canvas.drawPath(r.path, p);
+      if (achieved) canvas.drawPath(r.path, coralGloss);
       // 탭 포커스 시 다른 버킷은 아이보리 베일로 덮어 가라앉힌다.
       if (focusGroup != null && data.keyFocusGroup[r.key] != focusGroup) {
         canvas.drawPath(r.path, _dimVeil);
@@ -196,11 +207,11 @@ class KoreaBasePainter extends CustomPainter {
       canvas.drawPath(d, grooveHi);
       canvas.drawPath(d, grooveLo);
     }
-    // 사선 해치 — "준비 중 구역" 시그널. 은은하게 전체 실루엣 위로.
+    // 사선 해치 — "준비 중 구역" 시그널. 푸른빛 대신 웜 그레이로 은은하게.
     final hatch = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4
-      ..color = const Color(0x2E8D9EB8);
+      ..color = const Color(0x26A29488);
     final span = bounds.width + bounds.height;
     for (double o = 0; o < span; o += 30) {
       canvas.drawLine(

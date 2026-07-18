@@ -325,101 +325,165 @@ class TapBattleGame {
       );
 }
 
-// ── 두더지 잡기 ───────────────────────────────────────────────
+// ── 끝말잇기 ─────────────────────────────────────────────────
 
-enum MoleBattleStatus {
+enum WordChainStatus {
   waiting,
   active,
   finished,
-  declined,
   canceled,
   expired;
 
-  static MoleBattleStatus fromKey(String? key) {
+  static WordChainStatus fromKey(String? key) {
     final lower = key?.toLowerCase();
-    return MoleBattleStatus.values.firstWhere(
+    return WordChainStatus.values.firstWhere(
       (s) => s.name == lower,
-      orElse: () => MoleBattleStatus.expired,
+      orElse: () => WordChainStatus.expired,
     );
   }
 }
 
-class MoleBattleGame {
-  MoleBattleGame({
+class WordChainPlayer {
+  WordChainPlayer({
+    required this.userId,
+    required this.name,
+    required this.joined,
+    required this.declined,
+    required this.eliminated,
+    required this.wordCount,
+    required this.isHost,
+  });
+
+  final String userId;
+  final String name;
+  final bool joined;
+  final bool declined;
+  final bool eliminated;
+  final int wordCount;
+  final bool isHost;
+
+  factory WordChainPlayer.fromJson(Map<String, dynamic> json) =>
+      WordChainPlayer(
+        userId: json['userId'].toString(),
+        name: json['name'] as String? ?? '',
+        joined: json['joined'] as bool? ?? false,
+        declined: json['declined'] as bool? ?? false,
+        eliminated: json['eliminated'] as bool? ?? false,
+        wordCount: (json['wordCount'] as num?)?.toInt() ?? 0,
+        isHost: json['isHost'] as bool? ?? false,
+      );
+}
+
+/// 단어 기록 한 줄 — [userId] null 이면 서버 제시 시작 단어.
+class WordChainEntry {
+  WordChainEntry({this.userId, this.userName, required this.word});
+
+  final String? userId;
+  final String? userName;
+  final String word;
+
+  factory WordChainEntry.fromJson(Map<String, dynamic> json) => WordChainEntry(
+        userId: json['userId']?.toString(),
+        userName: json['userName'] as String?,
+        word: json['word'] as String? ?? '',
+      );
+}
+
+class WordChainGame {
+  WordChainGame({
     required this.gameId,
     required this.groupRoomId,
     required this.status,
-    required this.inviterUserId,
-    required this.inviterName,
-    required this.inviteeUserId,
-    required this.inviteeName,
-    required this.inviterScore,
-    required this.inviteeScore,
-    this.spawnSeed,
-    this.countdownStartEpochMs,
-    this.battleEndEpochMs,
+    required this.hostUserId,
+    required this.hostName,
+    required this.players,
+    required this.entries,
+    this.currentTurnUserId,
+    this.turnDeadlineEpochMs,
+    this.turnSeconds = 15,
     this.winnerUserId,
   });
 
   final int gameId;
   final int groupRoomId;
-  final MoleBattleStatus status;
-  final String inviterUserId;
-  final String inviterName;
-  final String inviteeUserId;
-  final String inviteeName;
-  final int inviterScore;
-  final int inviteeScore;
-
-  /// 공유 스폰 시드 — 양쪽이 같은 두더지 순서를 재현한다.
-  final int? spawnSeed;
-  final int? countdownStartEpochMs;
-  final int? battleEndEpochMs;
+  final WordChainStatus status;
+  final String hostUserId;
+  final String hostName;
+  final List<WordChainPlayer> players;
+  final List<WordChainEntry> entries;
+  final String? currentTurnUserId;
+  final int? turnDeadlineEpochMs;
+  final int turnSeconds;
   final String? winnerUserId;
 
-  bool isParticipant(String userId) =>
-      userId == inviterUserId || userId == inviteeUserId;
+  List<WordChainPlayer> get joinedPlayers =>
+      players.where((p) => p.joined).toList();
 
-  String nameOf(String userId) =>
-      userId == inviterUserId ? inviterName : inviteeName;
+  WordChainPlayer? playerOf(String userId) {
+    for (final p in players) {
+      if (p.userId == userId) return p;
+    }
+    return null;
+  }
 
-  int scoreOf(String userId) =>
-      userId == inviterUserId ? inviterScore : inviteeScore;
+  bool isMyTurn(String userId) =>
+      status == WordChainStatus.active && currentTurnUserId == userId;
 
-  String opponentIdOf(String userId) =>
-      userId == inviterUserId ? inviteeUserId : inviterUserId;
+  String? get lastWord => entries.isEmpty ? null : entries.last.word;
 
-  factory MoleBattleGame.fromJson(Map<String, dynamic> json) => MoleBattleGame(
+  factory WordChainGame.fromJson(Map<String, dynamic> json) => WordChainGame(
         gameId: (json['gameId'] as num).toInt(),
         groupRoomId: (json['groupRoomId'] as num).toInt(),
-        status: MoleBattleStatus.fromKey(json['status'] as String?),
-        inviterUserId: json['inviterUserId'].toString(),
-        inviterName: json['inviterName'] as String? ?? '',
-        inviteeUserId: json['inviteeUserId'].toString(),
-        inviteeName: json['inviteeName'] as String? ?? '',
-        inviterScore: (json['inviterScore'] as num?)?.toInt() ?? 0,
-        inviteeScore: (json['inviteeScore'] as num?)?.toInt() ?? 0,
-        spawnSeed: (json['spawnSeed'] as num?)?.toInt(),
-        countdownStartEpochMs:
-            (json['countdownStartEpochMs'] as num?)?.toInt(),
-        battleEndEpochMs: (json['battleEndEpochMs'] as num?)?.toInt(),
+        status: WordChainStatus.fromKey(json['status'] as String?),
+        hostUserId: json['hostUserId'].toString(),
+        hostName: json['hostName'] as String? ?? '',
+        players: ((json['players'] as List?) ?? const [])
+            .map((e) =>
+                WordChainPlayer.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+        entries: ((json['entries'] as List?) ?? const [])
+            .map((e) =>
+                WordChainEntry.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+        currentTurnUserId: json['currentTurnUserId']?.toString(),
+        turnDeadlineEpochMs: (json['turnDeadlineEpochMs'] as num?)?.toInt(),
+        turnSeconds: (json['turnSeconds'] as num?)?.toInt() ?? 15,
         winnerUserId: json['winnerUserId']?.toString(),
       );
 }
 
-/// `/topic/molebattle/{gameId}` 이벤트 — 스냅샷이 항상 실린다.
-class MoleBattleEvent {
-  MoleBattleEvent({required this.type, required this.game});
+/// `/topic/wordchain/{gameId}` 이벤트.
+class WordChainEvent {
+  WordChainEvent({
+    required this.type,
+    this.game,
+    this.userId,
+    this.userName,
+    this.word,
+    this.reason,
+  });
 
-  /// ACCEPTED / DECLINED / CANCELED / SCORE / FINISHED / EXPIRED
+  /// PLAYER_JOINED / PLAYER_DECLINED / STARTED / WORD / REJECTED /
+  /// TIMEOUT / FINISHED / CANCELED / EXPIRED
   final String type;
-  final MoleBattleGame game;
+  final WordChainGame? game;
+  final String? userId;
+  final String? userName;
+  final String? word;
 
-  factory MoleBattleEvent.fromJson(Map<String, dynamic> json) =>
-      MoleBattleEvent(
+  /// REJECTED 사유 — FORMAT / USED / RULE.
+  final String? reason;
+
+  factory WordChainEvent.fromJson(Map<String, dynamic> json) => WordChainEvent(
         type: json['type'] as String? ?? '',
-        game: MoleBattleGame.fromJson(
-            (json['game'] as Map).cast<String, dynamic>()),
+        game: json['game'] == null
+            ? null
+            : WordChainGame.fromJson(
+                (json['game'] as Map).cast<String, dynamic>()),
+        userId: json['userId']?.toString(),
+        userName: json['userName'] as String?,
+        word: json['word'] as String?,
+        reason: json['reason'] as String?,
       );
 }
 
