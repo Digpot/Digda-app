@@ -23,8 +23,11 @@ class KoreaMapScreen extends StatefulWidget {
   State<KoreaMapScreen> createState() => _KoreaMapScreenState();
 }
 
+// AnimationController 가 둘(줌 이동 _anim + 첫 진입 인트로 _introCtrl)이라
+// Single 이 아닌 TickerProviderStateMixin 이어야 한다 — Single 이면 디버그에서
+// "multiple tickers were created" assert 로 화면이 깨진다(릴리스는 assert 제거로 잠복).
 class _KoreaMapScreenState extends State<KoreaMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// 탭 버킷별 시그니처 색. 선택 패널 액센트·뱃지에 사용.
   static const Map<String, Color> _groupColors = {
     '광역시': Color(0xFFFF8A5B),
