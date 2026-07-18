@@ -41,8 +41,8 @@ class KoreaBasePainter extends CustomPainter {
   /// 포커스 버킷의 시그니처 색 — 그 도 경계선을 이 색으로 그린다.
   final Color? focusColor;
 
-  /// 비포커스 권역을 가라앉히는 슬레이트 베일.
-  final Paint _dimVeil = Paint()..color = const Color(0xCCEFF2F7);
+  /// 비포커스 권역을 가라앉히는 아이보리 베일(웜 톤).
+  final Paint _dimVeil = Paint()..color = const Color(0xCCF6F2EB);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -238,7 +238,7 @@ class KoreaBasePainter extends CustomPainter {
           fontWeight: FontWeight.w800,
           height: 1.0,
           letterSpacing: 0.5,
-          color: Color(0xFF64748B),
+          color: Color(0xFF6B6157),
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -268,7 +268,7 @@ class KoreaBasePainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           rect.topCenter,
           rect.bottomCenter,
-          const [Colors.white, Color(0xFFF2F5F9)],
+          const [Colors.white, Color(0xFFF7F3EC)],
         ),
     );
     canvas.drawRRect(
@@ -276,7 +276,7 @@ class KoreaBasePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2
-        ..color = const Color(0xFFD7DEE8),
+        ..color = const Color(0xFFE4DCCE),
     );
     // 자물쇠 느낌의 슬레이트 점 + 흰 열쇠구멍.
     final dotC = Offset(rect.left + padH + dotR, center.dy);
@@ -287,7 +287,7 @@ class KoreaBasePainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           dotC.translate(0, -dotR),
           dotC.translate(0, dotR),
-          const [Color(0xFFAFBCCC), Color(0xFF8D9EB8)],
+          const [Color(0xFFBCAD97), Color(0xFF94836C)],
         ),
     );
     canvas.drawCircle(
@@ -463,10 +463,10 @@ class KoreaOverlayPainter extends CustomPainter {
       final double op = dimmed ? 0.34 : 1.0;
       // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
       final Color fill =
-          (onCoral ? Colors.white : const Color(0xFF334155))
+          (onCoral ? Colors.white : const Color(0xFF4A4238))
               .withValues(alpha: op);
       final Color outline =
-          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFF1F4F9))
+          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFF8F4ED))
               .withValues(alpha: op);
       final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
 

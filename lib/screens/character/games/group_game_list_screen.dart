@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di.dart';
 import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
+import '../../../widgets/ad_banner.dart';
 import '../../../widgets/center_title_header.dart';
 import 'catchmind_game_screen.dart';
 import 'catchmind_invite_screen.dart';
@@ -161,7 +162,9 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    // 배너 광고 — 웰컴 배너 바로 아래(일기 캘린더와 같은 패턴).
+                    const AdBanner(),
+                    const SizedBox(height: 8),
                     // ── 초대받은 게임 ──
                     if (invites.isNotEmpty) ...[
                       _sectionLabel('📨 초대받은 게임', AppColors.primary),

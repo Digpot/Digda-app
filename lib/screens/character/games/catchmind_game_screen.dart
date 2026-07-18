@@ -8,6 +8,7 @@ import '../../../core/network/error_message.dart';
 import '../../../features/minigame/data/game_socket.dart';
 import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
+import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/center_title_header.dart';
 import 'game_ui_common.dart';
@@ -484,6 +485,9 @@ class _CatchmindGameScreenState extends State<CatchmindGameScreen> {
             children: [
               CenterTitleHeader(title: '캐치마인드', onBack: _onExit),
               Expanded(child: _buildBody()),
+              // 배너 광고 — 키보드가 올라오면 입력을 가리지 않게 숨긴다.
+              if (MediaQuery.of(context).viewInsets.bottom == 0)
+                const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
             ],
           ),
         ),
