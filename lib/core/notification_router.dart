@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/character/games/catchmind_game_screen.dart';
-import '../screens/character/games/mole_battle_screen.dart';
+import '../screens/character/games/word_chain_game_screen.dart';
 import '../screens/character/games/omok_game_screen.dart';
 import '../screens/character/games/tap_battle_screen.dart';
 import 'di.dart';
@@ -87,7 +87,7 @@ class NotificationRouter {
     if (relatedType == 'OMOK' ||
         relatedType == 'CATCHMIND' ||
         relatedType == 'TAP_BATTLE' ||
-        relatedType == 'MOLE_BATTLE') {
+        relatedType == 'WORD_CHAIN') {
       final gameId = int.tryParse(_stringOf(data['relatedId']) ?? '');
       if (gameId != null) {
         nav.pushNamedAndRemoveUntil('/character', (r) => false,
@@ -96,7 +96,7 @@ class NotificationRouter {
           builder: (_) => switch (relatedType) {
             'CATCHMIND' => CatchmindGameScreen(gameId: gameId),
             'TAP_BATTLE' => TapBattleScreen(gameId: gameId),
-            'MOLE_BATTLE' => MoleBattleScreen(gameId: gameId),
+            'WORD_CHAIN' => WordChainGameScreen(gameId: gameId),
             _ => OmokGameScreen(gameId: gameId),
           },
         ));

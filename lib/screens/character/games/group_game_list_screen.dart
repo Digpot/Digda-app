@@ -6,8 +6,8 @@ import '../../../theme/colors.dart';
 import '../../../widgets/center_title_header.dart';
 import 'catchmind_game_screen.dart';
 import 'catchmind_invite_screen.dart';
-import 'mole_battle_invite_screen.dart';
-import 'mole_battle_screen.dart';
+import 'word_chain_invite_screen.dart';
+import 'word_chain_game_screen.dart';
 import 'omok_game_screen.dart';
 import 'omok_invite_screen.dart';
 import 'tap_battle_invite_screen.dart';
@@ -58,7 +58,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
       'OMOK' => OmokGameScreen(gameId: item.gameId),
       'CATCHMIND' => CatchmindGameScreen(gameId: item.gameId),
       'TAP_BATTLE' => TapBattleScreen(gameId: item.gameId),
-      'MOLE_BATTLE' => MoleBattleScreen(gameId: item.gameId),
+      'WORD_CHAIN' => WordChainGameScreen(gameId: item.gameId),
       _ => null,
     };
     if (screen == null) return;
@@ -80,7 +80,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
         'OMOK' => '오목',
         'CATCHMIND' => '캐치마인드',
         'TAP_BATTLE' => '탭배틀',
-        'MOLE_BATTLE' => '두더지 잡기',
+        'WORD_CHAIN' => '끝말잇기',
         _ => '게임',
       };
 
@@ -88,7 +88,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
         'OMOK' => '⚫',
         'CATCHMIND' => '🎨',
         'TAP_BATTLE' => '👆',
-        'MOLE_BATTLE' => '🔨',
+        'WORD_CHAIN' => '🔤',
         _ => '🎮',
       };
 
@@ -194,12 +194,12 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
                     ),
                     const SizedBox(height: 12),
                     _GameCard(
-                      emoji: '🔨',
-                      title: '두더지 잡기',
-                      subtitle: '같은 두더지 판에서 30초 스코어 대결! 황금 두더지 +3, 폭탄 조심',
-                      players: '2인 · 온라인',
-                      gradient: const [Color(0xFF8B6547), Color(0xFFC79A6F)],
-                      onTap: () => _push(const MoleBattleInviteScreen()),
+                      emoji: '🔤',
+                      title: '끝말잇기',
+                      subtitle: '턴 시간 안에 단어를 못 이으면 탈락! 최후의 1인이 우승하는 서든데스',
+                      players: '2~8인 · 온라인',
+                      gradient: const [Color(0xFF34D399), Color(0xFF60C5A8)],
+                      onTap: () => _push(const WordChainInviteScreen()),
                     ),
                   ],
                 ),
