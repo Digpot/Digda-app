@@ -110,6 +110,58 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
                   children: [
+                    // 상단 배너 — 게임 코너의 분위기를 잡아주는 인사말.
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFFF8A5B), Color(0xFFFF6B6B)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.30),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          Text('🎮', style: TextStyle(fontSize: 32)),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '오늘은 뭐 하고 놀까?',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  '그룹원을 초대해 실시간으로 대결해요',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                    color: Color(0xF2FFFFFF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     // ── 초대받은 게임 ──
                     if (invites.isNotEmpty) ...[
                       _sectionLabel('📨 초대받은 게임', AppColors.primary),
@@ -148,12 +200,12 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
                     Row(
                       children: [
                         const Text(
-                          '그룹원들과 바로 대결해요!',
+                          '전체 게임',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontWeight: FontWeight.w400,
-                            fontSize: 13,
-                            color: AppColors.gray500,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color: AppColors.gray900,
                           ),
                         ),
                         const Spacer(),
@@ -165,7 +217,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     _GameCard(
                       emoji: '⚫',
                       title: '오목',
@@ -256,7 +308,17 @@ class _InviteCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 24)),
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accent.withValues(alpha: 0.35)),
+                ),
+                child: Text(emoji, style: const TextStyle(fontSize: 20)),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
