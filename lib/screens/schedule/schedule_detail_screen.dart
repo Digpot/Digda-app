@@ -990,10 +990,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         16, 10, 16, MediaQuery.of(context).padding.bottom + 10,
       ),
       child: Row(
+        // 입력창이 줄바꿈으로 늘어나도 전송 버튼은 하단에 붙는다.
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Container(
-              height: 40,
+              constraints: const BoxConstraints(minHeight: 40),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: AppColors.gray50,
@@ -1001,22 +1003,28 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               ),
               child: TextField(
                 controller: _commentController,
+                minLines: 1,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,
+                  height: 1.45,
                   color: AppColors.gray900,
                 ),
                 decoration: const InputDecoration(
+                  isCollapsed: true,
                   hintText: '댓글을 입력하세요',
                   hintStyle: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
+                    height: 1.45,
                     color: AppColors.gray400,
                   ),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
-                onSubmitted: (_) => _submitComment(),
               ),
             ),
           ),

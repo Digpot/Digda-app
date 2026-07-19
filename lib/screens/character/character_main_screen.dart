@@ -29,6 +29,7 @@ import 'character_shop_screen.dart';
 import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
 import 'games/group_game_list_screen.dart';
+import 'space_explore_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
 import 'quiz/character_quiz_list_screen.dart';
 import '../exhibit/nickname_exhibit_screen.dart';
@@ -65,6 +66,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   // 사진 저장 해금 레벨 — 레벨 달성 시 1개씩 풀린다. 마지막(배경+모찌)이 가장 높은 레벨.
   static const int _kInfoCardLevel = 3;
   static const int _kCleanLevel = 6;
+
+  // 콘텐츠 해금 레벨 — 게임은 Lv.3, 우주 탐험은 Lv.5 부터.
+  static const int _kGameLevel = 3;
+  static const int _kExploreLevel = 5;
 
   @override
   void initState() {
@@ -215,6 +220,14 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   Future<void> _openGames() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const GroupGameListScreen()),
+    );
+  }
+
+  Future<void> _openExplore() async {
+    final s = _state;
+    if (s == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => SpaceExploreScreen(character: s)),
     );
   }
 
@@ -650,9 +663,32 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               ),
             ],
           ),
-          // 그룹원들이 한 폰으로 즐기는 미니게임 목록 진입 버튼.
+          // 그룹원들이 한 폰으로 즐기는 미니게임 목록 진입 버튼 — Lv.3 해금.
           const SizedBox(height: 12),
-          _GameCta(onTap: _openGames),
+          _GameCta(
+            locked: s.level < _kGameLevel,
+            requiredLevel: _kGameLevel,
+            onTap: s.level < _kGameLevel
+                ? () => showInfoDialog(
+                      context,
+                      '아직 잠겨 있어요',
+                      '모찌가 레벨 $_kGameLevel이 되면\n게임을 즐길 수 있어요!',
+                    )
+                : _openGames,
+          ),
+          // 모찌와 우주 탐험 — Lv.5 해금.
+          const SizedBox(height: 12),
+          _ExploreCta(
+            locked: s.level < _kExploreLevel,
+            requiredLevel: _kExploreLevel,
+            onTap: s.level < _kExploreLevel
+                ? () => showInfoDialog(
+                      context,
+                      '아직 잠겨 있어요',
+                      '모찌가 레벨 $_kExploreLevel이 되면\n우주 탐험을 떠날 수 있어요!',
+                    )
+                : _openExplore,
+          ),
           // 어드민이 허용한 사용자만 노출되는 역대 별명 전시관 진입 버튼.
           if (_exhibitAllowed) ...[
             const SizedBox(height: 12),
@@ -664,13 +700,28 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   }
 }
 
-/// 모찌 화면 하단의 '게임하기' 진입 버튼 — 그룹원 미니게임 목록으로.
-class _GameCta extends StatelessWidget {
-  const _GameCta({required this.onTap});
+/// 모찌 화면 하단의 그라디언트 CTA 공통 위젯 — 잠금 상태면 회색 톤 + Lv 해금 뱃지.
+class _GradientCta extends StatelessWidget {
+  const _GradientCta({
+    required this.emoji,
+    required this.label,
+    required this.colors,
+    required this.onTap,
+    this.locked = false,
+    this.requiredLevel,
+  });
+
+  final String emoji;
+  final String label;
+  final List<Color> colors;
   final VoidCallback onTap;
+  final bool locked;
+  final int? requiredLevel;
 
   @override
   Widget build(BuildContext context) {
+    final gradientColors =
+        locked ? const [Color(0xFFB0B7C3), Color(0xFF9AA3B2)] : colors;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -680,28 +731,29 @@ class _GameCta extends StatelessWidget {
           height: 60,
           padding: const EdgeInsets.symmetric(horizontal: 18),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF45B7D1), Color(0xFF34D399)],
+            gradient: LinearGradient(
+              colors: gradientColors,
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF45B7D1).withValues(alpha: 0.35),
+                color: gradientColors.first.withValues(alpha: 0.35),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Text('🎮', style: TextStyle(fontSize: 22)),
-              SizedBox(width: 12),
+              Text(locked ? '🔒' : emoji,
+                  style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '게임하기',
-                  style: TextStyle(
+                  label,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -709,11 +761,78 @@ class _GameCta extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.arrow_forward_rounded, color: Colors.white),
+              if (locked && requiredLevel != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Lv.$requiredLevel 해금',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              else
+                const Icon(Icons.arrow_forward_rounded, color: Colors.white),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// '게임하기' 진입 버튼 — 그룹원 미니게임 목록으로 (Lv.3 해금).
+class _GameCta extends StatelessWidget {
+  const _GameCta({
+    required this.onTap,
+    this.locked = false,
+    this.requiredLevel,
+  });
+  final VoidCallback onTap;
+  final bool locked;
+  final int? requiredLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GradientCta(
+      emoji: '🎮',
+      label: '게임하기',
+      colors: const [Color(0xFF45B7D1), Color(0xFF34D399)],
+      onTap: onTap,
+      locked: locked,
+      requiredLevel: requiredLevel,
+    );
+  }
+}
+
+/// '우주 탐험' 진입 버튼 — 모찌와 태양계 행성 투어 (Lv.5 해금).
+class _ExploreCta extends StatelessWidget {
+  const _ExploreCta({
+    required this.onTap,
+    this.locked = false,
+    this.requiredLevel,
+  });
+  final VoidCallback onTap;
+  final bool locked;
+  final int? requiredLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GradientCta(
+      emoji: '🚀',
+      label: '우주 탐험하기',
+      colors: const [Color(0xFF4F46E5), Color(0xFF9333EA)],
+      onTap: onTap,
+      locked: locked,
+      requiredLevel: requiredLevel,
     );
   }
 }
