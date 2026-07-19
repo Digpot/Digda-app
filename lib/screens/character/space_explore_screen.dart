@@ -582,8 +582,13 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
     final dir = target.pos - _ship;
     final angle = math.atan2(dir.dy, dir.dx);
     // 화면 안쪽으로 클램프한 위치에 배치.
-    final cx = sp.dx.clamp(64.0, _viewport.width - 64.0);
-    final cy = sp.dy.clamp(120.0, _viewport.height - 90.0);
+    // (첫 프레임이 0×0 제약으로 올 수 있어 min>max 가 되지 않게 가드)
+    final cx = sp.dx
+        .clamp(64.0, math.max(64.0, _viewport.width - 64.0))
+        .toDouble();
+    final cy = sp.dy
+        .clamp(120.0, math.max(120.0, _viewport.height - 90.0))
+        .toDouble();
     return [
       Positioned(
         left: cx - 55,
