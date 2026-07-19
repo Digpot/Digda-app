@@ -173,7 +173,7 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
                 ),
                 const SizedBox(height: 14),
                 SizedBox(
-                  height: 190,
+                  height: 208,
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     scrollDirection: Axis.horizontal,
@@ -714,8 +714,11 @@ class _Planet {
     required this.stats,
     required this.history,
     this.hasRing = false,
+    this.ringVertical = false,
     this.craters = false,
     this.bands = false,
+    this.clouds = false,
+    this.continents = false,
   });
 
   final String id;
@@ -729,12 +732,88 @@ class _Planet {
   final List<(String, String)> stats; // (라벨, 값) — 박물관 안내판 느낌의 칩 3개
   final List<(String, String, String)> history; // (연도, 사건, 설명) 연대기
   final bool hasRing; // 토성 고리
-  final bool craters; // 달 크레이터
-  final bool bands; // 목성 줄무늬
+  final bool ringVertical; // 천왕성 — 누워서 도는 세로 고리
+  final bool craters; // 달/수성 크레이터
+  final bool bands; // 목성/해왕성 줄무늬
+  final bool clouds; // 금성 — 두꺼운 구름 소용돌이
+  final bool continents; // 지구 — 대륙 + 구름
 }
 
-/// v1 목적지 4곳. 새 행성은 여기에 추가하면 카드/도착 연출/연대기가 함께 생긴다.
+/// 태양계 전 행성 + 달 — 태양에서 가까운 순서. 새 목적지는 여기에 추가하면
+/// 카드/도착 연출/연대기가 함께 생긴다.
 const List<_Planet> _planets = [
+  _Planet(
+    id: 'mercury',
+    name: '수성',
+    tagline: '태양과 가장 가까운 행성',
+    story: '태양이 바로 옆이라 낮엔 펄펄 끓고 밤엔 꽁꽁 얼어요. 모찌가 그늘과 '
+        '햇빛 사이를 폴짝폴짝 오가며 놀았어요. 온통 크레이터투성이라 달이랑 '
+        '쌍둥이 같대요.',
+    base: Color(0xFFC9BFB4),
+    shade: Color(0xFF6B5F55),
+    glow: Color(0xFFD8CDBE),
+    distance: '9,100만 km',
+    stats: [
+      ('지름', '4,879km'),
+      ('1년', '88일'),
+      ('온도', '-173~427℃'),
+    ],
+    history: [
+      ('1631', '가상디', '수성이 태양 앞을 지나는 모습을 처음 관측했어요.'),
+      ('1974', '마리너 10호', '처음으로 수성을 가까이에서 촬영했어요.'),
+      ('2011', '메신저', '처음으로 수성 궤도에 진입해 지도를 만들었어요.'),
+      ('2018', '베피콜롬보', '유럽과 일본이 함께 수성 탐사선을 발사했어요.'),
+    ],
+    craters: true,
+  ),
+  _Planet(
+    id: 'venus',
+    name: '금성',
+    tagline: '새벽하늘에서 가장 밝은 별',
+    story: '두꺼운 구름 담요를 덮고 있어 표면이 하나도 안 보여요. 모찌는 구름 위를 '
+        '푹신푹신 트램펄린처럼 뛰어다녔어요. 지구에서 보면 제일 밝게 빛나는 '
+        '"샛별"이 바로 여기래요!',
+    base: Color(0xFFFDE8B0),
+    shade: Color(0xFFC2841B),
+    glow: Color(0xFFFBBF24),
+    distance: '4,100만 km',
+    stats: [
+      ('지름', '12,104km'),
+      ('하루', '243일'),
+      ('온도', '약 465℃'),
+    ],
+    history: [
+      ('1610', '갈릴레이', '금성도 달처럼 모양이 변한다는 걸 발견했어요.'),
+      ('1962', '마리너 2호', '인류 최초로 다른 행성 근접 통과에 성공했어요.'),
+      ('1970', '베네라 7호', '처음으로 다른 행성 표면에 착륙했어요.'),
+      ('1990', '마젤란', '레이더로 구름 아래 지형 지도를 완성했어요.'),
+    ],
+    clouds: true,
+  ),
+  _Planet(
+    id: 'earth',
+    name: '지구',
+    tagline: '우리 모두의 푸른 고향',
+    story: '우주에서 바라보니 지구는 반짝이는 파란 구슬 같아요. 흰 구름, 초록 대륙, '
+        '넓고 푸른 바다까지! 모찌가 한참을 바라보다가 말했어요. "역시 우리 집이 '
+        '우주에서 제일 예뻐."',
+    base: Color(0xFF60A5FA),
+    shade: Color(0xFF1D4ED8),
+    glow: Color(0xFF93C5FD),
+    distance: '궤도 한 바퀴',
+    stats: [
+      ('지름', '12,742km'),
+      ('바다', '표면의 71%'),
+      ('나이', '약 45억 년'),
+    ],
+    history: [
+      ('1957', '스푸트니크 1호', '첫 인공위성이 지구 주위를 돌기 시작했어요.'),
+      ('1961', '가가린', '인류가 처음으로 우주에서 지구를 봤어요.'),
+      ('1968', '아폴로 8호', '달에서 떠오르는 "지구돋이" 사진을 찍었어요.'),
+      ('1990', '보이저 1호', '61억 km 밖에서 "창백한 푸른 점"을 남겼어요.'),
+    ],
+    continents: true,
+  ),
   _Planet(
     id: 'moon',
     name: '달',
@@ -825,6 +904,55 @@ const List<_Planet> _planets = [
       ('2005', '하위헌스 착륙선', '위성 타이탄에 착륙했어요.'),
     ],
     hasRing: true,
+  ),
+  _Planet(
+    id: 'uranus',
+    name: '천왕성',
+    tagline: '누워서 도는 얼음 거인',
+    story: '자전축이 98도나 기울어져 옆으로 데굴데굴 구르듯 돌아요. 모찌도 따라서 '
+        '옆으로 굴러봤대요. 민트색 얼음 대기가 사르르 반짝여서 우주에서 제일 '
+        '시원해 보이는 행성이에요.',
+    base: Color(0xFF99E9F2),
+    shade: Color(0xFF0E7490),
+    glow: Color(0xFF67E8F9),
+    distance: '27억 km',
+    stats: [
+      ('지름', '50,724km'),
+      ('자전축', '98° 기움'),
+      ('온도', '약 -224℃'),
+    ],
+    history: [
+      ('1781', '허셜', '망원경으로 발견된 최초의 행성이 됐어요.'),
+      ('1787', '허셜', '위성 티타니아와 오베론을 찾아냈어요.'),
+      ('1977', '고리 발견', '별빛 가림 관측으로 가는 고리를 찾았어요.'),
+      ('1986', '보이저 2호', '처음이자 마지막으로 가까이 지나갔어요.'),
+    ],
+    hasRing: true,
+    ringVertical: true,
+  ),
+  _Planet(
+    id: 'neptune',
+    name: '해왕성',
+    tagline: '수학이 찾아낸 푸른 행성',
+    story: '태양계 가장 바깥의 짙푸른 행성이에요. 시속 2,100km 초강풍이 불어서 '
+        '모찌 볼이 파도처럼 출렁거렸어요. 망원경보다 수학 계산이 먼저 찾아낸 '
+        '신기한 행성이랍니다.',
+    base: Color(0xFF5B8DF6),
+    shade: Color(0xFF1E3A8A),
+    glow: Color(0xFF818CF8),
+    distance: '43억 km',
+    stats: [
+      ('지름', '49,244km'),
+      ('바람', '시속 2,100km'),
+      ('1년', '165년'),
+    ],
+    history: [
+      ('1846', '르베리에·갈레', '계산으로 위치를 예측해 발견했어요.'),
+      ('1846', '라셀', '17일 만에 위성 트리톤까지 찾아냈어요.'),
+      ('1989', '보이저 2호', '근접 통과하며 대암점 폭풍을 발견했어요.'),
+      ('2011', '한 바퀴', '발견 후 165년 만에 첫 공전을 마쳤어요.'),
+    ],
+    bands: true,
   ),
 ];
 
@@ -1005,11 +1133,13 @@ class _PlanetVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 고리가 있으면 가로로 더 넓은 캔버스가 필요하다.
-    final w = planet.hasRing ? size * 1.6 : size;
+    // 가로 고리는 더 넓은 캔버스, 세로 고리는 더 높은 캔버스가 필요하다.
+    final horizontalRing = planet.hasRing && !planet.ringVertical;
+    final w = horizontalRing ? size * 1.6 : size * 1.05;
+    final h = planet.ringVertical ? size * 1.3 : size * 1.1;
     return SizedBox(
       width: w,
-      height: size * 1.1,
+      height: h,
       child: CustomPaint(painter: _PlanetPainter(planet)),
     );
   }
@@ -1085,7 +1215,84 @@ class _PlanetPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // 달 크레이터.
+    // 금성 — 두꺼운 구름 소용돌이(밝은 톤의 부드러운 줄).
+    if (p.clouds) {
+      canvas.save();
+      canvas.clipPath(Path()..addOval(sphere));
+      final cloud = Paint()..color = Colors.white.withValues(alpha: 0.30);
+      for (final (dy, w, tilt) in [
+        (-0.42, 1.6, -0.12),
+        (-0.05, 2.0, 0.10),
+        (0.35, 1.7, -0.08),
+        (0.65, 1.2, 0.14),
+      ]) {
+        canvas.save();
+        canvas.translate(center.dx, center.dy + radius * dy);
+        canvas.rotate(tilt);
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: radius * w,
+            height: radius * 0.22,
+          ),
+          cloud,
+        );
+        canvas.restore();
+      }
+      canvas.restore();
+    }
+
+    // 지구 — 초록 대륙 + 흰 구름.
+    if (p.continents) {
+      canvas.save();
+      canvas.clipPath(Path()..addOval(sphere));
+      final land = Paint()
+        ..color = const Color(0xFF34D399).withValues(alpha: 0.85);
+      // 대륙 — 불규칙한 느낌을 내려고 타원 여러 개를 겹쳐 그린다.
+      for (final (dx, dy, w, h, tilt) in [
+        (-0.35, -0.30, 0.75, 0.55, -0.4),
+        (-0.10, -0.05, 0.40, 0.30, 0.3),
+        (0.35, 0.15, 0.60, 0.75, 0.5),
+        (0.10, 0.55, 0.45, 0.28, -0.2),
+        (-0.45, 0.40, 0.35, 0.25, 0.1),
+      ]) {
+        canvas.save();
+        canvas.translate(center.dx + radius * dx, center.dy + radius * dy);
+        canvas.rotate(tilt);
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: radius * w,
+            height: radius * h,
+          ),
+          land,
+        );
+        canvas.restore();
+      }
+      // 구름 — 가늘고 밝은 줄 몇 가닥.
+      final cloud = Paint()..color = Colors.white.withValues(alpha: 0.45);
+      for (final (dx, dy, w, tilt) in [
+        (-0.15, -0.55, 1.0, -0.15),
+        (0.25, -0.15, 0.8, 0.20),
+        (-0.30, 0.30, 0.9, 0.10),
+      ]) {
+        canvas.save();
+        canvas.translate(center.dx + radius * dx, center.dy + radius * dy);
+        canvas.rotate(tilt);
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: radius * w,
+            height: radius * 0.14,
+          ),
+          cloud,
+        );
+        canvas.restore();
+      }
+      canvas.restore();
+    }
+
+    // 달/수성 크레이터.
     if (p.craters) {
       final crater = Paint()..color = p.shade.withValues(alpha: 0.45);
       canvas.save();
@@ -1125,25 +1332,35 @@ class _PlanetPainter extends CustomPainter {
     }
   }
 
-  /// 토성 고리 — 타원 스트로크를 위/아래 절반으로 나눠 구체 앞뒤에 그린다.
+  /// 고리 — 타원 스트로크를 절반씩 나눠 구체 앞뒤에 그린다.
+  /// 토성은 가로 고리(위=뒤/아래=앞), 천왕성은 세로 고리(왼쪽=뒤/오른쪽=앞).
   void _drawRing(Canvas canvas, Offset center, double radius,
       {required bool back}) {
+    final vertical = p.ringVertical;
     final ringRect = Rect.fromCenter(
       center: center,
-      width: radius * 3.1,
-      height: radius * 1.05,
+      width: vertical ? radius * 1.05 : radius * 3.1,
+      height: vertical ? radius * 2.5 : radius * 1.05,
     );
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = radius * 0.22
+      ..strokeWidth = radius * (vertical ? 0.10 : 0.22)
       ..color = p.glow.withValues(alpha: back ? 0.5 : 0.85);
     canvas.save();
-    // 위 절반(뒤) / 아래 절반(앞)만 보이도록 클리핑.
-    final clip = back
-        ? Rect.fromLTRB(ringRect.left - 20, ringRect.top - 20,
-            ringRect.right + 20, center.dy)
-        : Rect.fromLTRB(ringRect.left - 20, center.dy, ringRect.right + 20,
-            ringRect.bottom + 20);
+    final Rect clip;
+    if (vertical) {
+      clip = back
+          ? Rect.fromLTRB(ringRect.left - 20, ringRect.top - 20, center.dx,
+              ringRect.bottom + 20)
+          : Rect.fromLTRB(center.dx, ringRect.top - 20, ringRect.right + 20,
+              ringRect.bottom + 20);
+    } else {
+      clip = back
+          ? Rect.fromLTRB(ringRect.left - 20, ringRect.top - 20,
+              ringRect.right + 20, center.dy)
+          : Rect.fromLTRB(ringRect.left - 20, center.dy, ringRect.right + 20,
+              ringRect.bottom + 20);
+    }
     canvas.clipRect(clip);
     canvas.drawOval(ringRect, paint);
     canvas.restore();
@@ -1184,7 +1401,7 @@ class _PlanetCard extends StatelessWidget {
         child: Column(
           children: [
             SizedBox(
-              height: 76,
+              height: 82,
               child: Center(
                 child: _PlanetVisual(planet: planet, size: 64),
               ),
