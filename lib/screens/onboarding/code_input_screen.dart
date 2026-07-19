@@ -8,7 +8,24 @@ import '../../widgets/primary_button.dart';
 class CodeInputScreen extends StatefulWidget {
   final String? initialCode;
 
-  const CodeInputScreen({super.key, this.initialCode});
+  /// true 면 화면(Scaffold) 없이 패널만 그린다 — 바텀시트 임베드용.
+  final bool embedded;
+
+  const CodeInputScreen({super.key, this.initialCode, this.embedded = false});
+
+  /// 그룹 리스트 등 현재 화면을 배경으로 둔 채 초대 코드 입력을
+  /// 바텀시트로 띄운다. 참여 성공 시 내부에서 /group-home 으로 스택을 교체한다.
+  static Future<void> showAsSheet(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: const CodeInputScreen(embedded: true),
+      ),
+    );
+  }
 
   @override
   State<CodeInputScreen> createState() => _CodeInputScreenState();
@@ -50,7 +67,11 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
   }
 
   void _onChanged(String value, int index) {
-    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    // 6자리 초과 입력(붙여넣기/IME 합성 등)은 앞 6자리만 사용한다.
+    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length > _codeLength) {
+      digits = digits.substring(0, _codeLength);
+    }
     // 붙여넣기(여러 자리) — 0번 칸부터 분배하고 마지막 입력 칸으로 포커스.
     if (digits.length > 1) {
       for (int i = 0; i < _codeLength; i++) {
@@ -77,8 +98,17 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
 
   Future<void> _onSubmit() async {
     if (_submitting) return;
-    setState(() => _submitting = true);
     final code = _enteredCode;
+    // 칸별 가드가 뚫려도(빠른 연타/자동완성) 6자리가 아니면 서버로 보내지 않는다.
+    if (code.length != _codeLength) {
+      for (final c in _controllers) {
+        if (c.text.length > 1) c.text = c.text.substring(0, 1);
+      }
+      setState(() {});
+      _showInvalidCodeDialog('초대 코드는 숫자 6자리예요');
+      return;
+    }
+    setState(() => _submitting = true);
     try {
       // 1) 미리보기 검증 (만료/이미 참여/인원 초과 여기서 잡힘)
       await Di.inviteRepository.validate(code);
@@ -155,13 +185,22 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    // 바텀시트 임베드 — 뒷배경(그룹 리스트 등)을 살린 채 패널만 그린다.
+    if (widget.embedded) return _buildPanel(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: Column(
         children: [
           const Spacer(),
-          Container(
+          _buildPanel(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPanel(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(24, 12, 24, bottomPadding + 30),
             decoration: const BoxDecoration(
@@ -221,6 +260,8 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                         keyboardType: TextInputType.number,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
+                          // 붙여넣기 분배(최대 6자리)를 위해 칸 단위도 6으로 제한.
+                          LengthLimitingTextInputFormatter(_codeLength),
                         ],
                         style: const TextStyle(
                           fontFamily: 'Inter',
@@ -265,9 +306,6 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
