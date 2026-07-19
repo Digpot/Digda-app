@@ -114,6 +114,13 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
     return Offset(dx, dy);
   }
 
+  /// 태양→행성 단위벡터 — 행성 3D 셰이딩의 그림자 방향(밝은 면은 태양 쪽).
+  Offset _lightOf(_Planet p) {
+    final d = p.pos - _sunPos;
+    final dist = d.distance;
+    return dist == 0 ? const Offset(0.55, 0.45) : d / dist;
+  }
+
   /// 근접 반경 안의 행성 — '탐험하기' 프롬프트 대상.
   _Planet? get _nearbyPlanet {
     for (final p in _planets) {
@@ -315,7 +322,9 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
           child: SizedBox(
             width: w,
             height: h,
-            child: CustomPaint(painter: _PlanetPainter(p)),
+            child: CustomPaint(
+              painter: _PlanetPainter(p, t: _time, light: _lightOf(p)),
+            ),
           ),
         ),
       ),
@@ -407,16 +416,24 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
     final sp = _ship - camera;
     final speed = _vel.distance;
     // 이동 방향으로 살짝 기울고, 멈춰 있으면 두둥실 부유한다.
-    final tilt = (_vel.dx / 900).clamp(-0.28, 0.28);
+    final tilt = (_vel.dx / 900).clamp(-0.28, 0.28).toDouble();
     final bob = speed < 30 ? math.sin(_time * 2.2) * 6 : 0.0;
     const shipW = 118.0; // scale 0.5 기준 전체 폭
     const shipH = 100.0;
+    // 원근 뱅킹 — 좌우 이동은 롤(rotateZ), 상하 이동은 피치(rotateX)로
+    // 3D 로 기우는 느낌을 준다.
+    final pitch = (-_vel.dy / 1600).clamp(-0.30, 0.30).toDouble();
+    final m = Matrix4.identity()
+      ..setEntry(3, 2, 0.0012)
+      ..rotateX(pitch)
+      ..rotateZ(tilt);
     return Positioned(
       left: sp.dx - shipW / 2,
       top: sp.dy - shipH / 2 + bob,
       child: IgnorePointer(
-        child: Transform.rotate(
-          angle: tilt,
+        child: Transform(
+          transform: m,
+          alignment: Alignment.center,
           child: _MochiShip(
             character: widget.character,
             t: _time,
@@ -582,8 +599,13 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
     final dir = target.pos - _ship;
     final angle = math.atan2(dir.dy, dir.dx);
     // 화면 안쪽으로 클램프한 위치에 배치.
-    final cx = sp.dx.clamp(64.0, _viewport.width - 64.0);
-    final cy = sp.dy.clamp(120.0, _viewport.height - 90.0);
+    // (첫 프레임이 0×0 제약으로 올 수 있어 min>max 가 되지 않게 가드)
+    final cx = sp.dx
+        .clamp(64.0, math.max(64.0, _viewport.width - 64.0))
+        .toDouble();
+    final cy = sp.dy
+        .clamp(120.0, math.max(120.0, _viewport.height - 90.0))
+        .toDouble();
     return [
       Positioned(
         left: cx - 55,
@@ -1262,6 +1284,18 @@ class _WorldPainter extends CustomPainter {
           ..strokeWidth = 3
           ..color = const Color(0xFFFDE047).withValues(alpha: 0.35),
       );
+      // 코로나 광선 — 천천히 회전하며 길이가 일렁이는 빛줄기.
+      final ray = Paint()
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 22
+        ..color = const Color(0xFFFDE047).withValues(alpha: 0.10);
+      for (var i = 0; i < 8; i++) {
+        final a = t * 0.25 + i * math.pi / 4;
+        final len = 235 + 20 * math.sin(t * 1.7 + i * 1.3);
+        final dir = Offset(math.cos(a), math.sin(a));
+        canvas.drawLine(
+            sunScreen + dir * 168, sunScreen + dir * len, ray);
+      }
     }
 
     // 궤도 가이드 — 태양 중심의 옅은 동심원.
@@ -1302,17 +1336,53 @@ class _WorldPainter extends CustomPainter {
 
 // ── 행성 비주얼 ──────────────────────────────────────────────────────
 
-/// 그라디언트 구체 + 크레이터/줄무늬/구름/대륙/고리로 행성을 그린다.
+/// 그라디언트 구체 + 크레이터/줄무늬/구름/대륙/고리로 행성을 3D 로 그린다.
+///
+/// 3D 룩 구성 (flutter 캔버스만으로):
+/// - [light] 방향(태양→행성 단위벡터) 기준 광원 셰이딩 — 태양 쪽이 밝고
+///   반대쪽에 명암 경계(터미네이터) 그림자가 진다
+/// - 표면 피처(크레이터/대륙/구름/대적점)는 경도(λ)를 시간 [t] 로 밀어
+///   sin 투영 + cos 포어쇼트닝으로 자전하는 구처럼 보인다
+/// - 대기 림라이트: 태양 쪽 가장자리에 발광 아크
 class _PlanetPainter extends CustomPainter {
-  _PlanetPainter(this.p);
+  _PlanetPainter(this.p, {this.t = 0, this.light = const Offset(-0.55, -0.45)});
 
   final _Planet p;
+  final double t; // 자전 시각(초)
+  final Offset light; // 태양→행성 단위벡터(그림자 방향). 밝은 면은 -light 쪽.
+
+  /// 자전하는 표면 피처 — 정면 반구(cosλ>0)만, 가장자리로 갈수록 가늘게.
+  void _rotFeature(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Paint paint, {
+    required double lon0,
+    required double lat,
+    required double w,
+    required double h,
+    double speed = 0.22,
+  }) {
+    final lon = lon0 + t * speed;
+    final cosL = math.cos(lon);
+    if (cosL <= 0.06) return; // 뒷면
+    final x = math.sin(lon) * radius * 0.82;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: center + Offset(x, lat * radius),
+        width: w * radius * cosL,
+        height: h * radius,
+      ),
+      paint,
+    );
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) * 0.42;
     final sphere = Rect.fromCircle(center: center, radius: radius);
+    final l = light;
 
     // 발광.
     canvas.drawCircle(
@@ -1333,19 +1403,24 @@ class _PlanetPainter extends CustomPainter {
       _drawRing(canvas, center, radius, back: true);
     }
 
-    // 구체 — 좌상단 광원 그라디언트.
+    // 구체 — 태양 쪽이 밝은 3단 그라디언트 (하이라이트 → 본색 → 음영색).
+    final lit = Color.lerp(p.base, Colors.white, 0.35)!;
     canvas.drawCircle(
       center,
       radius,
       Paint()
         ..shader = RadialGradient(
-          center: const Alignment(-0.4, -0.45),
-          radius: 1.1,
-          colors: [p.base, p.shade],
+          center: Alignment(
+            (-l.dx * 0.62).clamp(-0.9, 0.9),
+            (-l.dy * 0.62 - 0.08).clamp(-0.9, 0.9),
+          ),
+          radius: 1.15,
+          colors: [lit, p.base, p.shade],
+          stops: const [0, 0.42, 1],
         ).createShader(sphere),
     );
 
-    // 목성/해왕성 줄무늬.
+    // 목성/해왕성 줄무늬 — 위도 밴드는 고정, 폭풍 무늬만 자전.
     if (p.bands) {
       canvas.save();
       canvas.clipPath(Path()..addOval(sphere));
@@ -1361,131 +1436,142 @@ class _PlanetPainter extends CustomPainter {
           band,
         );
       }
-      // 대적점 — 목성만.
+      // 대적점(목성) — 자전으로 흘러간다.
       if (p.id == 'jupiter') {
-        canvas.drawOval(
-          Rect.fromCenter(
-            center:
-                Offset(center.dx + radius * 0.38, center.dy + radius * 0.4),
-            width: radius * 0.5,
-            height: radius * 0.3,
-          ),
+        _rotFeature(
+          canvas,
+          center,
+          radius,
           Paint()..color = const Color(0xFFDC2626).withValues(alpha: 0.55),
+          lon0: 0.6,
+          lat: 0.4,
+          w: 0.5,
+          h: 0.3,
+          speed: 0.16,
         );
       }
+      // 밝은 소용돌이 무늬 몇 개 — 자전.
+      final swirl = Paint()
+        ..color = Color.lerp(p.base, Colors.white, 0.4)!
+            .withValues(alpha: 0.30);
+      _rotFeature(canvas, center, radius, swirl,
+          lon0: 2.2, lat: -0.28, w: 0.55, h: 0.14, speed: 0.19);
+      _rotFeature(canvas, center, radius, swirl,
+          lon0: 4.4, lat: 0.05, w: 0.45, h: 0.12, speed: 0.14);
       canvas.restore();
     }
 
-    // 금성 — 두꺼운 구름 소용돌이(밝은 톤의 부드러운 줄).
+    // 금성 — 두꺼운 구름 소용돌이가 빠르게 자전.
     if (p.clouds) {
       canvas.save();
       canvas.clipPath(Path()..addOval(sphere));
       final cloud = Paint()..color = Colors.white.withValues(alpha: 0.30);
-      for (final (dy, w, tilt) in [
-        (-0.42, 1.6, -0.12),
-        (-0.05, 2.0, 0.10),
-        (0.35, 1.7, -0.08),
-        (0.65, 1.2, 0.14),
+      for (final (lon0, lat, w) in [
+        (0.4, -0.42, 1.3),
+        (1.8, -0.05, 1.6),
+        (3.2, 0.35, 1.4),
+        (4.8, 0.65, 1.0),
       ]) {
-        canvas.save();
-        canvas.translate(center.dx, center.dy + radius * dy);
-        canvas.rotate(tilt);
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: radius * w,
-            height: radius * 0.22,
-          ),
-          cloud,
-        );
-        canvas.restore();
+        _rotFeature(canvas, center, radius, cloud,
+            lon0: lon0, lat: lat, w: w, h: 0.22, speed: 0.45);
       }
       canvas.restore();
     }
 
-    // 지구 — 초록 대륙 + 흰 구름.
+    // 지구 — 초록 대륙 + 흰 구름이 자전.
     if (p.continents) {
       canvas.save();
       canvas.clipPath(Path()..addOval(sphere));
       final land = Paint()
         ..color = const Color(0xFF34D399).withValues(alpha: 0.85);
-      // 대륙 — 불규칙한 느낌을 내려고 타원 여러 개를 겹쳐 그린다.
-      for (final (dx, dy, w, h, tilt) in [
-        (-0.35, -0.30, 0.75, 0.55, -0.4),
-        (-0.10, -0.05, 0.40, 0.30, 0.3),
-        (0.35, 0.15, 0.60, 0.75, 0.5),
-        (0.10, 0.55, 0.45, 0.28, -0.2),
-        (-0.45, 0.40, 0.35, 0.25, 0.1),
+      for (final (lon0, lat, w, h) in [
+        (0.2, -0.30, 0.75, 0.55),
+        (1.4, 0.15, 0.60, 0.75),
+        (2.8, 0.55, 0.45, 0.28),
+        (4.2, -0.05, 0.40, 0.30),
+        (5.3, 0.40, 0.35, 0.25),
       ]) {
-        canvas.save();
-        canvas.translate(center.dx + radius * dx, center.dy + radius * dy);
-        canvas.rotate(tilt);
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: radius * w,
-            height: radius * h,
-          ),
-          land,
-        );
-        canvas.restore();
+        _rotFeature(canvas, center, radius, land,
+            lon0: lon0, lat: lat, w: w, h: h, speed: 0.18);
       }
-      // 구름 — 가늘고 밝은 줄 몇 가닥.
+      // 구름 — 대륙보다 살짝 빠르게 흐른다.
       final cloud = Paint()..color = Colors.white.withValues(alpha: 0.45);
-      for (final (dx, dy, w, tilt) in [
-        (-0.15, -0.55, 1.0, -0.15),
-        (0.25, -0.15, 0.8, 0.20),
-        (-0.30, 0.30, 0.9, 0.10),
+      for (final (lon0, lat, w) in [
+        (0.9, -0.55, 1.0),
+        (2.6, -0.15, 0.8),
+        (4.6, 0.30, 0.9),
       ]) {
-        canvas.save();
-        canvas.translate(center.dx + radius * dx, center.dy + radius * dy);
-        canvas.rotate(tilt);
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: radius * w,
-            height: radius * 0.14,
-          ),
-          cloud,
-        );
-        canvas.restore();
+        _rotFeature(canvas, center, radius, cloud,
+            lon0: lon0, lat: lat, w: w, h: 0.14, speed: 0.28);
       }
       canvas.restore();
     }
 
-    // 달/수성 크레이터.
+    // 달/수성 크레이터 — 자전.
     if (p.craters) {
-      final crater = Paint()..color = p.shade.withValues(alpha: 0.45);
       canvas.save();
       canvas.clipPath(Path()..addOval(sphere));
-      canvas.drawCircle(
-          center + Offset(-radius * 0.3, -radius * 0.25), radius * 0.16, crater);
-      canvas.drawCircle(
-          center + Offset(radius * 0.32, radius * 0.1), radius * 0.12, crater);
-      canvas.drawCircle(
-          center + Offset(-radius * 0.05, radius * 0.42), radius * 0.10, crater);
-      canvas.drawCircle(
-          center + Offset(radius * 0.12, -radius * 0.42), radius * 0.07, crater);
+      final crater = Paint()..color = p.shade.withValues(alpha: 0.45);
+      for (final (lon0, lat, s) in [
+        (0.3, -0.25, 0.32),
+        (1.6, 0.10, 0.24),
+        (3.4, 0.42, 0.20),
+        (5.0, -0.42, 0.14),
+        (2.4, -0.05, 0.18),
+      ]) {
+        _rotFeature(canvas, center, radius, crater,
+            lon0: lon0, lat: lat, w: s, h: s, speed: 0.12);
+      }
       canvas.restore();
     }
 
-    // 우측 하단 셰이딩 — 입체감.
+    // 명암 경계(터미네이터) — 낮 쪽(태양 방향)을 중심으로 멀어질수록 어두워져
+    // 태양 반대쪽 반구가 어둠에 잠긴다.
     canvas.save();
     canvas.clipPath(Path()..addOval(sphere));
+    final dayCenter = center - Offset(l.dx, l.dy) * radius * 0.55;
     canvas.drawCircle(
-      center + Offset(radius * 0.45, radius * 0.45),
-      radius * 1.05,
+      dayCenter,
+      radius * 1.7,
       Paint()
         ..shader = RadialGradient(
           colors: [
             Colors.black.withValues(alpha: 0),
-            Colors.black.withValues(alpha: 0.28),
+            Colors.black.withValues(alpha: 0.42),
           ],
-          stops: const [0.55, 1],
+          stops: const [0.40, 0.95],
         ).createShader(
-            Rect.fromCircle(center: center, radius: radius * 1.5)),
+            Rect.fromCircle(center: dayCenter, radius: radius * 1.7)),
+    );
+    // 스펙큘러 하이라이트 — 태양 쪽 표면의 반짝임.
+    final specCenter = center - Offset(l.dx, l.dy) * radius * 0.45;
+    canvas.drawCircle(
+      specCenter,
+      radius * 0.34,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withValues(alpha: p.bands || p.clouds ? 0.22 : 0.34),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(
+            Rect.fromCircle(center: specCenter, radius: radius * 0.34)),
     );
     canvas.restore();
+
+    // 대기 림라이트 — 태양 쪽 가장자리 발광 아크.
+    final litAngle = math.atan2(-l.dy, -l.dx);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 0.99),
+      litAngle - 1.15,
+      2.3,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = radius * 0.07
+        ..strokeCap = StrokeCap.round
+        ..color = p.glow.withValues(alpha: 0.5),
+    );
 
     // 고리 앞쪽 절반.
     if (p.hasRing) {
@@ -1528,7 +1614,8 @@ class _PlanetPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PlanetPainter old) => old.p != p;
+  bool shouldRepaint(_PlanetPainter old) =>
+      old.p != p || old.t != t || old.light != light;
 }
 
 // ── 착륙(탐험) 시트 ──────────────────────────────────────────────────
