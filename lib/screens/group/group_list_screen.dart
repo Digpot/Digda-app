@@ -359,6 +359,49 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 10),
+                              // 그룹방이 있어도 초대 코드로 바로 참여할 수 있게 —
+                              // 마이페이지까지 찾아가지 않아도 되도록 홈에 진입점 상시 노출.
+                              GestureDetector(
+                                onTap: () async {
+                                  await Navigator.of(context)
+                                      .pushNamed('/code-input');
+                                  _refresh();
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: AppColors.gray200,
+                                      width: 1.4,
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.key_rounded,
+                                        size: 19,
+                                        color: AppColors.gray700,
+                                      ),
+                                      SizedBox(width: 7),
+                                      Text(
+                                        '초대 코드로 참여',
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
+                                          color: AppColors.gray700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         );
