@@ -3,6 +3,7 @@ import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/group_room/models/group_room_models.dart';
 import '../../features/invite/models/invite_models.dart';
+import '../../screens/onboarding/code_input_screen.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/group_list_tile.dart';
@@ -316,91 +317,39 @@ class _GroupListScreenState extends State<GroupListScreen> {
                                     ),
                                   );
                                 }),
-                              SizedBox(height: groups.isEmpty ? 8 : 4),
-                              GestureDetector(
-                                onTap: () async {
-                                  await Navigator.of(context)
-                                      .pushNamed('/create-diary');
-                                  _refresh();
-                                },
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 18),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.06),
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.30),
-                                      width: 1.4,
+                              SizedBox(height: groups.isEmpty ? 8 : 8),
+                              // 하단 액션 — 새 그룹방(주 CTA)과 초대 코드 참여를
+                              // 나란히 배치해 리스트가 늘어도 깔끔하게 유지한다.
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _ActionButton(
+                                      icon: Icons.add_rounded,
+                                      label: '새 그룹방',
+                                      filled: true,
+                                      onTap: () async {
+                                        await Navigator.of(context)
+                                            .pushNamed('/create-diary');
+                                        _refresh();
+                                      },
                                     ),
                                   ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_rounded,
-                                        size: 20,
-                                        color: AppColors.primary,
-                                      ),
-                                      SizedBox(width: 7),
-                                      Text(
-                                        '새 그룹방 추가',
-                                        style: TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              // 그룹방이 있어도 초대 코드로 바로 참여할 수 있게 —
-                              // 마이페이지까지 찾아가지 않아도 되도록 홈에 진입점 상시 노출.
-                              GestureDetector(
-                                onTap: () async {
-                                  await Navigator.of(context)
-                                      .pushNamed('/code-input');
-                                  _refresh();
-                                },
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 18),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.white,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: AppColors.gray200,
-                                      width: 1.4,
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _ActionButton(
+                                      icon: Icons.key_rounded,
+                                      label: '코드로 참여',
+                                      filled: false,
+                                      // 뒷배경을 그룹 리스트로 유지한 채
+                                      // 바텀시트로 초대 코드를 입력한다.
+                                      onTap: () async {
+                                        await CodeInputScreen.showAsSheet(
+                                            context);
+                                        _refresh();
+                                      },
                                     ),
                                   ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.key_rounded,
-                                        size: 19,
-                                        color: AppColors.gray700,
-                                      ),
-                                      SizedBox(width: 7),
-                                      Text(
-                                        '초대 코드로 참여',
-                                        style: TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                          color: AppColors.gray700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                ],
                               ),
                             ],
                           ),
@@ -427,6 +376,68 @@ class _GroupListScreenState extends State<GroupListScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 그룹 리스트 하단 액션 버튼 — filled(주 CTA)/outline(보조) 두 톤.
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = filled ? AppColors.white : AppColors.gray700;
+    return Material(
+      color: filled ? AppColors.primary : AppColors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 54,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: filled
+                ? null
+                : Border.all(color: AppColors.gray200, width: 1.4),
+            boxShadow: filled
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.28),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 19, color: fg),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

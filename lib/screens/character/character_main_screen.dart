@@ -28,8 +28,8 @@ import 'character_stage_tree_screen.dart';
 import 'character_shop_screen.dart';
 import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
+import 'explore_hub_screen.dart';
 import 'games/group_game_list_screen.dart';
-import 'space_explore_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
 import 'quiz/character_quiz_list_screen.dart';
 import '../exhibit/nickname_exhibit_screen.dart';
@@ -226,8 +226,9 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   Future<void> _openExplore() async {
     final s = _state;
     if (s == null) return;
+    // 탐험 허브 — 우주/해저 등 탐험 콘텐츠를 고르는 관문.
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => SpaceExploreScreen(character: s)),
+      MaterialPageRoute(builder: (_) => ExploreHubScreen(character: s)),
     );
   }
 
@@ -813,7 +814,7 @@ class _GameCta extends StatelessWidget {
   }
 }
 
-/// '우주 탐험' 진입 버튼 — 모찌와 태양계 행성 투어 (Lv.5 해금).
+/// '탐험하기' 진입 버튼 — 탐험 허브(우주/해저/…) 로 (Lv.5 해금).
 class _ExploreCta extends StatelessWidget {
   const _ExploreCta({
     required this.onTap,
@@ -827,8 +828,8 @@ class _ExploreCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _GradientCta(
-      emoji: '🚀',
-      label: '우주 탐험하기',
+      emoji: '🧭',
+      label: '탐험하기',
       colors: const [Color(0xFF4F46E5), Color(0xFF9333EA)],
       onTap: onTap,
       locked: locked,
