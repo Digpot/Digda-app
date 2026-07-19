@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:digda/features/character/models/character_models.dart';
 import 'package:digda/screens/character/space_explore_screen.dart';
 
-/// 우주 탐험 화면 스모크 — 선택 → 워프 → 도착 → 재선택 플로우가 예외/오버플로
-/// 없이 렌더되는지 검증한다. (행성 카드 오버플로 회귀를 잡기 위한 테스트.)
+/// 우주 탐험(자유비행) 스모크 — 렌더 → 조종(추진 비행) → 행성 근접 →
+/// 탐험 시트 → 진행도 갱신까지 예외 없이 동작하는지 검증한다.
 void main() {
   Future<void> pumpExplore(WidgetTester tester) async {
     final fake = CharacterState(
@@ -26,53 +26,71 @@ void main() {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 30)),
     );
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(tester.takeException(), isNull);
   }
 
-  testWidgets('선택 화면 — 태양계 전 행성 카드 렌더', (tester) async {
+  testWidgets('초기 렌더 — HUD/조종 안내/진행도', (tester) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
     await pumpExplore(tester);
     expect(find.text('우주 탐험'), findsOneWidget);
-    expect(find.text('수성'), findsOneWidget);
+    expect(find.text('우주선 조종법'), findsOneWidget); // 첫 진입 안내
+    expect(find.textContaining('0/9'), findsOneWidget); // 진행도
 
-    // 카드 리스트 끝까지 스크롤해도 오버플로 예외가 없어야 한다.
-    await tester.drag(find.byType(ListView).last, const Offset(-1200, 0));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('해왕성'), findsOneWidget);
+    // 몇 프레임 돌려도(별 반짝임/부유) 예외가 없어야 한다.
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
     expect(tester.takeException(), isNull);
-
-    await tester.pumpWidget(const SizedBox()); // 리핏 티커 정리
   });
 
-  testWidgets('워프 → 도착 → 재선택 플로우', (tester) async {
+  testWidgets('추진 비행 → 행성 근접 → 탐험 시트 → 진행도 1/9', (tester) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
     await pumpExplore(tester);
-    await tester.tap(find.text('수성'));
-    // forward() 는 다음 틱부터 경과시간을 재므로 틱 시작용 pump 를 먼저 한다.
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pump(const Duration(milliseconds: 800)); // 워프 중간
+
+    // 우주선 시작(520,1000) 근처에서 수성(760,850) 방향으로 화면을 꾹 누른다.
+    // 시작 카메라는 (340,610) — 수성의 화면 좌표는 (420,240) 근방.
+    final TestGesture g =
+        await tester.startGesture(const Offset(320, 250));
+    // 안내 문구는 첫 터치에 사라진다.
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('우주선 조종법'), findsNothing);
+
+    // 근접 프롬프트가 뜰 때까지 비행 (최대 ~4초 시뮬레이션).
+    var found = false;
+    for (var i = 0; i < 250; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      if (find.text('🔭 수성 탐험하기').evaluate().isNotEmpty) {
+        found = true;
+        break;
+      }
+    }
+    await g.up();
+    await tester.pump(const Duration(milliseconds: 32));
+    expect(found, isTrue, reason: '추진 비행으로 수성 근접 프롬프트가 떠야 한다');
     expect(tester.takeException(), isNull);
-    await tester.pump(const Duration(milliseconds: 1000)); // 워프 완료
-    await tester.pump(const Duration(milliseconds: 100));
+
+    // 탐험 시트 열기 — 스탯/일지/연대기 노출.
+    await tester.tap(find.text('🔭 수성 탐험하기'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('수성 도착!'), findsOneWidget);
     expect(find.text('행성 연대기'), findsOneWidget);
-    expect(tester.takeException(), isNull);
 
-    // 다시 선택 화면으로 — 탐험 완료 뱃지 확인.
-    await tester.scrollUntilVisible(find.text('다른 행성도 탐험하기'), 300,
-        scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('다른 행성도 탐험하기'));
-    await tester.pump(const Duration(milliseconds: 300));
+    // 닫으면 진행도 1/9 + 탐험 완료 뱃지.
+    await tester.scrollUntilVisible(find.text('계속 탐험하기'), 300,
+        scrollable: find.byType(Scrollable).last);
+    await tester.tap(find.text('계속 탐험하기'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('1/9'), findsOneWidget);
     expect(find.text('탐험 완료 ✓'), findsOneWidget);
     expect(tester.takeException(), isNull);
-
-    await tester.pumpWidget(const SizedBox()); // 리핏 티커 정리
   });
 }
