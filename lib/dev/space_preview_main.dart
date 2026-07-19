@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../features/character/models/character_models.dart';
-import '../screens/character/space_explore_screen.dart';
+import '../screens/character/explore_hub_screen.dart';
 
-/// 우주 탐험 UI 확인용 dev 엔트리포인트 — 로그인/서버 없이 화면을 그대로 띄운다.
+/// 탐험(허브/우주/해저) UI 확인용 dev 엔트리포인트 — 로그인/서버 없이 띄운다.
 ///
 ///   flutter run -d <device> -t lib/dev/space_preview_main.dart
 ///
 /// 가짜 CharacterState(Lv.7 BLOOM) 로 진입하므로 서버/DI 부트스트랩이 필요 없다.
 void main() {
-  runApp(const _SpacePreviewApp());
+  runApp(const _ExplorePreviewApp());
 }
 
-class _SpacePreviewApp extends StatelessWidget {
-  const _SpacePreviewApp();
+class _ExplorePreviewApp extends StatelessWidget {
+  const _ExplorePreviewApp();
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +30,7 @@ class _SpacePreviewApp extends StatelessWidget {
     );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SpaceExploreScreen(character: fake),
+      home: ExploreHubScreen(character: fake),
     );
   }
 }
