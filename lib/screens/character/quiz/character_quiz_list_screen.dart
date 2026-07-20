@@ -24,6 +24,10 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
 
   /// 접힌 날짜 섹션 라벨(노션식 토글). 비어있으면 전부 펼침.
   final Set<String> _collapsed = {};
+
+  /// 기본 접힘을 이미 적용한 섹션 라벨. 사용자가 직접 펼친 섹션이 다음 페이지
+  /// 로드 때 다시 접히지 않도록, 처음 등장한 섹션에만 기본값을 적용한다.
+  final Set<String> _defaulted = {};
   String _query = '';
 
   int _page = 0;
@@ -47,6 +51,47 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
     _scroll.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  /// 날짜 섹션의 기본 접힘 상태를 적용한다 — 오늘 날짜만 펼치고 나머지는 접는다.
+  /// 오늘 작성된 퀴즈가 없으면 가장 최근 날짜 섹션 하나만 펼친다.
+  ///
+  /// [reset] 이면(첫 로드·새로고침) 사용자가 만든 접힘 상태를 모두 버리고 다시
+  /// 계산한다. 페이지 추가 로드 때는 새로 등장한(과거) 섹션만 접어, 사용자가
+  /// 직접 펼쳐둔 섹션을 건드리지 않는다.
+  void _applyDefaultCollapse({bool reset = false}) {
+    if (reset) {
+      _collapsed.clear();
+      _defaulted.clear();
+    }
+    final sections = _groupByDate(_items);
+    if (sections.isEmpty) return;
+    final openLabel = sections
+        .firstWhere((s) => s.label == '오늘', orElse: () => sections.first)
+        .label;
+    for (final s in sections) {
+      if (!_defaulted.add(s.label)) continue; // 이미 기본값을 적용한 섹션
+      if (s.label != openLabel) _collapsed.add(s.label);
+    }
+  }
+
+  void _expandAll() {
+    setState(() {
+      _collapsed.clear();
+      // 이후 페이지가 로드돼도 기본 접힘이 다시 끼어들지 않게 처리 완료로 표시.
+      for (final s in _groupByDate(_items)) {
+        _defaulted.add(s.label);
+      }
+    });
+  }
+
+  void _collapseAll() {
+    setState(() {
+      for (final s in _groupByDate(_items)) {
+        _collapsed.add(s.label);
+        _defaulted.add(s.label);
+      }
+    });
   }
 
   /// 검색어로 로드된 퀴즈를 필터(질문/선택지/출제자/카테고리).
@@ -135,6 +180,8 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
         _totalPages = result.totalPages;
         _dikoUnlocked = dikoUnlocked;
         _loading = false;
+        // 오늘(없으면 최근) 섹션만 펼친 상태로 시작.
+        _applyDefaultCollapse(reset: true);
       });
     } catch (e) {
       if (!mounted) return;
@@ -167,6 +214,8 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
         _page = result.page;
         _totalPages = result.totalPages;
         _loadingMore = false;
+        // 새로 실린 과거 날짜 섹션은 접힌 채로 붙인다.
+        _applyDefaultCollapse();
       });
     } catch (e) {
       if (!mounted) return;
@@ -236,6 +285,9 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
     if (_items.isEmpty) {
       return const _EmptyState();
     }
+    // 검색 중에는 접힘을 무시하고 전부 펼쳐 보이므로 툴바도 감춘다.
+    final searching = _query.trim().isNotEmpty;
+    final sections = _groupByDate(_items);
     return Column(
       children: [
         _SearchField(
@@ -246,6 +298,15 @@ class _CharacterQuizListScreenState extends State<CharacterQuizListScreen> {
             _query = '';
           }),
         ),
+        if (!searching && sections.length > 1)
+          _ListToolbar(
+            sectionCount: sections.length,
+            quizCount: _items.length,
+            allExpanded: !sections.any((s) => _collapsed.contains(s.label)),
+            allCollapsed: sections.every((s) => _collapsed.contains(s.label)),
+            onExpandAll: _expandAll,
+            onCollapseAll: _collapseAll,
+          ),
         Expanded(child: _buildList()),
       ],
     );
@@ -357,6 +418,134 @@ class _ListEntry {
   final CharacterQuiz? quiz;
 }
 
+/// 목록 상단 툴바 — 날짜/문제 수 요약 + 전체 열기·닫기 세그먼트.
+/// 이미 그 상태(전부 펼침/전부 접힘)면 해당 버튼은 흐리게 비활성화된다.
+class _ListToolbar extends StatelessWidget {
+  const _ListToolbar({
+    required this.sectionCount,
+    required this.quizCount,
+    required this.allExpanded,
+    required this.allCollapsed,
+    required this.onExpandAll,
+    required this.onCollapseAll,
+  });
+
+  final int sectionCount;
+  final int quizCount;
+  final bool allExpanded;
+  final bool allCollapsed;
+  final VoidCallback onExpandAll;
+  final VoidCallback onCollapseAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.event_note_rounded,
+              size: 14, color: AppColors.gray400),
+          const SizedBox(width: 5),
+          // 요약은 폰트 폭이 큰 환경에서도 세그먼트를 밀어내지 않도록 양보한다.
+          Flexible(
+            child: Text(
+              '날짜 $sectionCount · 문제 $quizCount',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: AppColors.gray500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.gray100),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: _ToolbarSegment(
+                    icon: Icons.unfold_more_rounded,
+                    label: '전체 열기',
+                    enabled: !allExpanded,
+                    onTap: onExpandAll,
+                  ),
+                ),
+                Container(width: 1, height: 32, color: AppColors.gray100),
+                Flexible(
+                  child: _ToolbarSegment(
+                    icon: Icons.unfold_less_rounded,
+                    label: '전체 닫기',
+                    enabled: !allCollapsed,
+                    onTap: onCollapseAll,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolbarSegment extends StatelessWidget {
+  const _ToolbarSegment({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = enabled ? AppColors.gray700 : AppColors.gray300;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 노션식 날짜 토글 헤더 — 탭하면 그 날짜 섹션을 접고/펼친다.
 class _SectionToggle extends StatelessWidget {
   const _SectionToggle({
@@ -372,6 +561,13 @@ class _SectionToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 오늘 섹션은 기본으로 펼쳐지는 자리라 코랄 액센트로 눈에 띄게 둔다.
+    final isToday = label == '오늘';
+    final labelColor = isToday ? AppColors.primary : AppColors.gray900;
+    final badgeBg = isToday
+        ? AppColors.primary.withValues(alpha: 0.10)
+        : AppColors.gray100;
+    final badgeFg = isToday ? AppColors.primary : AppColors.gray500;
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 4),
       child: Material(
@@ -387,17 +583,18 @@ class _SectionToggle extends StatelessWidget {
                   // 펼침=아래(▼), 접힘=오른쪽(▶).
                   turns: collapsed ? -0.25 : 0,
                   duration: const Duration(milliseconds: 180),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 22, color: AppColors.gray700),
+                  child: Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 22,
+                      color: isToday ? AppColors.primary : AppColors.gray700),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
-                    color: AppColors.gray900,
+                    color: labelColor,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -405,16 +602,16 @@ class _SectionToggle extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.gray100,
+                    color: badgeBg,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$count',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w700,
                       fontSize: 11,
-                      color: AppColors.gray500,
+                      color: badgeFg,
                     ),
                   ),
                 ),
