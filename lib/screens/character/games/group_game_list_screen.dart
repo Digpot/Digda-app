@@ -4,7 +4,7 @@ import '../../../core/di.dart';
 import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 import 'catchmind_game_screen.dart';
 import 'catchmind_invite_screen.dart';
 import 'word_chain_invite_screen.dart';
@@ -103,7 +103,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const CenterTitleHeader(title: '게임하기'),
+            const BackHeader(title: '게임하기'),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadInvites,
