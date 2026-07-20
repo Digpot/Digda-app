@@ -8,7 +8,7 @@ import '../../../features/omok/models/omok_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 
 /// 실시간 오목 대국 화면 — 초대 수락 전(invitee)/대기(inviter)/대국/결과를
 /// 한 화면에서 상태로 전환한다.
@@ -322,7 +322,7 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              CenterTitleHeader(title: '오목', onBack: _onExit),
+              BackHeader(title: '오목', onBack: _onExit),
               Expanded(child: _buildBody()),
               // 배너 광고 — 대국 화면 하단 고정(미로드 시 공간 0).
               const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),

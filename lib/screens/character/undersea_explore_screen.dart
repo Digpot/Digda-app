@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
+import 'explore_3d.dart';
 
 /// 모찌 해저 탐험 — 탐험 허브에서 진입하는 자유비행 심해 콘텐츠.
 ///
@@ -49,16 +50,19 @@ class _UnderseaExploreScreenState extends State<UnderseaExploreScreen>
   bool _panelOpen = false;
   bool _celebrated = false;
 
-  late final List<_Bubble> _farBubbles;
-  late final List<_Bubble> _nearBubbles;
+  /// 깊이가 제각각인 부유 입자/기포 — 원근 시차로 물의 두께를 만든다.
+  late final List<Depth3DMote> _motes;
   late final List<_Fish> _fishes;
 
   @override
   void initState() {
     super.initState();
     final rand = math.Random(20260720);
-    _farBubbles = List.generate(46, (_) => _Bubble.random(rand));
-    _nearBubbles = List.generate(34, (_) => _Bubble.random(rand));
+    _motes = List.generate(
+      92,
+      (_) => Depth3DMote.random(rand,
+          minZ: -160, maxZ: 2200, minR: 1.2, maxR: 3.6, twinkle: 0.3),
+    );
     _fishes = List.generate(7, (_) => _Fish.random(rand));
     _ticker = createTicker(_onTick)..start();
   }
@@ -269,8 +273,7 @@ class _UnderseaExploreScreenState extends State<UnderseaExploreScreen>
                   painter: _SeaWorldPainter(
                     camera: camera,
                     t: _time,
-                    farBubbles: _farBubbles,
-                    nearBubbles: _nearBubbles,
+                    motes: _motes,
                     fishes: _fishes,
                     depthFrac: (camera.dy / (_worldH - _viewport.height))
                         .clamp(0.0, 1.0),
@@ -538,27 +541,6 @@ class _UnderseaExploreScreenState extends State<UnderseaExploreScreen>
                   fontWeight: FontWeight.w800,
                   fontSize: 19,
                   color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0891B2), Color(0xFF2563EB)],
-                  ),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'BETA',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    color: Colors.white,
-                  ),
                 ),
               ),
               const Spacer(),
@@ -1150,30 +1132,6 @@ const List<_SeaSpot> _spots = [
 
 // ── 배경/파티클 ──────────────────────────────────────────────────────
 
-class _Bubble {
-  _Bubble({
-    required this.x,
-    required this.y,
-    required this.r,
-    required this.speed,
-    required this.phase,
-  });
-
-  factory _Bubble.random(math.Random rand) => _Bubble(
-        x: rand.nextDouble(),
-        y: rand.nextDouble(),
-        r: 1.2 + rand.nextDouble() * 2.6,
-        speed: 14 + rand.nextDouble() * 30,
-        phase: rand.nextDouble() * 2 * math.pi,
-      );
-
-  final double x;
-  final double y;
-  final double r;
-  final double speed; // 상승 속도(px/s)
-  final double phase;
-}
-
 class _Fish {
   _Fish({
     required this.lane,
@@ -1203,8 +1161,7 @@ class _SeaWorldPainter extends CustomPainter {
   _SeaWorldPainter({
     required this.camera,
     required this.t,
-    required this.farBubbles,
-    required this.nearBubbles,
+    required this.motes,
     required this.fishes,
     required this.depthFrac,
     required this.surfaceScreenY,
@@ -1213,8 +1170,7 @@ class _SeaWorldPainter extends CustomPainter {
 
   final Offset camera;
   final double t;
-  final List<_Bubble> farBubbles;
-  final List<_Bubble> nearBubbles;
+  final List<Depth3DMote> motes;
   final List<_Fish> fishes;
   final double depthFrac; // 0(수면)~1(바닥) — 카메라 기준
   final double surfaceScreenY;
@@ -1290,9 +1246,48 @@ class _SeaWorldPainter extends CustomPainter {
       }
     }
 
-    // 부유 입자/기포 — 패럴랙스 2겹, 시간이 갈수록 위로 상승.
-    _drawBubbleLayer(canvas, size, farBubbles, parallax: 0.35, dim: 0.5);
-    _drawBubbleLayer(canvas, size, nearBubbles, parallax: 0.75, dim: 0.9);
+    // 먼 바위 능선 — 깊은 평면이라 아주 느리게 흐르고 물빛에 잠긴다.
+    for (final ridge in [
+      (2100.0, 0.70, const Color(0xFF0B3B57)),
+      (1300.0, 0.80, const Color(0xFF07263A)),
+    ]) {
+      final (z, baseY, color) = ridge;
+      final k = Depth3D.scaleOf(z);
+      final y = size.height * baseY - camera.dy * k * 0.5;
+      final shift = camera.dx * k * 0.5;
+      final path = Path()
+        ..moveTo(0, size.height)
+        ..lineTo(0, y);
+      for (double x = 0; x <= size.width; x += 16) {
+        path.lineTo(
+          x,
+          y +
+              math.sin((x + shift) / 150) * 30 +
+              math.sin((x + shift) / 57) * 12,
+        );
+      }
+      path
+        ..lineTo(size.width, size.height)
+        ..close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color.withValues(alpha: 0.75 * (1 - Depth3D.hazeOf(z))),
+      );
+    }
+
+    // 부유 입자/기포 — 깊이(z)별 시차로 물의 두께를 만든다. 위로 상승.
+    paintDepthMotes(
+      canvas,
+      size,
+      motes: motes,
+      camera: camera,
+      t: t,
+      color: Colors.white,
+      drift: 26,
+      baseAlpha: 0.34,
+      stroke: true,
+    );
 
     // 물고기 실루엣 — 화면 공간을 가로질러 헤엄친다(깊은 곳에선 드물게).
     final fishAlpha = (1 - depthFrac * 1.3).clamp(0.15, 1.0) * 0.4;
@@ -1304,31 +1299,6 @@ class _SeaWorldPainter extends CustomPainter {
           math.sin(t * 2 + f.phase) * 7 -
           camera.dy * 0.1 % 40;
       _drawFish(canvas, Offset(x, y), f.size, f.toRight, fishAlpha);
-    }
-  }
-
-  void _drawBubbleLayer(
-    Canvas canvas,
-    Size size,
-    List<_Bubble> bubbles, {
-    required double parallax,
-    required double dim,
-  }) {
-    final tileW = size.width + 160;
-    final tileH = size.height + 160;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    for (final b in bubbles) {
-      final px = (b.x * tileW -
-                  camera.dx * parallax +
-                  math.sin(t * 1.2 + b.phase) * 6) %
-              tileW -
-          80;
-      final py =
-          (b.y * tileH - camera.dy * parallax - t * b.speed) % tileH - 80;
-      paint.color = Colors.white.withValues(alpha: 0.30 * dim);
-      canvas.drawCircle(Offset(px, py), b.r, paint);
     }
   }
 
