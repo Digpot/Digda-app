@@ -10,7 +10,7 @@ import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 import 'game_ui_common.dart';
 
 /// 캐치마인드 화면 — 로비(참가 대기)/라운드 진행/최종 랭킹을 한 화면에서 전환.
@@ -483,7 +483,7 @@ class _CatchmindGameScreenState extends State<CatchmindGameScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              CenterTitleHeader(title: '캐치마인드', onBack: _onExit),
+              BackHeader(title: '캐치마인드', onBack: _onExit),
               Expanded(child: _buildBody()),
               // 배너 광고 — 키보드가 올라오면 입력을 가리지 않게 숨긴다.
               if (MediaQuery.of(context).viewInsets.bottom == 0)

@@ -10,7 +10,7 @@ import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 import 'game_ui_common.dart';
 
 /// 끝말잇기 화면 — 로비(참가 대기)/진행(단어 잇기 서든데스)/우승 결과를 한 화면에서.
@@ -332,7 +332,7 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              CenterTitleHeader(title: '끝말잇기', onBack: _onExit),
+              BackHeader(title: '끝말잇기', onBack: _onExit),
               Expanded(child: _buildBody()),
               // 배너 광고 — 키보드가 올라오면 입력을 가리지 않게 숨긴다.
               if (MediaQuery.of(context).viewInsets.bottom == 0)

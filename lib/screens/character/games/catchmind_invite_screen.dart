@@ -5,7 +5,7 @@ import '../../../core/network/error_message.dart';
 import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 import 'catchmind_game_screen.dart';
 
 /// 캐치마인드 초대 — 그룹 멤버(나 제외) 중 여럿을 골라 방을 만든다.
@@ -105,7 +105,7 @@ class _CatchmindInviteScreenState extends State<CatchmindInviteScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const CenterTitleHeader(title: '캐치마인드 초대'),
+            const BackHeader(title: '캐치마인드 초대'),
             Expanded(child: _buildBody()),
             if (!_loading && _errorMessage == null && _members.isNotEmpty)
               _buildSettings(),

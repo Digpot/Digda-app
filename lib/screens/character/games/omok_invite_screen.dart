@@ -5,7 +5,7 @@ import '../../../core/network/error_message.dart';
 import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 import 'omok_game_screen.dart';
 
 /// 오목 상대 고르기 — 현재 그룹 멤버(나 제외) 목록에서 1명을 초대한다.
@@ -103,7 +103,7 @@ class _OmokInviteScreenState extends State<OmokInviteScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const CenterTitleHeader(title: '오목 상대 고르기'),
+            const BackHeader(title: '오목 상대 고르기'),
             Expanded(child: _buildBody()),
           ],
         ),

@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
+import 'explore_3d.dart';
 
 /// 모찌 우주 탐험 v2 — 레벨 5 해금 콘텐츠.
 ///
@@ -48,16 +49,21 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
   bool _panelOpen = false;
   bool _celebrated = false;
 
-  late final List<_Star> _farStars;
-  late final List<_Star> _nearStars;
+  /// 깊이가 제각각인 배경 별 — 카메라가 움직이면 z 에 따라 다른 속도로 흐른다.
+  late final List<Depth3DMote> _deepStars;
+  late final List<_Galaxy> _galaxies;
 
   @override
   void initState() {
     super.initState();
     // 별밭은 시드 고정 — 리빌드마다 위치가 바뀌지 않게 한다.
     final rand = math.Random(20260719);
-    _farStars = List.generate(90, (_) => _Star.random(rand));
-    _nearStars = List.generate(70, (_) => _Star.random(rand));
+    _deepStars = List.generate(
+      170,
+      (_) => Depth3DMote.random(rand,
+          minZ: 60, maxZ: 2600, minR: 0.9, maxR: 3.0),
+    );
+    _galaxies = List.generate(5, (_) => _Galaxy.random(rand));
     _ticker = createTicker(_onTick)..start();
   }
 
@@ -269,8 +275,8 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
                   painter: _WorldPainter(
                     camera: camera,
                     t: _time,
-                    farStars: _farStars,
-                    nearStars: _nearStars,
+                    deepStars: _deepStars,
+                    galaxies: _galaxies,
                     sunScreen: _sunPos - camera,
                     orbitRadii: [
                       for (final p in _planets)
@@ -532,26 +538,6 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
                 fontWeight: FontWeight.w800,
                 fontSize: 19,
                 color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                ),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                'BETA',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  color: Colors.white,
-                ),
               ),
             ),
             const Spacer(),
@@ -1159,45 +1145,55 @@ const List<_Planet> _planets = [
 
 // ── 월드 배경 페인터 ─────────────────────────────────────────────────
 
-class _Star {
-  _Star({
+/// 아주 깊은 평면에 떠 있는 은하 — 거의 붙박이처럼 느리게 흐른다.
+class _Galaxy {
+  _Galaxy({
     required this.x,
     required this.y,
+    required this.z,
     required this.r,
-    required this.phase,
-    required this.speed,
+    required this.tilt,
+    required this.color,
   });
 
-  factory _Star.random(math.Random rand) => _Star(
+  factory _Galaxy.random(math.Random rand) => _Galaxy(
         x: rand.nextDouble(),
         y: rand.nextDouble(),
-        r: 0.6 + rand.nextDouble() * 1.6,
-        phase: rand.nextDouble() * 2 * math.pi,
-        speed: 1 + rand.nextDouble() * 2,
+        z: 1800 + rand.nextDouble() * 1600,
+        r: 150 + rand.nextDouble() * 190,
+        tilt: rand.nextDouble() * math.pi,
+        color: [
+          const Color(0xFFA78BFA),
+          const Color(0xFF60A5FA),
+          const Color(0xFFF9A8D4),
+        ][rand.nextInt(3)],
       );
 
-  final double x; // 타일 내 0~1 비율 좌표
+  final double x;
   final double y;
+  final double z;
   final double r;
-  final double phase;
-  final double speed;
+  final double tilt;
+  final Color color;
 }
 
-/// 딥 네이비 그라디언트 + 패럴랙스 별밭 2겹 + 태양 + 궤도 가이드.
+/// 딥 네이비 그라디언트 + 깊이 별밭 + 먼 은하 + 태양 + 궤도 가이드.
 class _WorldPainter extends CustomPainter {
   _WorldPainter({
     required this.camera,
     required this.t,
-    required this.farStars,
-    required this.nearStars,
+    required this.deepStars,
+    required this.galaxies,
     required this.sunScreen,
     required this.orbitRadii,
   });
 
   final Offset camera;
   final double t;
-  final List<_Star> farStars;
-  final List<_Star> nearStars;
+
+  /// 깊이(z)가 제각각인 별들 — 원근 시차의 핵심.
+  final List<Depth3DMote> deepStars;
+  final List<_Galaxy> galaxies;
   final Offset sunScreen;
   final List<double> orbitRadii;
 
@@ -1244,9 +1240,44 @@ class _WorldPainter extends CustomPainter {
       0.10,
     );
 
-    // 패럴랙스 별밭 — 타일 랩핑으로 무한 우주 느낌을 낸다.
-    _drawStarLayer(canvas, size, farStars, parallax: 0.30, dim: 0.55);
-    _drawStarLayer(canvas, size, nearStars, parallax: 0.70, dim: 1.0);
+    // 깊이 별밭 — 별마다 z 가 달라 카메라가 움직이면 서로 다른 속도로 흘러
+    // 공간의 두께가 읽힌다(원근 시차).
+    paintDepthMotes(
+      canvas,
+      size,
+      motes: deepStars,
+      camera: camera,
+      t: t,
+      color: Colors.white,
+      baseAlpha: 0.95,
+    );
+
+    // 먼 은하 — 아주 깊은 평면이라 거의 붙박이처럼 천천히 흐른다.
+    for (final g in galaxies) {
+      final k = Depth3D.scaleOf(g.z);
+      final c = Offset(
+        (g.x * (size.width * 1.8) - camera.dx * k) % (size.width * 1.8) -
+            size.width * 0.4,
+        (g.y * (size.height * 1.6) - camera.dy * k) % (size.height * 1.6) -
+            size.height * 0.3,
+      );
+      final r = g.r * k;
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.rotate(g.tilt);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 0.7),
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              g.color.withValues(alpha: 0.30 * (1 - Depth3D.hazeOf(g.z))),
+              g.color.withValues(alpha: 0),
+            ],
+          ).createShader(
+              Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 0.7)),
+      );
+      canvas.restore();
+    }
 
     // 태양 — 화면 근처일 때만 그린다.
     if (sunScreen.dx > -700 && sunScreen.dx < size.width + 700) {
@@ -1305,27 +1336,6 @@ class _WorldPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.05);
     for (final r in orbitRadii) {
       canvas.drawCircle(sunScreen, r, orbit);
-    }
-  }
-
-  void _drawStarLayer(
-    Canvas canvas,
-    Size size,
-    List<_Star> stars, {
-    required double parallax,
-    required double dim,
-  }) {
-    final tileW = size.width + 200;
-    final tileH = size.height + 200;
-    final paint = Paint();
-    for (final s in stars) {
-      // 타일 랩핑 — 카메라가 얼마를 이동해도 별이 화면 근처에 이어진다.
-      final px = (s.x * tileW - camera.dx * parallax) % tileW - 100;
-      final py = (s.y * tileH - camera.dy * parallax) % tileH - 100;
-      final tw = 0.35 +
-          0.65 * (0.5 + 0.5 * math.sin(s.phase + t * 2 * s.speed));
-      paint.color = Colors.white.withValues(alpha: tw * dim);
-      canvas.drawCircle(Offset(px, py), s.r, paint);
     }
   }
 

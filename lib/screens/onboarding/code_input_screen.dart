@@ -33,78 +33,46 @@ class CodeInputScreen extends StatefulWidget {
 
 class _CodeInputScreenState extends State<CodeInputScreen> {
   static const int _codeLength = 6;
-  final List<TextEditingController> _controllers =
-      List.generate(_codeLength, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(_codeLength, (_) => FocusNode());
+
+  /// 코드 전체를 담는 단일 컨트롤러.
+  ///
+  /// 예전에는 칸마다 컨트롤러를 두고 onChanged 에서 글자를 재분배했는데, 칸 하나가
+  /// 두 글자 이상을 물고 있을 수 있어(IME 합성·빠른 연타·붙여넣기) 총 6자리를
+  /// 넘겨 입력되는 버그가 있었다. 지금은 컨트롤러 하나 + 길이 제한 포매터라
+  /// 6자리 초과가 구조적으로 불가능하고, 6개 칸은 이 문자열을 그리기만 한다.
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focus = FocusNode();
 
   bool _submitting = false;
 
-  bool get _isFilled => _controllers.every((c) => c.text.isNotEmpty);
+  String get _enteredCode => _controller.text;
 
-  String get _enteredCode => _controllers.map((c) => c.text).join();
+  bool get _isFilled => _enteredCode.length == _codeLength;
 
   @override
   void initState() {
     super.initState();
     final code = widget.initialCode;
     if (code != null && code.length == _codeLength) {
-      for (int i = 0; i < _codeLength; i++) {
-        _controllers[i].text = code[i];
-      }
+      _controller.text = code;
     }
+    // 포커스 상태에 따라 커서 칸 강조가 바뀌므로 다시 그린다.
+    _focus.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _controller.dispose();
+    _focus.dispose();
     super.dispose();
-  }
-
-  void _onChanged(String value, int index) {
-    // 6자리 초과 입력(붙여넣기/IME 합성 등)은 앞 6자리만 사용한다.
-    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length > _codeLength) {
-      digits = digits.substring(0, _codeLength);
-    }
-    // 붙여넣기(여러 자리) — 0번 칸부터 분배하고 마지막 입력 칸으로 포커스.
-    if (digits.length > 1) {
-      for (int i = 0; i < _codeLength; i++) {
-        _controllers[i].text = i < digits.length ? digits[i] : '';
-      }
-      final focusIdx = digits.length.clamp(1, _codeLength) - 1;
-      _focusNodes[focusIdx].requestFocus();
-      setState(() {});
-      return;
-    }
-    // 단일 입력 — 한 글자만 유지.
-    if (_controllers[index].text != digits) {
-      _controllers[index].text = digits;
-      _controllers[index].selection =
-          TextSelection.collapsed(offset: digits.length);
-    }
-    if (digits.isNotEmpty && index < _codeLength - 1) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (digits.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-    setState(() {});
   }
 
   Future<void> _onSubmit() async {
     if (_submitting) return;
     final code = _enteredCode;
-    // 칸별 가드가 뚫려도(빠른 연타/자동완성) 6자리가 아니면 서버로 보내지 않는다.
     if (code.length != _codeLength) {
-      for (final c in _controllers) {
-        if (c.text.length > 1) c.text = c.text.substring(0, 1);
-      }
-      setState(() {});
       _showInvalidCodeDialog('초대 코드는 숫자 6자리예요');
       return;
     }
@@ -198,6 +166,89 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
     );
   }
 
+  /// 6칸 코드 입력 — 실제 입력은 투명한 TextField 하나가 받고, 칸들은 그 값을
+  /// 그리기만 한다. 칸 사이 간격은 Expanded 바깥의 SizedBox 로 줘서 6개 칸의
+  /// 폭이 정확히 같아진다(예전엔 마지막 칸만 패딩이 없어 8px 더 넓었다).
+  Widget _buildCodeBoxes() {
+    final code = _controller.text;
+    final focused = _focus.hasFocus;
+    // 다음에 입력될 칸 — 포커스 중일 때만 강조한다.
+    final cursorIndex = code.length.clamp(0, _codeLength - 1);
+
+    final boxes = <Widget>[];
+    for (var i = 0; i < _codeLength; i++) {
+      if (i > 0) boxes.add(const SizedBox(width: 8));
+      final filled = i < code.length;
+      final isCursor = focused && i == cursorIndex && code.length < _codeLength;
+      boxes.add(
+        Expanded(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: filled ? AppColors.white : AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: filled || isCursor
+                    ? AppColors.primary
+                    : AppColors.gray100,
+                width: isCursor ? 1.8 : 1.2,
+              ),
+            ),
+            child: Text(
+              filled ? code[i] : '',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: AppColors.gray900,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        Row(children: boxes),
+        // 입력을 받는 투명 필드 — 칸 전체를 덮어 어디를 탭해도 키보드가 열린다.
+        Positioned.fill(
+          child: TextField(
+            controller: _controller,
+            focusNode: _focus,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              // 6자리 초과는 여기서 원천 차단된다.
+              LengthLimitingTextInputFormatter(_codeLength),
+            ],
+            // 글자·커서·선택 UI 를 모두 숨기고 칸 렌더링에 맡긴다.
+            style: const TextStyle(color: Colors.transparent, fontSize: 22),
+            cursorColor: Colors.transparent,
+            showCursor: false,
+            enableInteractiveSelection: false,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              counterText: '',
+              contentPadding: EdgeInsets.zero,
+            ),
+            onChanged: (_) => setState(() {}),
+            onTap: () {
+              // 항상 끝에 이어 쓰도록 캐럿을 마지막으로 보낸다.
+              _controller.selection = TextSelection.collapsed(
+                offset: _controller.text.length,
+              );
+              setState(() {});
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPanel(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
@@ -244,60 +295,7 @@ class _CodeInputScreenState extends State<CodeInputScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                Row(
-                  children: List.generate(_codeLength, (index) {
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: index == _codeLength - 1 ? 0 : 8,
-                        ),
-                        child: SizedBox(
-                      height: 56,
-                      child: TextField(
-                        controller: _controllers[index],
-                        focusNode: _focusNodes[index],
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          // 붙여넣기 분배(최대 6자리)를 위해 칸 단위도 6으로 제한.
-                          LengthLimitingTextInputFormatter(_codeLength),
-                        ],
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 20,
-                          color: AppColors.gray900,
-                        ),
-                        decoration: InputDecoration(
-                          counterText: '',
-                          filled: true,
-                          fillColor: AppColors.gray50,
-                          contentPadding: EdgeInsets.zero,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: _controllers[index].text.isNotEmpty
-                                  ? AppColors.primary
-                                  : AppColors.gray100,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        onChanged: (value) => _onChanged(value, index),
-                        onTap: () => setState(() {}),
-                      ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
+                _buildCodeBoxes(),
                 const SizedBox(height: 32),
                 PrimaryButton(
                   text: _submitting ? '참여 중...' : '참여하기',
