@@ -5,7 +5,7 @@ import '../../../core/network/error_message.dart';
 import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 import 'word_chain_game_screen.dart';
 
 /// 끝말잇기 초대 — 그룹 멤버(나 제외) 여럿을 골라 방을 만든다.
@@ -97,7 +97,7 @@ class _WordChainInviteScreenState extends State<WordChainInviteScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const CenterTitleHeader(title: '끝말잇기 초대'),
+            const BackHeader(title: '끝말잇기 초대'),
             Expanded(child: _buildBody()),
             if (!_loading && _errorMessage == null && _members.isNotEmpty)
               _buildSettings(),

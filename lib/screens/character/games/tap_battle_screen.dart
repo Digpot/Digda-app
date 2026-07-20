@@ -10,7 +10,7 @@ import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
-import '../../../widgets/center_title_header.dart';
+import '../../../widgets/back_header.dart';
 
 /// 실시간 탭배틀 — 각자 폰에서 15초 동안 연타, 서버가 심판.
 ///
@@ -289,7 +289,7 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              CenterTitleHeader(title: '탭배틀', onBack: _onExit),
+              BackHeader(title: '탭배틀', onBack: _onExit),
               Expanded(child: _buildBody()),
               // 배너 광고 — 대결 화면 하단 고정(미로드 시 공간 0).
               const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),

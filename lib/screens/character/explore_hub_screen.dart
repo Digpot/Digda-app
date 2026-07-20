@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../features/character/models/character_models.dart';
+import 'jungle_explore_screen.dart';
 import 'space_explore_screen.dart';
 import 'undersea_explore_screen.dart';
 
@@ -47,6 +48,14 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => UnderseaExploreScreen(character: widget.character),
+      ),
+    );
+  }
+
+  void _openJungle() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => JungleExploreScreen(character: widget.character),
       ),
     );
   }
@@ -132,6 +141,18 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
                         onTap: _openUndersea,
                       ),
                       const SizedBox(height: 14),
+                      _ExploreCard(
+                        emoji: '🌿',
+                        title: '정글 탐험',
+                        subtitle: '잊혀진 신전부터 거대 꽃까지',
+                        chips: const ['열기구', '밀림 연대기', '6곳'],
+                        gradient: const [Color(0xFF166534), Color(0xFF3F6212)],
+                        glow: const Color(0xFF86EFAC),
+                        ambient: _ambientCtrl,
+                        scene: _CardScene.jungle,
+                        onTap: _openJungle,
+                      ),
+                      const SizedBox(height: 14),
                       // 다음 탐험 예고.
                       Container(
                         height: 92,
@@ -172,7 +193,7 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
   }
 }
 
-enum _CardScene { space, sea }
+enum _CardScene { space, sea, jungle }
 
 /// 탐험지 카드 — 그라디언트 씬(별밭/기포) + 타이틀 + 태그 칩.
 class _ExploreCard extends StatelessWidget {
@@ -314,7 +335,44 @@ class _CardScenePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rand = math.Random(scene == _CardScene.space ? 7 : 11);
+    final rand = math.Random(switch (scene) {
+      _CardScene.space => 7,
+      _CardScene.sea => 11,
+      _CardScene.jungle => 23,
+    });
+    if (scene == _CardScene.jungle) {
+      // 깊이별로 겹치는 나무 실루엣 — 안개에 잠긴 밀림.
+      for (var layer = 0; layer < 3; layer++) {
+        final depth = layer / 2; // 0=가까움, 1=멂
+        final color = Color.lerp(const Color(0xFF052E16),
+            const Color(0xFF86EFAC), depth * 0.55)!;
+        final baseY = size.height * (0.98 - depth * 0.12);
+        final treeH = size.height * (0.55 - depth * 0.14);
+        for (var i = 0; i < 7; i++) {
+          final x = size.width * ((i + (layer * 0.4)) / 6.2) +
+              math.sin(t * 2 * math.pi + layer) * 3;
+          final h = treeH * (0.7 + rand.nextDouble() * 0.5);
+          canvas.drawPath(
+            Path()
+              ..moveTo(x, baseY)
+              ..lineTo(x - h * 0.22, baseY)
+              ..lineTo(x, baseY - h)
+              ..lineTo(x + h * 0.22, baseY)
+              ..close(),
+            Paint()..color = color.withValues(alpha: 0.85),
+          );
+        }
+      }
+      // 반딧불 몇 마리.
+      for (var i = 0; i < 9; i++) {
+        final x = rand.nextDouble() * size.width;
+        final y = size.height * (0.3 + rand.nextDouble() * 0.55);
+        final blink = 0.3 + 0.7 * (0.5 + 0.5 * math.sin(t * 2 * math.pi * 2 + i));
+        canvas.drawCircle(Offset(x, y), 2.0,
+            Paint()..color = const Color(0xFFFDE047).withValues(alpha: blink));
+      }
+      return;
+    }
     if (scene == _CardScene.space) {
       // 별 반짝임.
       final star = Paint();
