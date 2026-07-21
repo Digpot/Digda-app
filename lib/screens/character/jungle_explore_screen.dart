@@ -36,6 +36,7 @@ class _JungleExploreScreenState extends State<JungleExploreScreen>
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
   double _time = 0;
+  int _tickCount = 0;
 
   Offset _balloon = const Offset(420, 900);
   Offset _vel = Offset.zero;
@@ -86,6 +87,7 @@ class _JungleExploreScreenState extends State<JungleExploreScreen>
     _lastTick = elapsed;
     if (dt <= 0 || dt > 0.05) dt = 0.016;
     _time = elapsed.inMicroseconds / 1e6;
+    _tickCount += 1;
 
     if (!_panelOpen) {
       final pointer = _pointer;
@@ -105,6 +107,9 @@ class _JungleExploreScreenState extends State<JungleExploreScreen>
       if (cx != _balloon.dx) _vel = Offset(0, _vel.dy);
       if (cy != _balloon.dy) _vel = Offset(_vel.dx, 0);
       _balloon = Offset(cx, cy);
+    } else if (_tickCount % 4 != 0) {
+      // 시트가 열려 배경이 대부분 가려진 동안엔 리페인트를 1/4 로 줄인다(배터리).
+      return;
     }
     if (mounted) setState(() {});
   }

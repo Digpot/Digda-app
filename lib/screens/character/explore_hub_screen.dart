@@ -6,6 +6,7 @@ import '../../features/character/models/character_models.dart';
 import '../../widgets/ad_banner.dart';
 import 'explore_rewards.dart';
 import 'jungle_explore_screen.dart';
+import 'korea_explore_screen.dart';
 import 'space_explore_screen.dart';
 import 'undersea_explore_screen.dart';
 
@@ -58,6 +59,14 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => JungleExploreScreen(character: widget.character),
+      ),
+    );
+  }
+
+  void _openKorea() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => KoreaExploreScreen(character: widget.character),
       ),
     );
   }
@@ -157,6 +166,18 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
                         onTap: _openJungle,
                       ),
                       const SizedBox(height: 14),
+                      _ExploreCard(
+                        emoji: '🏯',
+                        title: '한국의 역사 탐험',
+                        subtitle: '경복궁부터 훈민정음까지',
+                        chips: const ['방패연', '역사 연대기', '6곳'],
+                        gradient: const [Color(0xFF7C2D12), Color(0xFFB45309)],
+                        glow: const Color(0xFFFCD34D),
+                        ambient: _ambientCtrl,
+                        scene: _CardScene.korea,
+                        onTap: _openKorea,
+                      ),
+                      const SizedBox(height: 14),
                       // 다음 탐험 예고.
                       Container(
                         height: 92,
@@ -251,7 +272,7 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
   }
 }
 
-enum _CardScene { space, sea, jungle }
+enum _CardScene { space, sea, jungle, korea }
 
 /// 탐험지 카드 — 그라디언트 씬(별밭/기포) + 타이틀 + 태그 칩.
 class _ExploreCard extends StatelessWidget {
@@ -397,7 +418,61 @@ class _CardScenePainter extends CustomPainter {
       _CardScene.space => 7,
       _CardScene.sea => 11,
       _CardScene.jungle => 23,
+      _CardScene.korea => 31,
     });
+    if (scene == _CardScene.korea) {
+      // 기와지붕 실루엣 마을 + 홍등 + 밤하늘 별.
+      for (var i = 0; i < 12; i++) {
+        final x = rand.nextDouble() * size.width;
+        final y = rand.nextDouble() * size.height * 0.45;
+        final a = 0.2 + 0.5 * (0.5 + 0.5 * math.sin(t * 2 * math.pi * 2 + i));
+        canvas.drawCircle(Offset(x, y), 1 + rand.nextDouble(),
+            Paint()..color = Colors.white.withValues(alpha: a));
+      }
+      for (var layer = 0; layer < 2; layer++) {
+        final depth = layer / 1.0;
+        final color = Color.lerp(
+            const Color(0xFF1C0A02), const Color(0xFF92400E), depth * 0.4)!;
+        final baseY = size.height * (1.02 - depth * 0.16);
+        for (var i = 0; i < 5; i++) {
+          final cx = size.width * ((i + layer * 0.45) / 4.2);
+          final w = size.width * (0.24 - depth * 0.05);
+          final roofH = size.height * (0.16 - depth * 0.04);
+          final path = Path()
+            ..moveTo(cx - w * 0.62, baseY)
+            ..quadraticBezierTo(
+                cx - w * 0.4, baseY - roofH * 0.5, cx, baseY - roofH)
+            ..quadraticBezierTo(
+                cx + w * 0.4, baseY - roofH * 0.5, cx + w * 0.62, baseY)
+            ..close();
+          canvas.drawPath(path, Paint()..color = color.withValues(alpha: 0.9));
+        }
+      }
+      // 홍등 — 은은히 흔들린다.
+      for (var i = 0; i < 4; i++) {
+        final x = size.width * (0.15 + i * 0.24) +
+            math.sin(t * 2 * math.pi + i) * 3;
+        final y = size.height * 0.42;
+        canvas.drawCircle(
+          Offset(x, y),
+          7,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              const Color(0xFFFCA5A5).withValues(alpha: 0.95),
+              const Color(0xFFDC2626).withValues(alpha: 0.6),
+            ]).createShader(
+                Rect.fromCircle(center: Offset(x, y), radius: 7)),
+        );
+        canvas.drawLine(
+          Offset(x, y - 7),
+          Offset(x, y - 16),
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.35)
+            ..strokeWidth = 1,
+        );
+      }
+      return;
+    }
     if (scene == _CardScene.jungle) {
       // 깊이별로 겹치는 나무 실루엣 — 안개에 잠긴 밀림.
       for (var layer = 0; layer < 3; layer++) {
