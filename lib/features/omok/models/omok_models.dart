@@ -32,6 +32,7 @@ class OmokGame {
     required this.inviteeName,
     required this.board,
     this.currentTurnUserId,
+    this.turnDeadlineEpochMs,
     this.winnerUserId,
     this.finishReason,
     this.winningLine = const [],
@@ -54,6 +55,9 @@ class OmokGame {
   /// board[y][x] — 0 빈칸 / 1 흑 / 2 백.
   final List<List<int>> board;
   final String? currentTurnUserId;
+
+  /// 현재 턴 마감 시각(epoch ms) — 30초 제한. ACTIVE 가 아니면 null.
+  final int? turnDeadlineEpochMs;
   final String? winnerUserId;
 
   /// FIVE_IN_ROW / FORFEIT / DRAW (종료 시에만).
@@ -87,6 +91,7 @@ class OmokGame {
               ((row as List).map((c) => (c as num).toInt())).toList())
           .toList(),
       currentTurnUserId: json['currentTurnUserId']?.toString(),
+      turnDeadlineEpochMs: (json['turnDeadlineEpochMs'] as num?)?.toInt(),
       winnerUserId: json['winnerUserId']?.toString(),
       finishReason: json['finishReason'] as String?,
       winningLine: ((json['winningLine'] as List?) ?? const [])

@@ -39,6 +39,7 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
   double _time = 0; // 앰비언트 시각(초) — 반짝임/부유/라이트 점멸
+  int _tickCount = 0;
 
   Offset _ship = const Offset(520, 1000);
   Offset _vel = Offset.zero;
@@ -82,6 +83,7 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
     // 백그라운드 복귀 등으로 프레임이 크게 튀면 물리 폭주를 막는다.
     if (dt <= 0 || dt > 0.05) dt = 0.016;
     _time = elapsed.inMicroseconds / 1e6;
+    _tickCount += 1;
 
     if (!_panelOpen) {
       final pointer = _pointer;
@@ -106,6 +108,9 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
       if (cx != _ship.dx) _vel = Offset(0, _vel.dy);
       if (cy != _ship.dy) _vel = Offset(_vel.dx, 0);
       _ship = Offset(cx, cy);
+    } else if (_tickCount % 4 != 0) {
+      // 시트가 열려 배경이 대부분 가려진 동안엔 리페인트를 1/4 로 줄인다(배터리).
+      return;
     }
     if (mounted) setState(() {});
   }

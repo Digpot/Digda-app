@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -39,6 +41,12 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
   int? _pendingX;
   int? _pendingY;
 
+  // 30초 턴 카운트다운 — 서버 turnDeadlineEpochMs 기준.
+  Timer? _countdownTimer;
+  int _remainSeconds = 0;
+  String? _timeoutBanner;
+  Timer? _bannerTimer;
+
   String get _myId => Di.userSession.profile?.id ?? '';
 
   @override
@@ -52,7 +60,35 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
   @override
   void dispose() {
     _socket?.dispose();
+    _countdownTimer?.cancel();
+    _bannerTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    final deadline = _game?.turnDeadlineEpochMs;
+    if (deadline == null || _game?.status != OmokStatus.active) {
+      if (_remainSeconds != 0) setState(() => _remainSeconds = 0);
+      return;
+    }
+    void tick() {
+      final remainMs = deadline - DateTime.now().millisecondsSinceEpoch;
+      final s = (remainMs / 1000).ceil().clamp(0, 99);
+      if (mounted && s != _remainSeconds) setState(() => _remainSeconds = s);
+    }
+
+    tick();
+    _countdownTimer =
+        Timer.periodic(const Duration(milliseconds: 250), (_) => tick());
+  }
+
+  void _showTimeoutBanner(String text) {
+    _bannerTimer?.cancel();
+    setState(() => _timeoutBanner = text);
+    _bannerTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _timeoutBanner = null);
+    });
   }
 
   Future<void> _init() async {
@@ -70,6 +106,7 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
         _loading = false;
         _errorMessage = null;
       });
+      _startCountdown();
       _maybeShowResult(game);
     } catch (e) {
       if (!mounted) return;
@@ -106,6 +143,15 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
         _pendingY = null;
       }
     });
+    _startCountdown();
+    if (event.type == 'TIMEOUT') {
+      HapticFeedback.mediumImpact();
+      _showTimeoutBanner(
+        event.game.isMyTurn(_myId)
+            ? '상대가 시간을 초과했어요 — 내 차례!'
+            : '시간 초과! 턴이 넘어갔어요',
+      );
+    }
     final game = event.game;
     switch (game.status) {
       case OmokStatus.finished:
@@ -136,6 +182,7 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
       final game = await Di.omokRepository.accept(widget.gameId);
       if (!mounted) return;
       setState(() => _game = game);
+      _startCountdown();
     } catch (e) {
       if (!mounted) return;
       showErrorDialog(context, errorMessageOf(e));
@@ -530,19 +577,74 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
         if (!finished)
           _pendingX != null
               ? _buildMoveConfirmBar()
-              : Text(
-                  game.isMyTurn(_myId)
-                      ? '내 차례예요 — 자리를 골라주세요!'
-                      : '상대의 차례를 기다리는 중...',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13.5,
-                    color: game.isMyTurn(_myId)
-                        ? AppColors.primary
-                        : AppColors.gray500,
-                  ),
-                ),
+              : _timeoutBanner != null
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                            color: const Color(0xFFF59E0B)
+                                .withValues(alpha: 0.5)),
+                      ),
+                      child: Text(
+                        '⏰ $_timeoutBanner',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // 30초 턴 카운트다운 — 10초 이하일 때 빨간 경고.
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _remainSeconds <= 10
+                                ? const Color(0xFFDC2626)
+                                    .withValues(alpha: 0.1)
+                                : AppColors.gray50,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: _remainSeconds <= 10
+                                  ? const Color(0xFFF87171)
+                                  : AppColors.gray200,
+                            ),
+                          ),
+                          child: Text(
+                            '⏱ $_remainSeconds초',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                              color: _remainSeconds <= 10
+                                  ? const Color(0xFFDC2626)
+                                  : AppColors.gray700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          game.isMyTurn(_myId)
+                              ? '내 차례예요 — 자리를 골라주세요!'
+                              : '상대의 차례를 기다리는 중...',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5,
+                            color: game.isMyTurn(_myId)
+                                ? AppColors.primary
+                                : AppColors.gray500,
+                          ),
+                        ),
+                      ],
+                    ),
         const Spacer(),
         if (!finished)
           Padding(
