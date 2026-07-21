@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../features/character/models/character_models.dart';
+import '../../widgets/ad_banner.dart';
+import 'explore_rewards.dart';
 import 'jungle_explore_screen.dart';
 import 'space_explore_screen.dart';
 import 'undersea_explore_screen.dart';
@@ -101,7 +103,7 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
                 const Padding(
                   padding: EdgeInsets.fromLTRB(24, 4, 24, 0),
                   child: Text(
-                    '오늘은 어디로 떠나볼까요?\n모찌와 함께라면 어디든 갈 수 있어요.',
+                    '오늘은 어디로 떠나볼까요?\n명소를 찾을 때마다 기념품 스탬프를 모을 수 있어요.',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w500,
@@ -111,7 +113,9 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
+                _buildDexBadge(),
+                const SizedBox(height: 14),
                 Expanded(
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
@@ -181,6 +185,9 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
                           ],
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      // 탐험 어디에나 광고 — 허브 하단 배너.
+                      const AdBanner(padding: EdgeInsets.zero),
                     ],
                   ),
                 ),
@@ -188,6 +195,57 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 이번 세션에 모은 반짝이 기념품 수를 보여주는 도감 배지.
+  /// 하나도 없으면(아직 광고 보상 전) 잔잔한 안내 문구만 노출한다.
+  Widget _buildDexBadge() {
+    final shiny = ExploreCollection.shinyCount;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF8B5CF6).withValues(alpha: 0.20),
+              const Color(0xFF22D3EE).withValues(alpha: 0.12),
+            ],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        ),
+        child: Row(
+          children: [
+            const Text('📔', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                shiny > 0
+                    ? '반짝이 기념품 $shiny개를 모았어요!'
+                    : '명소를 탐험하고 기념품 도감을 채워보세요',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            if (shiny > 0)
+              Text(
+                '✨ $shiny',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: Color(0xFFFDE68A),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
