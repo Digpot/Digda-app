@@ -10,18 +10,20 @@ const double kNorthKoreaBand = 524;
 
 /// 북한 외곽 실루엣(최종 viewBox 좌표, 닫힌 폴리곤).
 const List<Offset> kNkOutline = [
-  Offset(190.4, 635.1),
-  Offset(171.4, 643.3),
-  Offset(152.5, 639.8),
-  Offset(138.2, 644.5),
-  Offset(131.6, 628.1),
-  Offset(124, 617.6),
-  Offset(111.7, 628.1),
-  Offset(105.1, 644.5),
-  Offset(90.9, 637.5),
-  Offset(73.8, 651.5),
-  Offset(57.7, 641),
-  Offset(45.4, 629.3),
+  Offset(210.2, 636.3),
+  Offset(199.8, 630.4),
+  Offset(185.6, 625.8),
+  Offset(170.5, 626.9),
+  Offset(157.2, 631.6),
+  Offset(143.9, 636.3),
+  Offset(134.5, 625.8),
+  Offset(125, 615.2),
+  Offset(111.7, 625.8),
+  Offset(105.1, 641),
+  Offset(90.9, 635.1),
+  Offset(73.8, 646.8),
+  Offset(57.7, 638.6),
+  Offset(45.4, 626.9),
   Offset(24.6, 611.7),
   Offset(20.8, 597.7),
   Offset(43.5, 582.5),
@@ -117,8 +119,7 @@ const List<Offset> kNkOutline = [
   Offset(240, 597),
   Offset(228, 611),
   Offset(216, 627),
-  Offset(204, 651),
-  Offset(192, 645),
+  Offset(212, 628),
 ];
 
 /// 도 경계 + 시·군 보조 분할선(실루엣에 클립해 그린다).
@@ -184,6 +185,15 @@ const List<List<Offset>> kNkDividers = [
   [
     Offset(431.9, 261),
     Offset(446.2, 278.6),
+  ],
+  [
+    Offset(100.3, 483.1),
+    Offset(136.4, 473.8),
+    Offset(157.2, 490.2),
+    Offset(145.8, 511.2),
+    Offset(111.7, 515.9),
+    Offset(92.8, 501.8),
+    Offset(100.3, 483.1),
   ],
   [
     Offset(34, 383.8),

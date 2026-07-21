@@ -44,7 +44,10 @@ class _AdBannerState extends State<AdBanner> {
       ),
     );
     _ad = ad;
-    ad.load();
+    // 플러그인이 없는 환경(위젯 테스트 등)에선 load()가 비동기 예외를 던진다.
+    // 실제 로드 실패는 onAdFailedToLoad 콜백으로 처리되므로, 여기서 던져지는
+    // 예외는 삼켜 화면이 깨지지 않게 한다.
+    ad.load().catchError((Object _) {});
   }
 
   @override

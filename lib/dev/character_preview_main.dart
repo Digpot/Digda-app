@@ -99,14 +99,17 @@ class _CharacterPreviewApp extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('메인 화면 스테이지 (모찌+디코, 실제 위젯)',
+              const Text('메인 화면 홈 씬 (모찌+디코+돌봄 툴바, 실제 위젯)',
                   style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               Center(
-                child: MochiDikoStage(
-                  state: blossom,
-                  mochiController: MochiAnimationController(),
-                  onPet: () {},
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  child: MochiHomeScene(
+                    state: blossom,
+                    mochiController: MochiAnimationController(),
+                    onPet: () {},
+                  ),
                 ),
               ),
               const SizedBox(height: 24),

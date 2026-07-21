@@ -9,6 +9,7 @@ import '../../theme/colors.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/report_block_actions.dart';
+import 'schedule_copy_sheet.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   const ScheduleDetailScreen({super.key});
@@ -78,6 +79,20 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         .pushNamed('/add-schedule', arguments: _scheduleId);
     if (!mounted) return;
     _load();
+  }
+
+  /// 여러 날짜에 복사하기 — 멀티 날짜 선택 시트를 띄우고, 성공 시 완료 팝업.
+  Future<void> _onCopyTap() async {
+    setState(() => _showMenu = false);
+    final schedule = _detail?.schedule;
+    if (schedule == null) return;
+    final copiedCount = await showScheduleCopySheet(context, schedule: schedule);
+    if (!mounted || copiedCount == null) return;
+    await showInfoDialog(
+      context,
+      '일정 복사 완료',
+      '선택한 $copiedCount개 날짜에\n\'${schedule.title}\' 일정을 복사했어요.',
+    );
   }
 
   Future<void> _submitComment() async {
@@ -900,6 +915,18 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _MoreMenuRow(
+              icon: Icons.copy_outlined,
+              label: '날짜 복사',
+              onTap: _onCopyTap,
+            ),
+            const Divider(
+              height: 8,
+              thickness: 1,
+              color: Color(0xFFF2F4F6),
+              indent: 8,
+              endIndent: 8,
+            ),
+            _MoreMenuRow(
               icon: Icons.edit_outlined,
               label: '수정하기',
               onTap: _onEditTap,
@@ -963,10 +990,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         16, 10, 16, MediaQuery.of(context).padding.bottom + 10,
       ),
       child: Row(
+        // 입력창이 줄바꿈으로 늘어나도 전송 버튼은 하단에 붙는다.
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Container(
-              height: 40,
+              constraints: const BoxConstraints(minHeight: 40),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: AppColors.gray50,
@@ -974,22 +1003,28 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               ),
               child: TextField(
                 controller: _commentController,
+                minLines: 1,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,
+                  height: 1.45,
                   color: AppColors.gray900,
                 ),
                 decoration: const InputDecoration(
+                  isCollapsed: true,
                   hintText: '댓글을 입력하세요',
                   hintStyle: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
+                    height: 1.45,
                     color: AppColors.gray400,
                   ),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
-                onSubmitted: (_) => _submitComment(),
               ),
             ),
           ),

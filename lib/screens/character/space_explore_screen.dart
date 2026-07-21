@@ -1,0 +1,2027 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+
+import '../../features/character/models/character_models.dart';
+import '../../features/character/widgets/mochi_character_view.dart';
+import 'explore_3d.dart';
+import 'explore_rewards.dart';
+
+/// 모찌 우주 탐험 v2 — 레벨 5 해금 콘텐츠.
+///
+/// 사용자가 직접 UFO 를 조종하는 자유비행 탐험:
+/// 화면을 꾹 누르면 모찌 우주선이 그 방향으로 추진하고, 떼면 관성으로 미끄러진다.
+/// 넓은 태양계 월드(태양 + 8행성 + 달)를 날아다니다 행성에 가까워지면
+/// '탐험하기' 버튼이 떠오르고, 착륙하면 스탯·탐험 일지·연대기(역사)를 감상한다.
+///
+/// 서버 연동 없는 순수 클라이언트 콘텐츠 — 새 목적지는 [_planets] 에 추가하면
+/// 월드 배치/근접 탐험/연대기가 함께 생긴다.
+class SpaceExploreScreen extends StatefulWidget {
+  const SpaceExploreScreen({super.key, required this.character});
+
+  final CharacterState character;
+
+  @override
+  State<SpaceExploreScreen> createState() => _SpaceExploreScreenState();
+}
+
+class _SpaceExploreScreenState extends State<SpaceExploreScreen>
+    with TickerProviderStateMixin {
+  // ── 월드/물리 상수 ────────────────────────────────────────────────
+  static const double _worldW = 4400;
+  static const double _worldH = 2000;
+  static const Offset _sunPos = Offset(260, 1000);
+  static const double _accel = 950; // 추진 가속(px/s^2)
+  static const double _maxSpeed = 560; // 최고 속도(px/s)
+  static const double _drag = 1.4; // 관성 감쇠(초당 비율)
+
+  late final Ticker _ticker;
+  Duration _lastTick = Duration.zero;
+  double _time = 0; // 앰비언트 시각(초) — 반짝임/부유/라이트 점멸
+  int _tickCount = 0;
+
+  Offset _ship = const Offset(520, 1000);
+  Offset _vel = Offset.zero;
+  Offset? _pointer; // 눌린 손가락의 화면 좌표(null=추진 안 함)
+  Size _viewport = Size.zero;
+
+  final Set<String> _visited = <String>{};
+  bool _showHint = true; // 첫 터치 전 조종법 안내
+  bool _panelOpen = false;
+  bool _celebrated = false;
+
+  /// 깊이가 제각각인 배경 별 — 카메라가 움직이면 z 에 따라 다른 속도로 흐른다.
+  late final List<Depth3DMote> _deepStars;
+  late final List<_Galaxy> _galaxies;
+
+  @override
+  void initState() {
+    super.initState();
+    // 별밭은 시드 고정 — 리빌드마다 위치가 바뀌지 않게 한다.
+    final rand = math.Random(20260719);
+    _deepStars = List.generate(
+      170,
+      (_) => Depth3DMote.random(rand,
+          minZ: 60, maxZ: 2600, minR: 0.9, maxR: 3.0),
+    );
+    _galaxies = List.generate(5, (_) => _Galaxy.random(rand));
+    _ticker = createTicker(_onTick)..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  // ── 게임 루프 ─────────────────────────────────────────────────────
+
+  void _onTick(Duration elapsed) {
+    double dt = (elapsed - _lastTick).inMicroseconds / 1e6;
+    _lastTick = elapsed;
+    // 백그라운드 복귀 등으로 프레임이 크게 튀면 물리 폭주를 막는다.
+    if (dt <= 0 || dt > 0.05) dt = 0.016;
+    _time = elapsed.inMicroseconds / 1e6;
+    _tickCount += 1;
+
+    if (!_panelOpen) {
+      final pointer = _pointer;
+      if (pointer != null) {
+        // 손가락(월드 좌표) 방향으로 추진.
+        final target = pointer + _camera;
+        final dir = target - _ship;
+        final dist = dir.distance;
+        if (dist > 12) {
+          _vel += dir / dist * _accel * dt;
+        }
+      }
+      // 관성 감쇠 + 최고 속도 제한.
+      final damp = (1 - _drag * dt).clamp(0.0, 1.0);
+      _vel = _vel * damp;
+      final speed = _vel.distance;
+      if (speed > _maxSpeed) _vel = _vel / speed * _maxSpeed;
+      _ship += _vel * dt;
+      // 월드 경계 — 부드럽게 멈춘다.
+      final cx = _ship.dx.clamp(70.0, _worldW - 70.0);
+      final cy = _ship.dy.clamp(70.0, _worldH - 70.0);
+      if (cx != _ship.dx) _vel = Offset(0, _vel.dy);
+      if (cy != _ship.dy) _vel = Offset(_vel.dx, 0);
+      _ship = Offset(cx, cy);
+    } else if (_tickCount % 4 != 0) {
+      // 시트가 열려 배경이 대부분 가려진 동안엔 리페인트를 1/4 로 줄인다(배터리).
+      return;
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// 우주선을 화면 중앙에 두되 월드 밖이 보이지 않게 클램프한 카메라 원점.
+  Offset get _camera {
+    final dx = (_ship.dx - _viewport.width / 2)
+        .clamp(0.0, math.max(0.0, _worldW - _viewport.width))
+        .toDouble();
+    final dy = (_ship.dy - _viewport.height / 2)
+        .clamp(0.0, math.max(0.0, _worldH - _viewport.height))
+        .toDouble();
+    return Offset(dx, dy);
+  }
+
+  /// 태양→행성 단위벡터 — 행성 3D 셰이딩의 그림자 방향(밝은 면은 태양 쪽).
+  Offset _lightOf(_Planet p) {
+    final d = p.pos - _sunPos;
+    final dist = d.distance;
+    return dist == 0 ? const Offset(0.55, 0.45) : d / dist;
+  }
+
+  /// 근접 반경 안의 행성 — '탐험하기' 프롬프트 대상.
+  _Planet? get _nearbyPlanet {
+    for (final p in _planets) {
+      if (((p.pos - _ship).distance) < p.size / 2 + 118) return p;
+    }
+    return null;
+  }
+
+  /// 아직 탐험 안 한 목적지 중 가장 가까운 곳 — 화면 밖이면 나침반으로 안내.
+  _Planet? get _nearestUnvisited {
+    _Planet? best;
+    double bestD = double.infinity;
+    for (final p in _planets) {
+      if (_visited.contains(p.id)) continue;
+      final d = (p.pos - _ship).distance;
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  Future<void> _openPlanet(_Planet p) async {
+    if (_panelOpen) return;
+    setState(() {
+      _panelOpen = true;
+      _vel = Offset.zero;
+      _pointer = null;
+      _visited.add(p.id);
+    });
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PlanetSheet(
+        planet: p,
+        collected: _visited.length,
+        total: _planets.length,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _panelOpen = false);
+    _maybeCelebrate();
+  }
+
+  /// 전 목적지 탐험 완료 시 1회 축하 팝업.
+  void _maybeCelebrate() {
+    if (_celebrated || _visited.length < _planets.length) return;
+    _celebrated = true;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF161D3F),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+              color: const Color(0xFFFCD34D).withValues(alpha: 0.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 30, 24, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 44)),
+              const SizedBox(height: 12),
+              const Text(
+                '태양계 완전 정복!',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '모찌가 태양계의 모든 목적지를\n탐험했어요. 새로운 우주가 곧 열려요!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13.5,
+                  height: 1.55,
+                  color: Color(0xFFB9C3E8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    '최고야!',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 빌드 ─────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B1026),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          _viewport = Size(constraints.maxWidth, constraints.maxHeight);
+          final camera = _camera;
+          final nearby = _nearbyPlanet;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // 조종 입력 + 월드 배경(별밭·태양·궤도 가이드).
+              Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (e) {
+                  if (_panelOpen) return;
+                  setState(() {
+                    _showHint = false;
+                    _pointer = e.localPosition;
+                  });
+                },
+                onPointerMove: (e) {
+                  if (_pointer != null) _pointer = e.localPosition;
+                },
+                onPointerUp: (_) => _pointer = null,
+                onPointerCancel: (_) => _pointer = null,
+                child: CustomPaint(
+                  painter: _WorldPainter(
+                    camera: camera,
+                    t: _time,
+                    deepStars: _deepStars,
+                    galaxies: _galaxies,
+                    sunScreen: _sunPos - camera,
+                    orbitRadii: [
+                      for (final p in _planets)
+                        if (p.id != 'moon') (p.pos - _sunPos).distance,
+                    ],
+                  ),
+                ),
+              ),
+              // 행성들 — 월드 좌표에서 카메라를 뺀 화면 위치에 그린다.
+              for (final p in _planets) ..._buildPlanet(p, camera),
+              // 다음 업데이트 예고 표지판 — 월드 오른쪽 끝.
+              _buildComingSoonSign(camera),
+              // 모찌 UFO.
+              _buildShip(camera),
+              // 근접 행성 '탐험하기' 프롬프트.
+              if (nearby != null && !_panelOpen)
+                _buildExplorePrompt(nearby, camera),
+              // HUD — 뒤로가기/타이틀/진행도.
+              _buildHud(),
+              // 화면 밖 가장 가까운 미탐험 행성 나침반.
+              if (!_panelOpen) ..._buildCompass(camera),
+              // 첫 진입 조종법 안내.
+              if (_showHint) _buildHint(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  List<Widget> _buildPlanet(_Planet p, Offset camera) {
+    final sp = p.pos - camera;
+    // 화면 밖 멀리 있는 행성은 그리지 않는다(여유 마진 포함).
+    if (sp.dx < -300 ||
+        sp.dx > _viewport.width + 300 ||
+        sp.dy < -300 ||
+        sp.dy > _viewport.height + 300) {
+      return const [];
+    }
+    final horizontalRing = p.hasRing && !p.ringVertical;
+    final w = horizontalRing ? p.size * 1.6 : p.size * 1.05;
+    final h = p.ringVertical ? p.size * 1.3 : p.size * 1.1;
+    final visited = _visited.contains(p.id);
+    return [
+      Positioned(
+        left: sp.dx - w / 2,
+        top: sp.dy - h / 2,
+        child: IgnorePointer(
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: CustomPaint(
+              painter: _PlanetPainter(p, t: _time, light: _lightOf(p)),
+            ),
+          ),
+        ),
+      ),
+      // 이름 라벨 + 탐험 완료 뱃지.
+      Positioned(
+        left: sp.dx - 70,
+        top: sp.dy + h / 2 + 4,
+        child: IgnorePointer(
+          child: SizedBox(
+            width: 140,
+            child: Column(
+              children: [
+                Text(
+                  p.name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                ),
+                if (visited)
+                  Container(
+                    margin: const EdgeInsets.only(top: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: p.glow.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                      border:
+                          Border.all(color: p.glow.withValues(alpha: 0.5)),
+                    ),
+                    child: Text(
+                      '탐험 완료 ✓',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                        color: p.glow,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildComingSoonSign(Offset camera) {
+    final sp = const Offset(_worldW - 200, 1000) - camera;
+    return Positioned(
+      left: sp.dx - 90,
+      top: sp.dy - 50,
+      child: IgnorePointer(
+        child: Container(
+          width: 180,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: const Column(
+            children: [
+              Text('🔭', style: TextStyle(fontSize: 26)),
+              SizedBox(height: 6),
+              Text(
+                '다음 업데이트에서\n새로운 우주가 열려요',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5,
+                  height: 1.4,
+                  color: Color(0xFF8B95B8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShip(Offset camera) {
+    final sp = _ship - camera;
+    final speed = _vel.distance;
+    // 이동 방향으로 살짝 기울고, 멈춰 있으면 두둥실 부유한다.
+    final tilt = (_vel.dx / 900).clamp(-0.28, 0.28).toDouble();
+    final bob = speed < 30 ? math.sin(_time * 2.2) * 6 : 0.0;
+    const shipW = 118.0; // scale 0.5 기준 전체 폭
+    const shipH = 100.0;
+    // 원근 뱅킹 — 좌우 이동은 롤(rotateZ), 상하 이동은 피치(rotateX)로
+    // 3D 로 기우는 느낌을 준다.
+    final pitch = (-_vel.dy / 1600).clamp(-0.30, 0.30).toDouble();
+    final m = Matrix4.identity()
+      ..setEntry(3, 2, 0.0012)
+      ..rotateX(pitch)
+      ..rotateZ(tilt);
+    return Positioned(
+      left: sp.dx - shipW / 2,
+      top: sp.dy - shipH / 2 + bob,
+      child: IgnorePointer(
+        child: Transform(
+          transform: m,
+          alignment: Alignment.center,
+          child: _MochiShip(
+            character: widget.character,
+            t: _time,
+            scale: 0.5,
+            thrusting: _pointer != null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExplorePrompt(_Planet p, Offset camera) {
+    final sp = p.pos - camera;
+    final bounce = math.sin(_time * 4) * 4;
+    final h = p.ringVertical ? p.size * 1.3 : p.size * 1.1;
+    // 행성이 화면 가장자리에 있어도 버튼은 항상 화면 안에 온전히 보이게 클램프.
+    final left =
+        (sp.dx - 86).clamp(8.0, math.max(8.0, _viewport.width - 180)).toDouble();
+    final top = (sp.dy - h / 2 - 54 + bounce)
+        .clamp(90.0, math.max(90.0, _viewport.height - 60))
+        .toDouble();
+    return Positioned(
+      left: left,
+      top: top,
+      child: SizedBox(
+        width: 172,
+        child: Center(
+          child: GestureDetector(
+            onTap: () => _openPlanet(p),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                ),
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.5),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Text(
+                '🔭 ${p.name} 탐험하기',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHud() {
+    final done = _visited.length;
+    final total = _planets.length;
+    return SafeArea(
+      // StackFit.expand 로 전체 높이를 차지하므로 상단에 붙인다.
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+        child: Row(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // 뒤로가기 — 어두운 배경 위 원형 글래스 버튼.
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 40,
+                height: 40,
+                margin: const EdgeInsets.only(left: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                ),
+                child: const Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 18, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              '우주 탐험',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 19,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            // 탐험 진행도.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: done >= total
+                      ? const Color(0xFFFCD34D).withValues(alpha: 0.7)
+                      : Colors.white.withValues(alpha: 0.14),
+                ),
+              ),
+              child: Text(
+                done >= total ? '🏆 $done/$total' : '🪐 $done/$total',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: done >= total
+                      ? const Color(0xFFFCD34D)
+                      : Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+
+  /// 가장 가까운 미탐험 행성이 화면 밖이면 그 방향 가장자리에 나침반을 띄운다.
+  List<Widget> _buildCompass(Offset camera) {
+    final target = _nearestUnvisited;
+    if (target == null) return const [];
+    final sp = target.pos - camera;
+    final inView = sp.dx > 0 &&
+        sp.dx < _viewport.width &&
+        sp.dy > 0 &&
+        sp.dy < _viewport.height;
+    if (inView) return const [];
+    final dir = target.pos - _ship;
+    final angle = math.atan2(dir.dy, dir.dx);
+    // 화면 안쪽으로 클램프한 위치에 배치.
+    // (첫 프레임이 0×0 제약으로 올 수 있어 min>max 가 되지 않게 가드)
+    final cx = sp.dx
+        .clamp(64.0, math.max(64.0, _viewport.width - 64.0))
+        .toDouble();
+    final cy = sp.dy
+        .clamp(120.0, math.max(120.0, _viewport.height - 90.0))
+        .toDouble();
+    return [
+      Positioned(
+        left: cx - 55,
+        top: cy - 24,
+        child: IgnorePointer(
+          child: Container(
+            width: 110,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161D3F).withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                  color: target.glow.withValues(alpha: 0.55)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Transform.rotate(
+                  angle: angle,
+                  child: Icon(Icons.navigation_rounded,
+                      size: 15,
+                      color: target.glow),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  target.name,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: target.glow,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildHint() {
+    return IgnorePointer(
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 48),
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161D3F).withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 24,
+              ),
+            ],
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('👆🛸', style: TextStyle(fontSize: 30)),
+              SizedBox(height: 10),
+              Text(
+                '우주선 조종법',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                '화면을 꾹 누르고 있으면\n모찌 우주선이 그쪽으로 날아가요!\n행성에 가까이 가면 탐험할 수 있어요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  height: 1.55,
+                  color: Color(0xFFB9C3E8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── 모찌 UFO ─────────────────────────────────────────────────────────
+
+/// 우주선(UFO) 을 탄 모찌 — 유리 돔 + 새턴형 몸체 + 점멸 라이트 + 엔진 광.
+/// [t] 는 앰비언트 시각(초) — 라이트 점멸에 쓴다. [thrusting] 이면 엔진 광 강화.
+class _MochiShip extends StatelessWidget {
+  const _MochiShip({
+    required this.character,
+    required this.t,
+    this.scale = 1.0,
+    this.thrusting = false,
+  });
+
+  final CharacterState character;
+  final double t;
+  final double scale;
+  final bool thrusting;
+
+  @override
+  Widget build(BuildContext context) {
+    final domeSize = 118.0 * scale;
+    final saucerW = 196.0 * scale;
+    final saucerH = 54.0 * scale;
+    final totalW = saucerW + 20 * scale;
+    final totalH = domeSize + saucerH + 26 * scale;
+    return SizedBox(
+      width: totalW,
+      height: totalH,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          // 우주선 뒤 은은한 보랏빛 글로우.
+          Positioned(
+            top: domeSize * 0.3,
+            child: Container(
+              width: saucerW,
+              height: saucerW * 0.5,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+                    blurRadius: 46,
+                    spreadRadius: 6,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 유리 돔 콕핏 — 모찌 탑승.
+          Positioned(
+            top: 0,
+            child: Container(
+              width: domeSize,
+              height: domeSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.18),
+                    Colors.white.withValues(alpha: 0.05),
+                  ],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.38),
+                  width: 1.4,
+                ),
+              ),
+              child: ClipOval(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 6 * scale),
+                    child: MochiCharacterView(
+                      appearance: MochiAppearance.fromState(character),
+                      stage: character.stage,
+                      size: domeSize * 0.72,
+                      part: MochiCharacterPart.body,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 돔 하이라이트.
+          Positioned(
+            top: domeSize * 0.14,
+            left: (totalW - domeSize) / 2 + domeSize * 0.14,
+            child: Container(
+              width: domeSize * 0.3,
+              height: domeSize * 0.15,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.55),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // 새턴형 몸체 — 돔 하단을 덮는 메탈릭 접시.
+          Positioned(
+            top: domeSize * 0.78,
+            child: Container(
+              width: saucerW,
+              height: saucerH,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF818CF8),
+                    Color(0xFF4F46E5),
+                    Color(0xFF312E81),
+                  ],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF312E81).withValues(alpha: 0.6),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              // 몸체 라이트 — 순서대로 깜빡인다.
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(4, (i) {
+                  final on =
+                      0.35 + 0.65 * (0.5 + 0.5 * math.sin(t * 3 + i * 1.6));
+                  return Container(
+                    width: 10 * scale,
+                    height: 10 * scale,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFDE68A).withValues(alpha: on),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFDE68A)
+                              .withValues(alpha: on * 0.7),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+          // 엔진 광 — 추진 중이면 더 크고 밝게 뿜는다.
+          Positioned(
+            top: domeSize * 0.78 + saucerH - 6 * scale,
+            child: Container(
+              width: saucerW * (thrusting ? 0.6 : 0.42),
+              height: (thrusting ? 34 : 22) * scale,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF67E8F9)
+                        .withValues(alpha: thrusting ? 0.85 : 0.55),
+                    const Color(0xFF67E8F9).withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 데이터 ───────────────────────────────────────────────────────────
+
+class _Planet {
+  const _Planet({
+    required this.id,
+    required this.name,
+    required this.tagline,
+    required this.story,
+    required this.base,
+    required this.shade,
+    required this.glow,
+    required this.distance,
+    required this.stats,
+    required this.history,
+    required this.pos,
+    required this.size,
+    this.hasRing = false,
+    this.ringVertical = false,
+    this.craters = false,
+    this.bands = false,
+    this.clouds = false,
+    this.continents = false,
+  });
+
+  final String id;
+  final String name;
+  final String tagline;
+  final String story;
+  final Color base; // 구체 밝은 톤
+  final Color shade; // 구체 어두운 톤
+  final Color glow; // 주변 발광/포인트 색
+  final String distance;
+  final List<(String, String)> stats; // (라벨, 값) — 박물관 안내판 느낌의 칩 3개
+  final List<(String, String, String)> history; // (연도, 사건, 설명) 연대기
+  final Offset pos; // 월드 좌표
+  final double size; // 구체 지름(px)
+  final bool hasRing; // 토성 고리
+  final bool ringVertical; // 천왕성 — 누워서 도는 세로 고리
+  final bool craters; // 달/수성 크레이터
+  final bool bands; // 목성/해왕성 줄무늬
+  final bool clouds; // 금성 — 두꺼운 구름 소용돌이
+  final bool continents; // 지구 — 대륙 + 구름
+}
+
+/// 태양계 전 행성 + 달 — 태양에서 가까운 순서로 월드에 배치.
+const List<_Planet> _planets = [
+  _Planet(
+    id: 'mercury',
+    name: '수성',
+    tagline: '태양과 가장 가까운 행성',
+    story: '태양이 바로 옆이라 낮엔 펄펄 끓고 밤엔 꽁꽁 얼어요. 모찌가 그늘과 '
+        '햇빛 사이를 폴짝폴짝 오가며 놀았어요. 온통 크레이터투성이라 달이랑 '
+        '쌍둥이 같대요.',
+    base: Color(0xFFC9BFB4),
+    shade: Color(0xFF6B5F55),
+    glow: Color(0xFFD8CDBE),
+    distance: '9,100만 km',
+    stats: [
+      ('지름', '4,879km'),
+      ('1년', '88일'),
+      ('온도', '-173~427℃'),
+    ],
+    history: [
+      ('1631', '가상디', '수성이 태양 앞을 지나는 모습을 처음 관측했어요.'),
+      ('1974', '마리너 10호', '처음으로 수성을 가까이에서 촬영했어요.'),
+      ('2011', '메신저', '처음으로 수성 궤도에 진입해 지도를 만들었어요.'),
+      ('2018', '베피콜롬보', '유럽과 일본이 함께 수성 탐사선을 발사했어요.'),
+    ],
+    pos: Offset(760, 850),
+    size: 46,
+    craters: true,
+  ),
+  _Planet(
+    id: 'venus',
+    name: '금성',
+    tagline: '새벽하늘에서 가장 밝은 별',
+    story: '두꺼운 구름 담요를 덮고 있어 표면이 하나도 안 보여요. 모찌는 구름 위를 '
+        '푹신푹신 트램펄린처럼 뛰어다녔어요. 지구에서 보면 제일 밝게 빛나는 '
+        '"샛별"이 바로 여기래요!',
+    base: Color(0xFFFDE8B0),
+    shade: Color(0xFFC2841B),
+    glow: Color(0xFFFBBF24),
+    distance: '4,100만 km',
+    stats: [
+      ('지름', '12,104km'),
+      ('하루', '243일'),
+      ('온도', '약 465℃'),
+    ],
+    history: [
+      ('1610', '갈릴레이', '금성도 달처럼 모양이 변한다는 걸 발견했어요.'),
+      ('1962', '마리너 2호', '인류 최초로 다른 행성 근접 통과에 성공했어요.'),
+      ('1970', '베네라 7호', '처음으로 다른 행성 표면에 착륙했어요.'),
+      ('1990', '마젤란', '레이더로 구름 아래 지형 지도를 완성했어요.'),
+    ],
+    pos: Offset(1120, 1210),
+    size: 64,
+    clouds: true,
+  ),
+  _Planet(
+    id: 'earth',
+    name: '지구',
+    tagline: '우리 모두의 푸른 고향',
+    story: '우주에서 바라보니 지구는 반짝이는 파란 구슬 같아요. 흰 구름, 초록 대륙, '
+        '넓고 푸른 바다까지! 모찌가 한참을 바라보다가 말했어요. "역시 우리 집이 '
+        '우주에서 제일 예뻐."',
+    base: Color(0xFF60A5FA),
+    shade: Color(0xFF1D4ED8),
+    glow: Color(0xFF93C5FD),
+    distance: '궤도 한 바퀴',
+    stats: [
+      ('지름', '12,742km'),
+      ('바다', '표면의 71%'),
+      ('나이', '약 45억 년'),
+    ],
+    history: [
+      ('1957', '스푸트니크 1호', '첫 인공위성이 지구 주위를 돌기 시작했어요.'),
+      ('1961', '가가린', '인류가 처음으로 우주에서 지구를 봤어요.'),
+      ('1968', '아폴로 8호', '달에서 떠오르는 "지구돋이" 사진을 찍었어요.'),
+      ('1990', '보이저 1호', '61억 km 밖에서 "창백한 푸른 점"을 남겼어요.'),
+    ],
+    pos: Offset(1520, 880),
+    size: 68,
+    continents: true,
+  ),
+  _Planet(
+    id: 'moon',
+    name: '달',
+    tagline: '지구에서 가장 가까운 이웃',
+    story: '모찌가 사뿐사뿐 뛰어다녀요. 중력이 약해서 한 번 점프하면 여섯 배나 '
+        '높이 떠올라요! 발자국이 아주 오래 남는대요. 모찌도 살짝 발도장을 찍고 왔어요.',
+    base: Color(0xFFE2E8F0),
+    shade: Color(0xFF94A3B8),
+    glow: Color(0xFFCBD5E1),
+    distance: '38만 km',
+    stats: [
+      ('지름', '3,475km'),
+      ('중력', '지구의 1/6'),
+      ('온도', '-173~127℃'),
+    ],
+    history: [
+      ('1959', '루나 2호', '인류의 탐사선이 처음으로 달 표면에 도달했어요.'),
+      ('1969', '아폴로 11호', '닐 암스트롱이 인류 최초로 달에 발을 디뎠어요.'),
+      ('1972', '아폴로 17호', '지금까지 마지막이 된 유인 달 착륙이었어요.'),
+      ('2019', '창어 4호', '처음으로 달의 뒷면에 착륙했어요.'),
+    ],
+    pos: Offset(1700, 700),
+    size: 30,
+    craters: true,
+  ),
+  _Planet(
+    id: 'mars',
+    name: '화성',
+    tagline: '붉은 모래의 행성',
+    story: '온통 붉은 모래언덕이에요. 모찌가 언덕 위에서 데굴데굴 굴렀더니 온몸이 '
+        '주황빛이 됐어요. 태양계에서 가장 큰 화산 올림푸스 몬스도 멀리서 구경했답니다.',
+    base: Color(0xFFFB923C),
+    shade: Color(0xFFB91C1C),
+    glow: Color(0xFFF87171),
+    distance: '2억 2천만 km',
+    stats: [
+      ('지름', '6,779km'),
+      ('하루', '24시간 37분'),
+      ('온도', '평균 -63℃'),
+    ],
+    history: [
+      ('1965', '마리너 4호', '처음으로 화성을 가까이에서 촬영했어요.'),
+      ('1976', '바이킹 1호', '처음으로 화성 표면 착륙에 성공했어요.'),
+      ('1997', '소저너', '첫 로버가 화성 위를 굴러다니기 시작했어요.'),
+      ('2021', '인저뉴어티', '작은 헬리콥터가 다른 행성에서 처음 날았어요.'),
+    ],
+    pos: Offset(1980, 1230),
+    size: 56,
+  ),
+  _Planet(
+    id: 'jupiter',
+    name: '목성',
+    tagline: '태양계에서 가장 큰 행성',
+    story: '구름 소용돌이가 그림처럼 흘러가요. 모찌보다 1,300배나 큰 행성이라 '
+        '아무리 둘러봐도 끝이 안 보여요. 거대한 붉은 점(폭풍)은 멀리서만 살짝 봤어요.',
+    base: Color(0xFFFCD34D),
+    shade: Color(0xFFB45309),
+    glow: Color(0xFFFBBF24),
+    distance: '6억 3천만 km',
+    stats: [
+      ('지름', '139,820km'),
+      ('위성', '95개+'),
+      ('하루', '9시간 56분'),
+    ],
+    history: [
+      ('1610', '갈릴레이', '망원경으로 목성의 4대 위성을 발견했어요.'),
+      ('1979', '보이저 1호', '목성에도 얇은 고리가 있다는 걸 알아냈어요.'),
+      ('1995', '갈릴레오호', '처음으로 목성 궤도를 도는 데 성공했어요.'),
+      ('2016', '주노', '목성의 극지방 소용돌이를 처음 관측했어요.'),
+    ],
+    pos: Offset(2520, 880),
+    size: 150,
+    bands: true,
+  ),
+  _Planet(
+    id: 'saturn',
+    name: '토성',
+    tagline: '아름다운 고리의 행성',
+    story: '얼음 알갱이로 만들어진 고리가 반짝반짝 빛나요. 모찌가 고리 위에서 '
+        '미끄럼틀을 타고 놀았어요. 우주에서 가장 멋진 놀이터라며 또 오고 싶대요!',
+    base: Color(0xFFFDE68A),
+    shade: Color(0xFFD97706),
+    glow: Color(0xFFFCD34D),
+    distance: '12억 8천만 km',
+    stats: [
+      ('지름', '116,460km'),
+      ('위성', '146개+'),
+      ('고리 폭', '약 28만 km'),
+    ],
+    history: [
+      ('1610', '갈릴레이', '토성을 처음 관측했지만 고리인 줄 몰랐어요.'),
+      ('1655', '하위헌스', '토성의 "귀"가 사실은 고리라는 걸 밝혔어요.'),
+      ('2004', '카시니', '토성 궤도에 도착해 13년간 탐사했어요.'),
+      ('2005', '하위헌스 착륙선', '위성 타이탄에 착륙했어요.'),
+    ],
+    pos: Offset(3030, 1250),
+    size: 128,
+    hasRing: true,
+  ),
+  _Planet(
+    id: 'uranus',
+    name: '천왕성',
+    tagline: '누워서 도는 얼음 거인',
+    story: '자전축이 98도나 기울어져 옆으로 데굴데굴 구르듯 돌아요. 모찌도 따라서 '
+        '옆으로 굴러봤대요. 민트색 얼음 대기가 사르르 반짝여서 우주에서 제일 '
+        '시원해 보이는 행성이에요.',
+    base: Color(0xFF99E9F2),
+    shade: Color(0xFF0E7490),
+    glow: Color(0xFF67E8F9),
+    distance: '27억 km',
+    stats: [
+      ('지름', '50,724km'),
+      ('자전축', '98° 기움'),
+      ('온도', '약 -224℃'),
+    ],
+    history: [
+      ('1781', '허셜', '망원경으로 발견된 최초의 행성이 됐어요.'),
+      ('1787', '허셜', '위성 티타니아와 오베론을 찾아냈어요.'),
+      ('1977', '고리 발견', '별빛 가림 관측으로 가는 고리를 찾았어요.'),
+      ('1986', '보이저 2호', '처음이자 마지막으로 가까이 지나갔어요.'),
+    ],
+    pos: Offset(3480, 840),
+    size: 92,
+    hasRing: true,
+    ringVertical: true,
+  ),
+  _Planet(
+    id: 'neptune',
+    name: '해왕성',
+    tagline: '수학이 찾아낸 푸른 행성',
+    story: '태양계 가장 바깥의 짙푸른 행성이에요. 시속 2,100km 초강풍이 불어서 '
+        '모찌 볼이 파도처럼 출렁거렸어요. 망원경보다 수학 계산이 먼저 찾아낸 '
+        '신기한 행성이랍니다.',
+    base: Color(0xFF5B8DF6),
+    shade: Color(0xFF1E3A8A),
+    glow: Color(0xFF818CF8),
+    distance: '43억 km',
+    stats: [
+      ('지름', '49,244km'),
+      ('바람', '시속 2,100km'),
+      ('1년', '165년'),
+    ],
+    history: [
+      ('1846', '르베리에·갈레', '계산으로 위치를 예측해 발견했어요.'),
+      ('1846', '라셀', '17일 만에 위성 트리톤까지 찾아냈어요.'),
+      ('1989', '보이저 2호', '근접 통과하며 대암점 폭풍을 발견했어요.'),
+      ('2011', '한 바퀴', '발견 후 165년 만에 첫 공전을 마쳤어요.'),
+    ],
+    pos: Offset(3900, 1160),
+    size: 88,
+    bands: true,
+  ),
+];
+
+// ── 월드 배경 페인터 ─────────────────────────────────────────────────
+
+/// 아주 깊은 평면에 떠 있는 은하 — 거의 붙박이처럼 느리게 흐른다.
+class _Galaxy {
+  _Galaxy({
+    required this.x,
+    required this.y,
+    required this.z,
+    required this.r,
+    required this.tilt,
+    required this.color,
+  });
+
+  factory _Galaxy.random(math.Random rand) => _Galaxy(
+        x: rand.nextDouble(),
+        y: rand.nextDouble(),
+        z: 1800 + rand.nextDouble() * 1600,
+        r: 150 + rand.nextDouble() * 190,
+        tilt: rand.nextDouble() * math.pi,
+        color: [
+          const Color(0xFFA78BFA),
+          const Color(0xFF60A5FA),
+          const Color(0xFFF9A8D4),
+        ][rand.nextInt(3)],
+      );
+
+  final double x;
+  final double y;
+  final double z;
+  final double r;
+  final double tilt;
+  final Color color;
+}
+
+/// 딥 네이비 그라디언트 + 깊이 별밭 + 먼 은하 + 태양 + 궤도 가이드.
+class _WorldPainter extends CustomPainter {
+  _WorldPainter({
+    required this.camera,
+    required this.t,
+    required this.deepStars,
+    required this.galaxies,
+    required this.sunScreen,
+    required this.orbitRadii,
+  });
+
+  final Offset camera;
+  final double t;
+
+  /// 깊이(z)가 제각각인 별들 — 원근 시차의 핵심.
+  final List<Depth3DMote> deepStars;
+  final List<_Galaxy> galaxies;
+  final Offset sunScreen;
+  final List<double> orbitRadii;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    // 베이스 그라디언트 — 카메라 y 에 따라 미묘하게 톤이 달라진다.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0B1026), Color(0xFF141A3C), Color(0xFF23124D)],
+        ).createShader(rect),
+    );
+    // 성운 — 은은한 radial 두 덩어리(월드 고정 위치의 느낌만 살짝).
+    void nebula(Offset c, double radius, Color color, double alpha) {
+      canvas.drawCircle(
+        c,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              color.withValues(alpha: alpha),
+              color.withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromCircle(center: c, radius: radius)),
+      );
+    }
+
+    nebula(
+      Offset(size.width * 0.8 - camera.dx * 0.1,
+          size.height * 0.2 - camera.dy * 0.1),
+      size.width * 0.55,
+      const Color(0xFF7C3AED),
+      0.14,
+    );
+    nebula(
+      Offset(size.width * 0.1 - camera.dx * 0.06,
+          size.height * 0.7 - camera.dy * 0.06),
+      size.width * 0.5,
+      const Color(0xFF2563EB),
+      0.10,
+    );
+
+    // 깊이 별밭 — 별마다 z 가 달라 카메라가 움직이면 서로 다른 속도로 흘러
+    // 공간의 두께가 읽힌다(원근 시차).
+    paintDepthMotes(
+      canvas,
+      size,
+      motes: deepStars,
+      camera: camera,
+      t: t,
+      color: Colors.white,
+      baseAlpha: 0.95,
+    );
+
+    // 먼 은하 — 아주 깊은 평면이라 거의 붙박이처럼 천천히 흐른다.
+    for (final g in galaxies) {
+      final k = Depth3D.scaleOf(g.z);
+      final c = Offset(
+        (g.x * (size.width * 1.8) - camera.dx * k) % (size.width * 1.8) -
+            size.width * 0.4,
+        (g.y * (size.height * 1.6) - camera.dy * k) % (size.height * 1.6) -
+            size.height * 0.3,
+      );
+      final r = g.r * k;
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.rotate(g.tilt);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 0.7),
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              g.color.withValues(alpha: 0.30 * (1 - Depth3D.hazeOf(g.z))),
+              g.color.withValues(alpha: 0),
+            ],
+          ).createShader(
+              Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 0.7)),
+      );
+      canvas.restore();
+    }
+
+    // 태양 — 화면 근처일 때만 그린다.
+    if (sunScreen.dx > -700 && sunScreen.dx < size.width + 700) {
+      canvas.drawCircle(
+        sunScreen,
+        420,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFFFB923C).withValues(alpha: 0.30),
+              const Color(0xFFFB923C).withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromCircle(center: sunScreen, radius: 420)),
+      );
+      canvas.drawCircle(
+        sunScreen,
+        150,
+        Paint()
+          ..shader = const RadialGradient(
+            colors: [
+              Color(0xFFFFF7CC),
+              Color(0xFFFDE047),
+              Color(0xFFF97316),
+            ],
+            stops: [0, 0.5, 1],
+          ).createShader(Rect.fromCircle(center: sunScreen, radius: 150)),
+      );
+      // 표면 일렁임 — 얇은 밝은 링이 숨쉬듯 커졌다 작아진다.
+      final pulse = 150 + 12 * math.sin(t * 1.4);
+      canvas.drawCircle(
+        sunScreen,
+        pulse,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..color = const Color(0xFFFDE047).withValues(alpha: 0.35),
+      );
+      // 코로나 광선 — 천천히 회전하며 길이가 일렁이는 빛줄기.
+      final ray = Paint()
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 22
+        ..color = const Color(0xFFFDE047).withValues(alpha: 0.10);
+      for (var i = 0; i < 8; i++) {
+        final a = t * 0.25 + i * math.pi / 4;
+        final len = 235 + 20 * math.sin(t * 1.7 + i * 1.3);
+        final dir = Offset(math.cos(a), math.sin(a));
+        canvas.drawLine(
+            sunScreen + dir * 168, sunScreen + dir * len, ray);
+      }
+    }
+
+    // 궤도 가이드 — 태양 중심의 옅은 동심원.
+    final orbit = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = Colors.white.withValues(alpha: 0.05);
+    for (final r in orbitRadii) {
+      canvas.drawCircle(sunScreen, r, orbit);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WorldPainter old) =>
+      old.t != t || old.camera != camera;
+}
+
+// ── 행성 비주얼 ──────────────────────────────────────────────────────
+
+/// 그라디언트 구체 + 크레이터/줄무늬/구름/대륙/고리로 행성을 3D 로 그린다.
+///
+/// 3D 룩 구성 (flutter 캔버스만으로):
+/// - [light] 방향(태양→행성 단위벡터) 기준 광원 셰이딩 — 태양 쪽이 밝고
+///   반대쪽에 명암 경계(터미네이터) 그림자가 진다
+/// - 표면 피처(크레이터/대륙/구름/대적점)는 경도(λ)를 시간 [t] 로 밀어
+///   sin 투영 + cos 포어쇼트닝으로 자전하는 구처럼 보인다
+/// - 대기 림라이트: 태양 쪽 가장자리에 발광 아크
+class _PlanetPainter extends CustomPainter {
+  _PlanetPainter(this.p, {this.t = 0, this.light = const Offset(-0.55, -0.45)});
+
+  final _Planet p;
+  final double t; // 자전 시각(초)
+  final Offset light; // 태양→행성 단위벡터(그림자 방향). 밝은 면은 -light 쪽.
+
+  /// 자전하는 표면 피처 — 정면 반구(cosλ>0)만, 가장자리로 갈수록 가늘게.
+  void _rotFeature(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Paint paint, {
+    required double lon0,
+    required double lat,
+    required double w,
+    required double h,
+    double speed = 0.22,
+  }) {
+    final lon = lon0 + t * speed;
+    final cosL = math.cos(lon);
+    if (cosL <= 0.06) return; // 뒷면
+    final x = math.sin(lon) * radius * 0.82;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: center + Offset(x, lat * radius),
+        width: w * radius * cosL,
+        height: h * radius,
+      ),
+      paint,
+    );
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) * 0.42;
+    final sphere = Rect.fromCircle(center: center, radius: radius);
+    final l = light;
+
+    // 발광.
+    canvas.drawCircle(
+      center,
+      radius * 1.25,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            p.glow.withValues(alpha: 0.35),
+            p.glow.withValues(alpha: 0),
+          ],
+        ).createShader(
+            Rect.fromCircle(center: center, radius: radius * 1.25)),
+    );
+
+    // 고리 뒤쪽 절반 — 구체 뒤로 지나가게 먼저 그린다.
+    if (p.hasRing) {
+      _drawRing(canvas, center, radius, back: true);
+    }
+
+    // 구체 — 태양 쪽이 밝은 3단 그라디언트 (하이라이트 → 본색 → 음영색).
+    final lit = Color.lerp(p.base, Colors.white, 0.35)!;
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment(
+            (-l.dx * 0.62).clamp(-0.9, 0.9),
+            (-l.dy * 0.62 - 0.08).clamp(-0.9, 0.9),
+          ),
+          radius: 1.15,
+          colors: [lit, p.base, p.shade],
+          stops: const [0, 0.42, 1],
+        ).createShader(sphere),
+    );
+
+    // 목성/해왕성 줄무늬 — 위도 밴드는 고정, 폭풍 무늬만 자전.
+    if (p.bands) {
+      canvas.save();
+      canvas.clipPath(Path()..addOval(sphere));
+      final band = Paint()..color = p.shade.withValues(alpha: 0.35);
+      for (final dy in [-0.45, -0.1, 0.28, 0.6]) {
+        final y = center.dy + radius * dy;
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(center.dx, y),
+            width: radius * 2.2,
+            height: radius * 0.24,
+          ),
+          band,
+        );
+      }
+      // 대적점(목성) — 자전으로 흘러간다.
+      if (p.id == 'jupiter') {
+        _rotFeature(
+          canvas,
+          center,
+          radius,
+          Paint()..color = const Color(0xFFDC2626).withValues(alpha: 0.55),
+          lon0: 0.6,
+          lat: 0.4,
+          w: 0.5,
+          h: 0.3,
+          speed: 0.16,
+        );
+      }
+      // 밝은 소용돌이 무늬 몇 개 — 자전.
+      final swirl = Paint()
+        ..color = Color.lerp(p.base, Colors.white, 0.4)!
+            .withValues(alpha: 0.30);
+      _rotFeature(canvas, center, radius, swirl,
+          lon0: 2.2, lat: -0.28, w: 0.55, h: 0.14, speed: 0.19);
+      _rotFeature(canvas, center, radius, swirl,
+          lon0: 4.4, lat: 0.05, w: 0.45, h: 0.12, speed: 0.14);
+      canvas.restore();
+    }
+
+    // 금성 — 두꺼운 구름 소용돌이가 빠르게 자전.
+    if (p.clouds) {
+      canvas.save();
+      canvas.clipPath(Path()..addOval(sphere));
+      final cloud = Paint()..color = Colors.white.withValues(alpha: 0.30);
+      for (final (lon0, lat, w) in [
+        (0.4, -0.42, 1.3),
+        (1.8, -0.05, 1.6),
+        (3.2, 0.35, 1.4),
+        (4.8, 0.65, 1.0),
+      ]) {
+        _rotFeature(canvas, center, radius, cloud,
+            lon0: lon0, lat: lat, w: w, h: 0.22, speed: 0.45);
+      }
+      canvas.restore();
+    }
+
+    // 지구 — 초록 대륙 + 흰 구름이 자전.
+    if (p.continents) {
+      canvas.save();
+      canvas.clipPath(Path()..addOval(sphere));
+      final land = Paint()
+        ..color = const Color(0xFF34D399).withValues(alpha: 0.85);
+      for (final (lon0, lat, w, h) in [
+        (0.2, -0.30, 0.75, 0.55),
+        (1.4, 0.15, 0.60, 0.75),
+        (2.8, 0.55, 0.45, 0.28),
+        (4.2, -0.05, 0.40, 0.30),
+        (5.3, 0.40, 0.35, 0.25),
+      ]) {
+        _rotFeature(canvas, center, radius, land,
+            lon0: lon0, lat: lat, w: w, h: h, speed: 0.18);
+      }
+      // 구름 — 대륙보다 살짝 빠르게 흐른다.
+      final cloud = Paint()..color = Colors.white.withValues(alpha: 0.45);
+      for (final (lon0, lat, w) in [
+        (0.9, -0.55, 1.0),
+        (2.6, -0.15, 0.8),
+        (4.6, 0.30, 0.9),
+      ]) {
+        _rotFeature(canvas, center, radius, cloud,
+            lon0: lon0, lat: lat, w: w, h: 0.14, speed: 0.28);
+      }
+      canvas.restore();
+    }
+
+    // 달/수성 크레이터 — 자전.
+    if (p.craters) {
+      canvas.save();
+      canvas.clipPath(Path()..addOval(sphere));
+      final crater = Paint()..color = p.shade.withValues(alpha: 0.45);
+      for (final (lon0, lat, s) in [
+        (0.3, -0.25, 0.32),
+        (1.6, 0.10, 0.24),
+        (3.4, 0.42, 0.20),
+        (5.0, -0.42, 0.14),
+        (2.4, -0.05, 0.18),
+      ]) {
+        _rotFeature(canvas, center, radius, crater,
+            lon0: lon0, lat: lat, w: s, h: s, speed: 0.12);
+      }
+      canvas.restore();
+    }
+
+    // 명암 경계(터미네이터) — 낮 쪽(태양 방향)을 중심으로 멀어질수록 어두워져
+    // 태양 반대쪽 반구가 어둠에 잠긴다.
+    canvas.save();
+    canvas.clipPath(Path()..addOval(sphere));
+    final dayCenter = center - Offset(l.dx, l.dy) * radius * 0.55;
+    canvas.drawCircle(
+      dayCenter,
+      radius * 1.7,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.black.withValues(alpha: 0),
+            Colors.black.withValues(alpha: 0.42),
+          ],
+          stops: const [0.40, 0.95],
+        ).createShader(
+            Rect.fromCircle(center: dayCenter, radius: radius * 1.7)),
+    );
+    // 스펙큘러 하이라이트 — 태양 쪽 표면의 반짝임.
+    final specCenter = center - Offset(l.dx, l.dy) * radius * 0.45;
+    canvas.drawCircle(
+      specCenter,
+      radius * 0.34,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withValues(alpha: p.bands || p.clouds ? 0.22 : 0.34),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(
+            Rect.fromCircle(center: specCenter, radius: radius * 0.34)),
+    );
+    canvas.restore();
+
+    // 대기 림라이트 — 태양 쪽 가장자리 발광 아크.
+    final litAngle = math.atan2(-l.dy, -l.dx);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 0.99),
+      litAngle - 1.15,
+      2.3,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = radius * 0.07
+        ..strokeCap = StrokeCap.round
+        ..color = p.glow.withValues(alpha: 0.5),
+    );
+
+    // 고리 앞쪽 절반.
+    if (p.hasRing) {
+      _drawRing(canvas, center, radius, back: false);
+    }
+  }
+
+  /// 고리 — 타원 스트로크를 절반씩 나눠 구체 앞뒤에 그린다.
+  /// 토성은 가로 고리(위=뒤/아래=앞), 천왕성은 세로 고리(왼쪽=뒤/오른쪽=앞).
+  void _drawRing(Canvas canvas, Offset center, double radius,
+      {required bool back}) {
+    final vertical = p.ringVertical;
+    final ringRect = Rect.fromCenter(
+      center: center,
+      width: vertical ? radius * 1.05 : radius * 3.1,
+      height: vertical ? radius * 2.5 : radius * 1.05,
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = radius * (vertical ? 0.10 : 0.22)
+      ..color = p.glow.withValues(alpha: back ? 0.5 : 0.85);
+    canvas.save();
+    final Rect clip;
+    if (vertical) {
+      clip = back
+          ? Rect.fromLTRB(ringRect.left - 20, ringRect.top - 20, center.dx,
+              ringRect.bottom + 20)
+          : Rect.fromLTRB(center.dx, ringRect.top - 20, ringRect.right + 20,
+              ringRect.bottom + 20);
+    } else {
+      clip = back
+          ? Rect.fromLTRB(ringRect.left - 20, ringRect.top - 20,
+              ringRect.right + 20, center.dy)
+          : Rect.fromLTRB(ringRect.left - 20, center.dy, ringRect.right + 20,
+              ringRect.bottom + 20);
+    }
+    canvas.clipRect(clip);
+    canvas.drawOval(ringRect, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_PlanetPainter old) =>
+      old.p != p || old.t != t || old.light != light;
+}
+
+// ── 착륙(탐험) 시트 ──────────────────────────────────────────────────
+
+/// 행성 도착 시트 — 행성 비주얼 + 스탯 + 모찌 탐험 일지 + 연대기(역사).
+class _PlanetSheet extends StatelessWidget {
+  const _PlanetSheet({
+    required this.planet,
+    required this.collected,
+    required this.total,
+  });
+
+  final int collected;
+  final int total;
+
+  final _Planet planet;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = planet;
+    final maxH = MediaQuery.of(context).size.height * 0.82;
+    return Container(
+      constraints: BoxConstraints(maxHeight: maxH),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161D3F),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(
+          top: BorderSide(color: p.glow.withValues(alpha: 0.5), width: 1.4),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                16,
+                24,
+                MediaQuery.of(context).padding.bottom + 20,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 헤더 — 행성 비주얼 + 이름/태그라인.
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 96,
+                        height: 84,
+                        child: CustomPaint(painter: _PlanetPainter(p)),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 9, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: p.glow.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '🚀 ${p.distance}',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                  color: p.glow,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              '${p.name} 도착!',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 22,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              p.tagline,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: Color(0xFFB9C3E8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // 행성 정보 칩 — 박물관 안내판 느낌의 스탯 3개.
+                  Row(
+                    children: [
+                      for (final (i, stat) in p.stats.indexed) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.07),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.10)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  stat.$1,
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                    color: Color(0xFF8B95B8),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  stat.$2,
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 탐험 일지 카드.
+                  _GlassCard(
+                    title: '모찌의 탐험 일지',
+                    emoji: '📖',
+                    child: Text(
+                      p.story,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13.5,
+                        height: 1.65,
+                        color: Color(0xFFD4DAF0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // 행성 연대기 — 인류의 탐사 역사를 타임라인으로 감상.
+                  _GlassCard(
+                    title: '행성 연대기',
+                    emoji: '📜',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final (i, h) in p.history.indexed)
+                          _HistoryTimelineRow(
+                            year: h.$1,
+                            title: h.$2,
+                            desc: h.$3,
+                            accent: p.glow,
+                            isLast: i == p.history.length - 1,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ExploreSpotExtras(
+                    realmKey: 'space',
+                    realmEmoji: '🚀',
+                    spotId: p.id,
+                    spotName: p.name,
+                    accent: p.glow,
+                    collected: collected,
+                    total: total,
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        '계속 탐험하기',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 시트 내부 반투명 글래스 카드 공통 프레임.
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({
+    required this.title,
+    required this.emoji,
+    required this.child,
+  });
+
+  final String title;
+  final String emoji;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 15)),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// 행성 연대기 타임라인 한 줄 — 발광 도트 + 세로줄 + 연도 뱃지 + 사건 설명.
+class _HistoryTimelineRow extends StatelessWidget {
+  const _HistoryTimelineRow({
+    required this.year,
+    required this.title,
+    required this.desc,
+    required this.accent,
+    required this.isLast,
+  });
+
+  final String year;
+  final String title;
+  final String desc;
+  final Color accent;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 도트 + 세로 연결선.
+          Column(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent,
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.6),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 1.6,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          year,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    desc,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                      height: 1.5,
+                      color: Color(0xFFB9C3E8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

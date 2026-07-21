@@ -4,6 +4,7 @@ import '../../core/network/error_message.dart';
 import '../../features/notification/models/notification_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
+import '../character/games/omok_game_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -153,7 +154,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _onNotificationTap(AppNotification n) async {
-    // 탭하면 다른 화면으로 이동시키지 않고 그 자리에서 읽음 처리만 한다.
+    // 오목 초대는 시간제한이 있는 '행동형' 알림 — 예외적으로 대국 화면으로 이동한다.
+    if (n.type == NotificationType.gameInvite && n.relatedId != null) {
+      final gameId = int.tryParse(n.relatedId!);
+      if (gameId != null) {
+        Di.notificationRepository.markRead(n.id).ignore();
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => OmokGameScreen(gameId: gameId)),
+        );
+        return;
+      }
+    }
+    // 그 외에는 다른 화면으로 이동시키지 않고 그 자리에서 읽음 처리만 한다.
     // (예전엔 팝업 띄우고 확인 후 그룹 홈/일정 상세로 점프했지만, 사용자가
     // 보던 알림 목록에서 갑자기 다른 화면으로 끌려가는 UX 가 어색했다.)
     if (n.isRead) return;
