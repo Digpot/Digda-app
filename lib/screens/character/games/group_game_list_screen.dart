@@ -5,6 +5,8 @@ import '../../../features/minigame/models/minigame_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/back_header.dart';
+import 'alkkagi_game_screen.dart';
+import 'alkkagi_invite_screen.dart';
 import 'catchmind_game_screen.dart';
 import 'catchmind_invite_screen.dart';
 import 'word_chain_invite_screen.dart';
@@ -60,6 +62,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
       'CATCHMIND' => CatchmindGameScreen(gameId: item.gameId),
       'TAP_BATTLE' => TapBattleScreen(gameId: item.gameId),
       'WORD_CHAIN' => WordChainGameScreen(gameId: item.gameId),
+      'ALKKAGI' => AlkkagiGameScreen(gameId: item.gameId),
       _ => null,
     };
     if (screen == null) return;
@@ -82,6 +85,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
         'CATCHMIND' => '캐치마인드',
         'TAP_BATTLE' => '탭배틀',
         'WORD_CHAIN' => '끝말잇기',
+        'ALKKAGI' => '알까기',
         _ => '게임',
       };
 
@@ -90,6 +94,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
         'CATCHMIND' => '🎨',
         'TAP_BATTLE' => '👆',
         'WORD_CHAIN' => '🔤',
+        'ALKKAGI' => '🪨',
         _ => '🎮',
       };
 
@@ -255,6 +260,15 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
                       players: '2~8인 · 온라인',
                       gradient: const [Color(0xFF34D399), Color(0xFF60C5A8)],
                       onTap: () => _push(const WordChainInviteScreen()),
+                    ),
+                    const SizedBox(height: 12),
+                    _GameCard(
+                      emoji: '🪨',
+                      title: '알까기',
+                      subtitle: '돌을 튕겨 상대 돌을 판 밖으로! 돌 개수(1~10개)는 내 마음대로',
+                      players: '2인 · 온라인',
+                      gradient: const [Color(0xFFD3A768), Color(0xFF8D6E63)],
+                      onTap: () => _push(const AlkkagiInviteScreen()),
                     ),
                   ],
                 ),

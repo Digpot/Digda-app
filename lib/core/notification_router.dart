@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../screens/character/games/alkkagi_game_screen.dart';
 import '../screens/character/games/catchmind_game_screen.dart';
 import '../screens/character/games/word_chain_game_screen.dart';
 import '../screens/character/games/omok_game_screen.dart';
@@ -87,7 +88,8 @@ class NotificationRouter {
     if (relatedType == 'OMOK' ||
         relatedType == 'CATCHMIND' ||
         relatedType == 'TAP_BATTLE' ||
-        relatedType == 'WORD_CHAIN') {
+        relatedType == 'WORD_CHAIN' ||
+        relatedType == 'ALKKAGI') {
       final gameId = int.tryParse(_stringOf(data['relatedId']) ?? '');
       if (gameId != null) {
         nav.pushNamedAndRemoveUntil('/character', (r) => false,
@@ -97,6 +99,7 @@ class NotificationRouter {
             'CATCHMIND' => CatchmindGameScreen(gameId: gameId),
             'TAP_BATTLE' => TapBattleScreen(gameId: gameId),
             'WORD_CHAIN' => WordChainGameScreen(gameId: gameId),
+            'ALKKAGI' => AlkkagiGameScreen(gameId: gameId),
             _ => OmokGameScreen(gameId: gameId),
           },
         ));

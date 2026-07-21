@@ -6,15 +6,20 @@ class BackHeader extends StatelessWidget {
   final VoidCallback? onBack;
   final List<Widget>? actions;
 
+  /// 어두운 배경 화면용 — 화살표/타이틀을 흰색으로 그린다.
+  final bool dark;
+
   const BackHeader({
     super.key,
     required this.title,
     this.onBack,
     this.actions,
+    this.dark = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = dark ? Colors.white : AppColors.gray900;
     return Padding(
       padding: const EdgeInsets.only(
         left: 24,
@@ -26,22 +31,22 @@ class BackHeader extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: onBack ?? () => Navigator.of(context).pop(),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios,
               size: 14,
-              color: AppColors.gray900,
+              color: color,
             ),
           ),
           const SizedBox(width: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w700,
               fontSize: 22,
               height: 1.21,
               letterSpacing: 0,
-              color: AppColors.gray900,
+              color: color,
             ),
           ),
           const Spacer(),
