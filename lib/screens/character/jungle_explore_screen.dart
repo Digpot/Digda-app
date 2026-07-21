@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import 'explore_3d.dart';
+import 'explore_rewards.dart';
 
 /// 모찌 정글 탐험 — 탐험 허브에서 진입하는 자유비행 밀림 콘텐츠.
 ///
@@ -151,7 +152,11 @@ class _JungleExploreScreenState extends State<JungleExploreScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _JungleSpotSheet(spot: s),
+      builder: (_) => _JungleSpotSheet(
+        spot: s,
+        collected: _visited.length,
+        total: _spots.length,
+      ),
     );
     if (!mounted) return;
     setState(() => _panelOpen = false);
@@ -1853,9 +1858,15 @@ class _JungleSpotPainter extends CustomPainter {
 // ── 착륙(탐험) 시트 ──────────────────────────────────────────────────
 
 class _JungleSpotSheet extends StatelessWidget {
-  const _JungleSpotSheet({required this.spot});
+  const _JungleSpotSheet({
+    required this.spot,
+    required this.collected,
+    required this.total,
+  });
 
   final _JungleSpot spot;
+  final int collected;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
@@ -2023,7 +2034,17 @@ class _JungleSpotSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
+                  ExploreSpotExtras(
+                    realmKey: 'jungle',
+                    realmEmoji: '🌿',
+                    spotId: s.id,
+                    spotName: s.name,
+                    accent: s.glow,
+                    collected: collected,
+                    total: total,
+                  ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     height: 54,
