@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import 'explore_3d.dart';
+import 'explore_rewards.dart';
 
 /// 모찌 우주 탐험 v2 — 레벨 5 해금 콘텐츠.
 ///
@@ -162,7 +163,11 @@ class _SpaceExploreScreenState extends State<SpaceExploreScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _PlanetSheet(planet: p),
+      builder: (_) => _PlanetSheet(
+        planet: p,
+        collected: _visited.length,
+        total: _planets.length,
+      ),
     );
     if (!mounted) return;
     setState(() => _panelOpen = false);
@@ -1632,7 +1637,14 @@ class _PlanetPainter extends CustomPainter {
 
 /// 행성 도착 시트 — 행성 비주얼 + 스탯 + 모찌 탐험 일지 + 연대기(역사).
 class _PlanetSheet extends StatelessWidget {
-  const _PlanetSheet({required this.planet});
+  const _PlanetSheet({
+    required this.planet,
+    required this.collected,
+    required this.total,
+  });
+
+  final int collected;
+  final int total;
 
   final _Planet planet;
 
@@ -1806,7 +1818,17 @@ class _PlanetSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
+                  ExploreSpotExtras(
+                    realmKey: 'space',
+                    realmEmoji: '🚀',
+                    spotId: p.id,
+                    spotName: p.name,
+                    accent: p.glow,
+                    collected: collected,
+                    total: total,
+                  ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     height: 54,
