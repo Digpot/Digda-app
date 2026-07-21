@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import '../../features/character/models/character_models.dart';
 import '../../features/character/widgets/mochi_character_view.dart';
 import 'explore_3d.dart';
+import 'explore_rewards.dart';
 
 /// 모찌 해저 탐험 — 탐험 허브에서 진입하는 자유비행 심해 콘텐츠.
 ///
@@ -161,7 +162,11 @@ class _UnderseaExploreScreenState extends State<UnderseaExploreScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _SeaSpotSheet(spot: s),
+      builder: (_) => _SeaSpotSheet(
+        spot: s,
+        collected: _visited.length,
+        total: _spots.length,
+      ),
     );
     if (!mounted) return;
     setState(() => _panelOpen = false);
@@ -1752,9 +1757,15 @@ class _SeaSpotPainter extends CustomPainter {
 // ── 착륙(탐험) 시트 ──────────────────────────────────────────────────
 
 class _SeaSpotSheet extends StatelessWidget {
-  const _SeaSpotSheet({required this.spot});
+  const _SeaSpotSheet({
+    required this.spot,
+    required this.collected,
+    required this.total,
+  });
 
   final _SeaSpot spot;
+  final int collected;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
@@ -1923,7 +1934,17 @@ class _SeaSpotSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
+                  ExploreSpotExtras(
+                    realmKey: 'undersea',
+                    realmEmoji: '🌊',
+                    spotId: s.id,
+                    spotName: s.name,
+                    accent: s.glow,
+                    collected: collected,
+                    total: total,
+                  ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     height: 54,
