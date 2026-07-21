@@ -13,6 +13,7 @@ import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'alkkagi_formation.dart';
 
 /// 실시간 알까기 대국 화면.
 ///
@@ -98,9 +99,15 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
   String? _timeoutBanner;
   Timer? _bannerTimer;
 
+  /// 수락 화면에서 고르는 내 시작 대형.
+  AlkkagiFormation _acceptFormation = AlkkagiFormation.line;
+
   String get _myId => Di.userSession.profile?.id ?? '';
 
   int get _mySide => _game?.sideOf(_myId) ?? AlkkagiGame.inviterSide;
+
+  /// 보드 세로 길이(가로=1) — 서버가 내려주는 공유 상수.
+  double get _boardH => _game?.boardHeight ?? 1.35;
 
   /// 수락자는 보드를 180도 뒤집어 내 진영이 항상 아래에 오게 렌더링한다.
   bool get _flipView => _mySide == AlkkagiGame.inviteeSide;
@@ -344,7 +351,7 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
       if (s.x < -_stoneR ||
           s.x > 1 + _stoneR ||
           s.y < -_stoneR ||
-          s.y > 1 + _stoneR) {
+          s.y > _boardH + _stoneR) {
         s.alive = false;
         s.vx = 0;
         s.vy = 0;
@@ -387,7 +394,7 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
   // ── 플릭 입력 (뷰 좌표 → 서버 좌표 변환 포함) ─────────────────────
 
   Offset _toView(double x, double y) =>
-      _flipView ? Offset(1 - x, 1 - y) : Offset(x, y);
+      _flipView ? Offset(1 - x, _boardH - y) : Offset(x, y);
 
   bool get _canFlick =>
       _game != null &&
@@ -456,7 +463,8 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
     if (_actionPending) return;
     setState(() => _actionPending = true);
     try {
-      final game = await Di.alkkagiRepository.accept(widget.gameId);
+      final game = await Di.alkkagiRepository
+          .accept(widget.gameId, formation: _acceptFormation.key);
       if (!mounted) return;
       setState(() {
         _game = game;
@@ -675,7 +683,28 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
                 color: Color(0xFFCBB897),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
+            // 내 시작 대형 선택 — 수락하면 이 대형으로 배치된다.
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '⚔️ 내 시작 대형 고르기',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            AlkkagiFormationPicker(
+              selected: _acceptFormation,
+              stoneCount: game.stoneCount,
+              dark: true,
+              onChanged: (f) => setState(() => _acceptFormation = f),
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -796,33 +825,39 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
         const SizedBox(height: 6),
         _buildPlayersBar(game),
         const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final side = constraints.maxWidth;
-                return GestureDetector(
-                  onPanStart: (d) =>
-                      _onDragStart(_pxToNorm(d.localPosition, side)),
-                  onPanUpdate: (d) =>
-                      _onDragUpdate(d.delta / side),
-                  onPanEnd: (_) => _onDragEnd(),
-                  child: CustomPaint(
-                    size: Size.square(side),
-                    painter: _AlkkagiBoardPainter(
-                      stones: _sim.values.toList(),
-                      mySide: _mySide,
-                      flip: _flipView,
-                      myTurn: myTurn && !finished,
-                      dragStoneId: _dragStoneId,
-                      dragVector: _dragVector,
-                      stoneR: _stoneR,
-                    ),
-                  ),
-                );
-              },
+        // 세로로 긴 큰 판 — 가용 영역을 최대한 채운다.
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 1 / _boardH,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final side = constraints.maxWidth;
+                    return GestureDetector(
+                      onPanStart: (d) =>
+                          _onDragStart(_pxToNorm(d.localPosition, side)),
+                      onPanUpdate: (d) =>
+                          _onDragUpdate(d.delta / side),
+                      onPanEnd: (_) => _onDragEnd(),
+                      child: CustomPaint(
+                        size: Size(side, side * _boardH),
+                        painter: _AlkkagiBoardPainter(
+                          stones: _sim.values.toList(),
+                          mySide: _mySide,
+                          flip: _flipView,
+                          boardH: _boardH,
+                          myTurn: myTurn && !finished,
+                          dragStoneId: _dragStoneId,
+                          dragVector: _dragVector,
+                          stoneR: _stoneR,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
@@ -860,10 +895,9 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
               color: myTurn ? const Color(0xFFFCD34D) : Colors.white54,
             ),
           ),
-        const Spacer(),
         if (!finished)
           Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: 6),
             child: TextButton.icon(
               onPressed: _confirmForfeit,
               icon: const Icon(Icons.flag_outlined, size: 18),
@@ -1046,12 +1080,14 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
   }
 }
 
-/// 알까기 판 — 원목 바둑판 위 돌 + 플릭 조준선. [flip]=true 면 180도 회전 렌더.
+/// 알까기 판 — 원목 세로 직사각 판 위 돌 + 플릭 조준선.
+/// [flip]=true 면 180도 회전 렌더(수락자 시점).
 class _AlkkagiBoardPainter extends CustomPainter {
   _AlkkagiBoardPainter({
     required this.stones,
     required this.mySide,
     required this.flip,
+    required this.boardH,
     required this.myTurn,
     required this.dragStoneId,
     required this.dragVector,
@@ -1061,6 +1097,7 @@ class _AlkkagiBoardPainter extends CustomPainter {
   final List<_SimStone> stones;
   final int mySide;
   final bool flip;
+  final double boardH;
   final bool myTurn;
   final int? dragStoneId;
   final Offset? dragVector;
@@ -1068,7 +1105,7 @@ class _AlkkagiBoardPainter extends CustomPainter {
 
   Offset _view(double x, double y, double side) {
     final vx = flip ? 1 - x : x;
-    final vy = flip ? 1 - y : y;
+    final vy = flip ? boardH - y : y;
     return Offset(vx * side, vy * side);
   }
 
@@ -1104,8 +1141,9 @@ class _AlkkagiBoardPainter extends CustomPainter {
       ..color = const Color(0xFF9A7546).withValues(alpha: 0.14)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1;
-    for (var i = 1; i < 9; i++) {
-      final y = side * i / 9;
+    final rows = (boardH * 9).round();
+    for (var i = 1; i < rows; i++) {
+      final y = size.height * i / rows;
       final path = Path()..moveTo(6, y);
       for (double x = 6; x < side - 6; x += 14) {
         path.lineTo(x, y + math.sin(x / 34 + i * 2.1) * 2.2);
@@ -1114,13 +1152,13 @@ class _AlkkagiBoardPainter extends CustomPainter {
     }
 
     // 중앙선 + 진영 표시.
+    final midY = size.height / 2;
     final mid = Paint()
       ..color = const Color(0xFF9A7546).withValues(alpha: 0.55)
       ..strokeWidth = 1.6;
-    canvas.drawLine(
-        Offset(10, side / 2), Offset(side - 10, side / 2), mid);
+    canvas.drawLine(Offset(10, midY), Offset(side - 10, midY), mid);
     canvas.drawCircle(
-      Offset(side / 2, side / 2),
+      Offset(side / 2, midY),
       side * 0.09,
       Paint()
         ..style = PaintingStyle.stroke

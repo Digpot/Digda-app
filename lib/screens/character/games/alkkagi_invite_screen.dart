@@ -6,6 +6,7 @@ import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'alkkagi_formation.dart';
 import 'alkkagi_game_screen.dart';
 
 /// 알까기 상대 고르기 + 돌 개수 설정.
@@ -28,6 +29,7 @@ class _AlkkagiInviteScreenState extends State<AlkkagiInviteScreen> {
   String? _errorMessage;
   bool _inviting = false;
   int _stoneCount = 5;
+  AlkkagiFormation _formation = AlkkagiFormation.line;
 
   String get _myId => Di.userSession.profile?.id ?? '';
 
@@ -72,7 +74,7 @@ class _AlkkagiInviteScreenState extends State<AlkkagiInviteScreen> {
     showConfirmDialog(
       context,
       title: '${member.name}님에게 초대 보내기',
-      message: '돌 $_stoneCount개로 알까기 대결을 신청할까요?\n'
+      message: '돌 $_stoneCount개 · ${_formation.label} 대형으로 대결을 신청할까요?\n'
           '상대 돌을 모두 판 밖으로 튕겨내면 승리해요!',
       confirmLabel: '초대',
       onConfirm: () => _invite(member),
@@ -89,6 +91,7 @@ class _AlkkagiInviteScreenState extends State<AlkkagiInviteScreen> {
         groupRoomId: groupId,
         inviteeUserId: member.userId,
         stoneCount: _stoneCount,
+        formation: _formation.key,
       );
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
@@ -261,9 +264,42 @@ class _AlkkagiInviteScreenState extends State<AlkkagiInviteScreen> {
                 ),
             ],
           ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Text('⚔️', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 7),
+              const Text(
+                '내 시작 대형',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.gray900,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _formation.desc,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                  color: AppColors.gray500,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
+          AlkkagiFormationPicker(
+            selected: _formation,
+            stoneCount: _stoneCount,
+            onChanged: (f) => setState(() => _formation = f),
+          ),
+          const SizedBox(height: 10),
           const Text(
-            '내 돌을 튕겨 상대 돌을 모두 판 밖으로 밀어내면 승리!\n한 수 제한시간은 30초예요.',
+            '내 돌을 튕겨 상대 돌을 모두 판 밖으로 밀어내면 승리!\n'
+            '상대도 수락할 때 자기 대형을 골라요. 한 수 제한시간은 30초예요.',
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
