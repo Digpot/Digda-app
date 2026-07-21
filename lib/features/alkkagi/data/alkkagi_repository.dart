@@ -8,16 +8,21 @@ class AlkkagiRepository {
 
   final ApiClient _api;
 
-  /// 같은 그룹 멤버에게 알까기 초대. 돌 개수(1~10)는 초대자가 정한다.
+  /// 같은 그룹 멤버에게 알까기 초대. 돌 개수(1~10)와 내 시작 대형은 초대자가 정한다.
   Future<AlkkagiGame> create({
     required int groupRoomId,
     required String inviteeUserId,
     required int stoneCount,
+    required String formation,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/alkkagi/games',
       query: {'groupRoomId': groupRoomId},
-      body: {'inviteeUserId': inviteeUserId, 'stoneCount': stoneCount},
+      body: {
+        'inviteeUserId': inviteeUserId,
+        'stoneCount': stoneCount,
+        'formation': formation,
+      },
     );
     return AlkkagiGame.fromJson(res.data!);
   }
@@ -28,9 +33,12 @@ class AlkkagiRepository {
     return AlkkagiGame.fromJson(res.data!);
   }
 
-  Future<AlkkagiGame> accept(int gameId) async {
-    final res =
-        await _api.post<Map<String, dynamic>>('/alkkagi/games/$gameId/accept');
+  /// 초대 수락 — 수락자 자신의 시작 대형을 함께 보낸다.
+  Future<AlkkagiGame> accept(int gameId, {required String formation}) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/alkkagi/games/$gameId/accept',
+      body: {'formation': formation},
+    );
     return AlkkagiGame.fromJson(res.data!);
   }
 

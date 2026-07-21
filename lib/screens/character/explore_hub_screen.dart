@@ -169,8 +169,8 @@ class _ExploreHubScreenState extends State<ExploreHubScreen>
                       _ExploreCard(
                         emoji: '🏯',
                         title: '한국의 역사 탐험',
-                        subtitle: '경복궁부터 훈민정음까지',
-                        chips: const ['방패연', '역사 연대기', '6곳'],
+                        subtitle: '고조선부터 대한민국까지 시간여행',
+                        chips: const ['방패연', '7개 시대', '전쟁·인물·퀴즈'],
                         gradient: const [Color(0xFF7C2D12), Color(0xFFB45309)],
                         glow: const Color(0xFFFCD34D),
                         ambient: _ambientCtrl,
