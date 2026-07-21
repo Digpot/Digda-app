@@ -70,6 +70,7 @@ class AlkkagiGame {
     required this.inviteeUserId,
     required this.inviteeName,
     required this.stoneCount,
+    this.boardHeight = 1.35,
     required this.stones,
     this.currentTurnUserId,
     this.turnDeadlineEpochMs,
@@ -92,6 +93,9 @@ class AlkkagiGame {
 
   /// 한 쪽당 돌 개수(1~10) — 초대자가 초대 시 설정.
   final int stoneCount;
+
+  /// 보드 세로 길이(가로=1 기준) — 서버와 공유하는 렌더/낙사 판정 상수.
+  final double boardHeight;
   final List<AlkkagiStone> stones;
   final String? currentTurnUserId;
 
@@ -124,6 +128,7 @@ class AlkkagiGame {
       inviteeUserId: json['inviteeUserId'].toString(),
       inviteeName: json['inviteeName'] as String? ?? '',
       stoneCount: (json['stoneCount'] as num?)?.toInt() ?? 5,
+      boardHeight: (json['boardHeight'] as num?)?.toDouble() ?? 1.35,
       stones: ((json['stones'] as List?) ?? const [])
           .map((s) => AlkkagiStone.fromJson((s as Map).cast<String, dynamic>()))
           .toList(),
