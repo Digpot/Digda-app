@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
+import '../../core/maintenance_gate.dart';
 import '../../core/network/error_message.dart';
+import '../../core/notification_router.dart';
 import '../../features/app_config/models/app_config.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/group_room/models/group_room_models.dart';
@@ -70,7 +72,12 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   Future<void> _loadAppConfig() async {
     try {
       final cfg = await Di.appConfigRepository.get(forceRefresh: true);
-      if (mounted) setState(() => _appConfig = cfg);
+      if (!mounted) return;
+      setState(() => _appConfig = cfg);
+      // 서버 점검 중이면 홈에서부터 전 기능을 차단한다.
+      if (cfg.maintenanceEnabled) {
+        MaintenanceGate.show(appNavigatorKey, cfg.maintenanceMessage);
+      }
     } catch (_) {/* 설정 조회 실패는 화면에 영향 없음 */}
   }
 
