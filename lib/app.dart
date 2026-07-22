@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_router.dart';
 import 'core/ads/ad_service.dart';
 import 'core/di.dart';
+import 'core/maintenance_gate.dart';
 import 'core/notification_router.dart';
 import 'core/route_observer.dart';
 import 'core/update_gate.dart';
@@ -48,14 +49,19 @@ class _DigdaAppState extends State<DigdaApp> {
     Di.titleRepository.newlyEarned.addListener(_onNewTitle);
     if (Di.authSession.isAuthenticated) {
       _primeTitles();
-      _checkForceUpdate();
     }
+    // 점검 게이트는 로그인 여부와 무관하게 항상 검사한다.
+    _checkGates();
   }
 
-  /// 강제 업데이트 검사 — 스플래시/로그인 라우팅이 자리 잡은 뒤 띄운다.
-  void _checkForceUpdate() {
-    Future<void>.delayed(const Duration(milliseconds: 2000), () {
-      UpdateGate.check(_navigatorKey);
+  /// 점검 → 강제 업데이트 순서 게이트 — 스플래시/로그인 라우팅이 자리 잡은 뒤 띄운다.
+  /// 점검 중이면 어차피 스토어 이동도 무의미하므로 업데이트 게이트는 건너뛴다.
+  void _checkGates() {
+    Future<void>.delayed(const Duration(milliseconds: 2000), () async {
+      final blocked = await MaintenanceGate.check(_navigatorKey);
+      if (!blocked && Di.authSession.isAuthenticated) {
+        await UpdateGate.check(_navigatorKey);
+      }
     });
   }
 
@@ -77,7 +83,7 @@ class _DigdaAppState extends State<DigdaApp> {
     } else {
       // 로그인 직후 — 현재 보유 칭호로 기준선을 잡아 이후 획득만 축하한다.
       _primeTitles();
-      _checkForceUpdate();
+      _checkGates();
     }
   }
 
