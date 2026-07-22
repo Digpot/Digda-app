@@ -8,6 +8,8 @@ class AppConfig {
     this.minAppVersion = '',
     this.storeUrlAndroid = '',
     this.storeUrlIos = '',
+    this.maintenanceEnabled = false,
+    this.maintenanceMessage = '',
   });
 
   final bool noticeEnabled;
@@ -21,6 +23,12 @@ class AppConfig {
   /// 스토어 URL — 빈 값이면 앱이 플랫폼 기본 URL 로 폴백.
   final String storeUrlAndroid;
   final String storeUrlIos;
+
+  /// 서버 점검(업데이트) 모드 — true 면 로그인 여부와 무관하게 전 기능 차단.
+  final bool maintenanceEnabled;
+
+  /// 점검 안내 문구. 빈 값이면 앱 기본 문구.
+  final String maintenanceMessage;
 
   static const empty = AppConfig(
     noticeEnabled: false,
@@ -44,6 +52,8 @@ class AppConfig {
       minAppVersion: json['minAppVersion'] as String? ?? '',
       storeUrlAndroid: json['storeUrlAndroid'] as String? ?? '',
       storeUrlIos: json['storeUrlIos'] as String? ?? '',
+      maintenanceEnabled: json['maintenanceEnabled'] as bool? ?? false,
+      maintenanceMessage: json['maintenanceMessage'] as String? ?? '',
     );
   }
 }
