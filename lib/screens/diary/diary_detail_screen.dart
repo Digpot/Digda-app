@@ -1063,12 +1063,15 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
 
   Widget _buildCommentInputRow() {
+    // 입력창은 카톡처럼 줄바꿈으로 늘어나고(최대 5줄), 전송 버튼은 하단에 붙는다.
+    // 높이를 고정하지 않아야 받침 있는 한글(예: '요')의 아랫부분이 잘리지 않는다.
     return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              height: 40,
+              constraints: const BoxConstraints(minHeight: 40),
               decoration: BoxDecoration(
                 color: _chipBg,
                 borderRadius: BorderRadius.circular(20),
@@ -1078,20 +1081,22 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 focusNode: _commentFocus,
                 cursorColor: _coral,
                 maxLength: 200,
-                maxLines: 1,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendComment(),
+                minLines: 1,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
+                  height: 1.45,
                   color: _ink,
                 ),
                 decoration: InputDecoration(
                   isCollapsed: true,
                   counterText: '',
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   hintText: _replyTarget != null
                       ? '답글을 남겨보세요'
                       : '댓글로 마음을 남겨보세요',
@@ -1099,6 +1104,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
+                    height: 1.45,
                     color: _muted,
                   ),
                 ),

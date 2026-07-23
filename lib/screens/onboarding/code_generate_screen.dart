@@ -42,12 +42,7 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
     });
   }
 
-  void _shareCode() {
-    final code = _code;
-    if (code == null) return;
-    ShareService.shareText(context, ShareService.inviteMessage(code));
-  }
-
+  // 공유하기 — 코드 입력 딥링크가 포함된 카카오톡 메시지 카드로 전달.
   void _shareViaKakao() {
     final code = _code;
     if (code == null) return;
@@ -125,32 +120,6 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // 카카오톡 공유 — 코드 입력 딥링크가 포함된 메시지 카드로 전달.
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: _shareViaKakao,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.kakaoYellow,
-                          foregroundColor: AppColors.kakaoText,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.chat_bubble, size: 18),
-                        label: const Text(
-                          '카카오톡으로 초대하기',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
@@ -163,7 +132,7 @@ class _CodeGenerateScreenState extends State<CodeGenerateScreen> {
                         Expanded(
                           child: PrimaryButton(
                             text: '공유하기',
-                            onPressed: _shareCode,
+                            onPressed: _shareViaKakao,
                           ),
                         ),
                       ],

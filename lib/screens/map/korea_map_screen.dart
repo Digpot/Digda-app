@@ -23,8 +23,11 @@ class KoreaMapScreen extends StatefulWidget {
   State<KoreaMapScreen> createState() => _KoreaMapScreenState();
 }
 
+// AnimationController 가 둘(줌 이동 _anim + 첫 진입 인트로 _introCtrl)이라
+// Single 이 아닌 TickerProviderStateMixin 이어야 한다 — Single 이면 디버그에서
+// "multiple tickers were created" assert 로 화면이 깨진다(릴리스는 assert 제거로 잠복).
 class _KoreaMapScreenState extends State<KoreaMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// 탭 버킷별 시그니처 색. 선택 패널 액센트·뱃지에 사용.
   static const Map<String, Color> _groupColors = {
     '광역시': Color(0xFFFF8A5B),
@@ -645,11 +648,18 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             child: ScaleTransition(
             scale: _introScale,
             child: Container(
-            margin: const EdgeInsets.fromLTRB(6, 2, 6, 6),
+            margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               color: Colors.white,
-              border: Border.all(color: const Color(0xFFEFEFF1)),
+              border: Border.all(color: const Color(0xFFF1F2F4)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             clipBehavior: Clip.antiAlias,
             child: LayoutBuilder(
@@ -782,7 +792,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
           color: active ? AppColors.primary : AppColors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: active ? AppColors.primary : const Color(0xFFEDE3D2),
+            color: active ? AppColors.primary : AppColors.gray200,
           ),
           boxShadow: active
               ? [
@@ -909,7 +919,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFEFE6D6)),
+        border: Border.all(color: AppColors.gray100),
         boxShadow: [
           BoxShadow(
             color: accent.withValues(alpha: 0.10),
@@ -971,7 +981,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
             child: LinearProgressIndicator(
               value: frac,
               minHeight: 6,
-              backgroundColor: const Color(0xFFF1E9DC),
+              backgroundColor: AppColors.gray100,
               valueColor: AlwaysStoppedAnimation<Color>(accent),
             ),
           ),
@@ -1000,14 +1010,14 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
                           ? accent
                           : (colored
                               ? accent.withValues(alpha: 0.13)
-                              : const Color(0xFFFAF6EE)),
+                              : AppColors.gray50),
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(
                         color: selected
                             ? accent
                             : (colored
                                 ? accent.withValues(alpha: 0.35)
-                                : const Color(0xFFEDE3D2)),
+                                : AppColors.gray200),
                       ),
                     ),
                     child: Row(
@@ -1045,88 +1055,110 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
     );
   }
 
+  /// 전국 요약 — 상용앱 스타일 스탯 카드: 라벨(작게) + 큰 숫자 위계 + 진행 바.
   Widget _buildSummary() {
     final total = _data?.byKey.length ?? 0;
     final done = _coloredCount;
     final frac = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 4),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFFFFD9CF)),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.10),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.place, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    '전국 $done곳을 채웠어요',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.gray900,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          '우리가 채운 지역',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                        if (_loadingCounts) ...[
+                          const SizedBox(width: 6),
+                          const SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 1.6, color: AppColors.primary),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                  if (_loadingCounts) ...[
-                    const SizedBox(width: 8),
-                    const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.primary),
+                    const SizedBox(height: 3),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '$done곳',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 24,
+                            height: 1.0,
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '/ $total곳',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppColors.gray400,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: 230,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: frac,
-                        minHeight: 6,
-                        backgroundColor: const Color(0xFFEFE6D6),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.primary),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$done/$total · ${(frac * 100).round()}%',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                      color: AppColors.gray500,
-                    ),
-                  ),
-                ],
+              Text(
+                '${(frac * 100).round()}%',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: AppColors.primary,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: frac,
+              minHeight: 8,
+              backgroundColor: AppColors.gray100,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1185,7 +1217,7 @@ class _KoreaMapScreenState extends State<KoreaMapScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),

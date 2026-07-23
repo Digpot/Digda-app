@@ -16,7 +16,6 @@ class CharacterStageTreeScreen extends StatefulWidget {
 
 class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
   CharacterStageTree? _tree;
-  CharacterState? _myState;
   bool _loading = true;
   String? _errorMessage;
 
@@ -45,14 +44,11 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
       _errorMessage = null;
     });
     try {
-      final results = await Future.wait([
-        Di.characterRepository.getStageTree(groupRoomId: groupId),
-        Di.characterRepository.getMyState(groupRoomId: groupId),
-      ]);
+      final tree =
+          await Di.characterRepository.getStageTree(groupRoomId: groupId);
       if (!mounted) return;
       setState(() {
-        _tree = results[0] as CharacterStageTree;
-        _myState = results[1] as CharacterState;
+        _tree = tree;
         _loading = false;
       });
     } catch (e) {
@@ -91,11 +87,11 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? _ErrorRetry(message: _errorMessage!, onRetry: _load)
-              : _buildTree(_tree!, _myState!),
+              : _buildTree(_tree!),
     );
   }
 
-  Widget _buildTree(CharacterStageTree tree, CharacterState me) {
+  Widget _buildTree(CharacterStageTree tree) {
     final nextStage = tree.stages.where((s) => !s.unlocked).firstOrNull;
 
     return ListView.separated(
@@ -147,7 +143,8 @@ class _CharacterStageTreeScreenState extends State<CharacterStageTreeScreen> {
           info: s,
           currentLevel: tree.currentLevel,
           isCurrent: isCurrent,
-          appearance: MochiAppearance.fromState(me),
+          // 도감과 동일하게 단계별 "원본" 모찌(기본 코랄)로 표시 — 꾸민 외형과 무관.
+          appearance: MochiAppearance.coral,
         );
       },
     );

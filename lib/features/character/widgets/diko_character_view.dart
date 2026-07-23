@@ -91,17 +91,31 @@ class DikoCharacterView extends StatelessWidget {
   <!-- 부유 구체 아래 소프트 그림자 -->
   <ellipse cx="60" cy="108" rx="26" ry="5" fill="url(#dkShadow)"/>
 
+  <!-- 주변 반짝이 — 궤도를 도는 듯한 작은 스파클 3점 -->
+  <path d="M22 50 Q22 54 26 54 Q22 54 22 58 Q22 54 18 54 Q22 54 22 50 Z" fill="#FCD34D" opacity="0.6"/>
+  <path d="M100 42 Q100 45 103 45 Q100 45 100 48 Q100 45 97 45 Q100 45 100 42 Z" fill="#FCD34D" opacity="0.5"/>
+  <circle cx="96" cy="98" r="1.6" fill="#FFB0C1" opacity="0.7"/>
+
   <!-- 머리 위 별 안테나 (골드 그라디언트 + 글로우) -->
   <line x1="60" y1="36" x2="60" y2="22" stroke="#E63B6E" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="59.2" y1="34" x2="59.2" y2="24" stroke="#FF8FAB" stroke-width="0.9" stroke-linecap="round" opacity="0.8"/>
   <circle cx="60" cy="16" r="13" fill="url(#dkStarGlow)"/>
   <path d="M60 6 L63 14 L72 14 L65 19 L67.5 27 L60 22 L52.5 27 L55 19 L48 14 L57 14 Z" fill="url(#dkStar)" stroke="#C77B1B" stroke-width="1" stroke-linejoin="round"/>
   <circle cx="57.5" cy="13" r="1.2" fill="#FFFFFF" opacity="0.85"/>
 
-  <!-- 본체 — 좌상단 광원 그라디언트 + 림 셰이딩 + 스펙큘러 하이라이트 -->
+  <!-- 짧은 팔 — 본체 뒤에서 좌우로 내민 말랑 스텁 -->
+  <ellipse cx="22" cy="74" rx="9" ry="7.5" fill="url(#dkBody)" transform="rotate(-24 22 74)"/>
+  <ellipse cx="22" cy="74" rx="9" ry="7.5" fill="url(#dkRim)" transform="rotate(-24 22 74)"/>
+  <ellipse cx="98" cy="74" rx="9" ry="7.5" fill="url(#dkBody)" transform="rotate(24 98 74)"/>
+  <ellipse cx="98" cy="74" rx="9" ry="7.5" fill="url(#dkRim)" transform="rotate(24 98 74)"/>
+
+  <!-- 본체 — 좌상단 광원 그라디언트 + 림 셰이딩 + 이중 스펙큘러 + 바닥 반사광 -->
   <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#dkBody)"/>
   <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#dkRim)"/>
   <ellipse cx="45" cy="52" rx="12" ry="6.5" fill="#FFFFFF" opacity="0.65" transform="rotate(-18 45 52)"/>
   <circle cx="57" cy="42" r="2" fill="#FFFFFF" opacity="0.75"/>
+  <circle cx="52" cy="45" r="1.1" fill="#FFFFFF" opacity="0.6"/>
+  <ellipse cx="60" cy="99" rx="19" ry="4.5" fill="#FFFFFF" opacity="0.14"/>
 
   <!-- 옅은 별 무늬 (가슴) -->
   <path d="M84 88 L85 92 L89 92 L86 94 L87 98 L84 95.5 L81 98 L82 94 L79 92 L83 92 Z" fill="#FFFFFF" opacity="0.9"/>
@@ -110,18 +124,21 @@ class DikoCharacterView extends StatelessWidget {
   $face
 
   <!-- 양쪽 볼 홍조 (radial fade) -->
-  <ellipse cx="42" cy="74" rx="6" ry="4" fill="url(#dkCheek)"/>
-  <ellipse cx="78" cy="74" rx="6" ry="4" fill="url(#dkCheek)"/>
+  <ellipse cx="42" cy="74" rx="6.5" ry="4.4" fill="url(#dkCheek)"/>
+  <ellipse cx="78" cy="74" rx="6.5" ry="4.4" fill="url(#dkCheek)"/>
 </svg>
 ''';
   }
 
-  // 채워진 눈에는 좌상단 캐치라이트를 얹어 모찌와 같은 3D 톤을 유지한다.
+  // 채워진 눈에는 이중 캐치라이트(큰 점 + 반대편 작은 점)를 얹어
+  // 상용 캐릭터 앱처럼 촉촉한 3D 눈망울을 만든다.
   static const String _faceIdle = '''
-  <ellipse cx="50" cy="64" rx="2.6" ry="3.4" fill="#2B2B2B"/>
-  <circle cx="49.2" cy="62.9" r="0.9" fill="#FFFFFF" opacity="0.9"/>
-  <ellipse cx="70" cy="64" rx="2.6" ry="3.4" fill="#2B2B2B"/>
-  <circle cx="69.2" cy="62.9" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="50" cy="64" rx="2.9" ry="3.8" fill="#2B2B2B"/>
+  <circle cx="49.1" cy="62.7" r="1.0" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="51.2" cy="65.6" r="0.5" fill="#FFFFFF" opacity="0.7"/>
+  <ellipse cx="70" cy="64" rx="2.9" ry="3.8" fill="#2B2B2B"/>
+  <circle cx="69.1" cy="62.7" r="1.0" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="71.2" cy="65.6" r="0.5" fill="#FFFFFF" opacity="0.7"/>
   <path d="M54 78 Q60 82 66 78" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
   ''';
 
@@ -132,17 +149,20 @@ class DikoCharacterView extends StatelessWidget {
   ''';
 
   static const String _faceCurious = '''
-  <ellipse cx="50" cy="64" rx="2.4" ry="3.6" fill="#2B2B2B"/>
-  <circle cx="49.2" cy="62.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
-  <ellipse cx="70" cy="64" rx="2.4" ry="3.6" fill="#2B2B2B"/>
-  <circle cx="69.2" cy="62.8" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="50" cy="64" rx="2.7" ry="4.0" fill="#2B2B2B"/>
+  <circle cx="49.1" cy="62.6" r="1.0" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="51.1" cy="65.8" r="0.5" fill="#FFFFFF" opacity="0.7"/>
+  <ellipse cx="70" cy="64" rx="2.7" ry="4.0" fill="#2B2B2B"/>
+  <circle cx="69.1" cy="62.6" r="1.0" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="71.1" cy="65.8" r="0.5" fill="#FFFFFF" opacity="0.7"/>
   <ellipse cx="60" cy="80" rx="3.2" ry="2.2" fill="#2B2B2B"/>
   ''';
 
   static const String _faceWink = '''
   <path d="M46 64 Q50 60 54 64" stroke="#2B2B2B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-  <ellipse cx="70" cy="64" rx="2.6" ry="3.4" fill="#2B2B2B"/>
-  <circle cx="69.2" cy="62.9" r="0.9" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="70" cy="64" rx="2.9" ry="3.8" fill="#2B2B2B"/>
+  <circle cx="69.1" cy="62.7" r="1.0" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="71.2" cy="65.6" r="0.5" fill="#FFFFFF" opacity="0.7"/>
   <path d="M54 78 Q60 82 66 78" stroke="#2B2B2B" stroke-width="2" stroke-linecap="round" fill="none"/>
   ''';
 }
