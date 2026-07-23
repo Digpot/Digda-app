@@ -4,8 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../theme/colors.dart';
 import '../models/character_models.dart';
+import 'character_speech_bubble.dart';
 import 'mochi_character_view.dart';
 
 // ─────────────────────────────────────────────
@@ -18,7 +18,13 @@ class MochiAnimationController {
   void triggerExcited() => _state?.triggerExcited();
   void triggerHappy() => _state?.triggerHappy();
   void triggerProud() => _state?.triggerProud();
+
+  /// 돌봄 액션(물주기·간식 등) 리액션 — 감정 + 점프 + 전용 파티클 + 대사.
+  void triggerCare(MochiCareAction action) => _state?.triggerCare(action);
 }
+
+/// 홈 씬 하단 돌봄 툴바의 액션 종류. 각자 고유한 파티클/대사 리액션을 가진다.
+enum MochiCareAction { water, snack, play, bubble }
 
 // ─────────────────────────────────────────────
 // 메인 애니메이션 위젯
@@ -34,6 +40,9 @@ class AnimatedMochiWidget extends StatefulWidget {
     this.controller,
     this.onPet,
     this.showBubble = false,
+    this.heightFactor = 1.0,
+    this.clipRadius = 48,
+    this.bubbleInBounds = false,
   });
 
   final MochiAppearance appearance;
@@ -51,6 +60,16 @@ class AnimatedMochiWidget extends StatefulWidget {
   /// true 면 10초 주기로 자동 말풍선이 뜨고, 터치 시 즉시 새 말풍선이 뜬다.
   /// 위젯 size 위쪽으로 추가 영역(48px)을 차지한다.
   final bool showBubble;
+
+  /// 씬 세로 확장 배율 — 홈 화면 직사각형 씬은 1.3. [MochiCharacterView.heightFactor].
+  final double heightFactor;
+
+  /// 씬 클리핑 모서리 반경 — 홈 카드는 28 권장. [MochiCharacterView.clipRadius].
+  final double clipRadius;
+
+  /// true 면 말풍선을 위젯 위 추가 밴드 대신 씬 캔버스 안(하늘 영역)에 띄운다.
+  /// 세로 확장 씬에서 하늘 여백이 충분할 때 사용.
+  final bool bubbleInBounds;
 
   @override
   State<AnimatedMochiWidget> createState() => _AnimatedMochiWidgetState();
@@ -133,6 +152,11 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   final List<_ParticleData> _particles = [];
   int _pid = 0;
 
+  // ── 돌봄 연출 ──
+  _CareShowData? _careShow;
+  int _careSeq = 0;
+  Timer? _careReactTimer;
+
   // ── 쓰다듬 쿨다운 ──
   DateTime _lastPetCall = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -143,9 +167,57 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
   Timer? _bubbleHideTimer;
   int _lastBubbleIndex = -1;
 
-  // 말풍선 위치 변주(2.0.0) — 매번 같은 자리에 뜨지 않도록 머리 위 범위에서 랜덤.
-  double _bubbleLeftFactor = 0.45; // size 대비 0.10~0.50
-  double _bubbleTop = 0; // 0~10px
+  // 말풍선 슬롯 — 머리 위 좌/중/우 + 머리 옆 좌/우까지 5개 자리를 돌아가며 떠서
+  // 캐릭터 주변 곳곳에서 말을 거는 느낌을 준다. 꼬리는 항상 모찌 쪽을 가리킨다.
+  _BubbleSlot _bubbleSlot = const _BubbleSlot(
+    left: 0,
+    top: 0,
+    tail: BubbleTailDirection.bottomCenter,
+  );
+  int _lastSlotIndex = -1;
+
+  /// 다음 말풍선이 뜰 자리를 고른다 — 직전과 같은 슬롯은 피한다.
+  void _pickBubbleSlot() {
+    final s = widget.size;
+    final slots = <_BubbleSlot>[
+      // 머리 위 왼쪽 끝 — 꼬리가 오른쪽 아래(머리)로.
+      _BubbleSlot(
+        left: -6,
+        top: _rng.nextDouble() * 10,
+        tail: BubbleTailDirection.bottomRight,
+      ),
+      // 머리 바로 위 — 꼬리 중앙.
+      _BubbleSlot(
+        left: s * (0.14 + _rng.nextDouble() * 0.12),
+        top: _rng.nextDouble() * 10,
+        tail: BubbleTailDirection.bottomCenter,
+      ),
+      // 머리 위 오른쪽 끝 — 꼬리가 왼쪽 아래(머리)로.
+      _BubbleSlot(
+        right: -6,
+        top: _rng.nextDouble() * 10,
+        tail: BubbleTailDirection.bottomLeft,
+      ),
+      // 머리 옆 왼쪽(배경 상단 모서리에 살짝 걸침).
+      _BubbleSlot(
+        left: -12,
+        top: 34 + _rng.nextDouble() * 12,
+        tail: BubbleTailDirection.bottomRight,
+      ),
+      // 머리 옆 오른쪽.
+      _BubbleSlot(
+        right: -12,
+        top: 34 + _rng.nextDouble() * 12,
+        tail: BubbleTailDirection.bottomLeft,
+      ),
+    ];
+    int idx;
+    do {
+      idx = _rng.nextInt(slots.length);
+    } while (idx == _lastSlotIndex);
+    _lastSlotIndex = idx;
+    _bubbleSlot = slots[idx];
+  }
 
   final _rng = math.Random();
 
@@ -201,6 +273,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     _sleepCheckTimer?.cancel();
     _bubbleAutoTimer?.cancel();
     _bubbleHideTimer?.cancel();
+    _careReactTimer?.cancel();
     super.dispose();
   }
 
@@ -327,6 +400,50 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
     );
   }
 
+  /// 돌봄 액션 리액션 — 이모지 파티클 한 줌으로 끝나던 걸 액션별 연출
+  /// 시퀀스([_CareShow])로 바꿨다: 공이 굴러와 모찌가 차올리고, 구름이 와서
+  /// 비를 뿌리고, 간식이 떨어져 냠냠 사라지고, 비눗방울이 차오른다.
+  /// 감정 변화·점프·대사는 연출 타이밍에 맞춰 지연 트리거된다.
+  /// 말풍선은 showBubble 여부와 무관하게 강제로 띄워, 디코 채팅 모드에서도
+  /// 반응이 보이게 한다.
+  void triggerCare(MochiCareAction action) {
+    _lastInteraction = DateTime.now();
+    final (MochiEmotion emotion, List<String> lines) = switch (action) {
+      MochiCareAction.water => (
+          MochiEmotion.happy,
+          const ['시원해~! 고마워', '물 최고야!', '쑥쑥 자랄게!'],
+        ),
+      MochiCareAction.snack => (
+          MochiEmotion.excited,
+          const ['냠냠 맛있어!', '간식 최고~!', '한 입만 더...!'],
+        ),
+      MochiCareAction.play => (
+          MochiEmotion.excited,
+          const ['슛~ 골인!', '재밌다! 한 번 더!', '공놀이 좋아!'],
+        ),
+      MochiCareAction.bubble => (
+          MochiEmotion.happy,
+          const ['보글보글~', '간지러워 히히', '반짝반짝 목욕시간!'],
+        ),
+    };
+    // 연출 시작 — 같은 액션 연타 시 새 시퀀스로 교체.
+    setState(() => _careShow = _CareShowData(id: _careSeq++, action: action));
+    // 리액션(감정+점프+대사)은 소품이 모찌에 닿는 순간에 맞춘다.
+    _careReactTimer?.cancel();
+    _careReactTimer = Timer(_CareShow.reactDelay(action), () {
+      if (!mounted) return;
+      _setEmotion(emotion, resetAfter: const Duration(seconds: 3));
+      _jump();
+      _spawnParticles(
+        Offset(widget.size / 2, widget.size * 0.5),
+        count: 3,
+        forceEmoji: _CareShow.burstEmoji(action),
+      );
+      _showBubbleMessage(lines[_rng.nextInt(lines.length)], forced: true);
+    });
+    _tryPetCallback();
+  }
+
   // ── 제스처 ──
 
   void _onTapDown(TapDownDetails d) {
@@ -378,13 +495,18 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       } while (index == _lastBubbleIndex);
     }
     _lastBubbleIndex = index;
+    _showBubbleMessage(messages[index]);
+  }
+
+  /// [message] 말풍선을 띄운다. [forced]=true 면 showBubble=false 여도 띄운다
+  /// (돌봄 리액션 등 1회성 강제 대사용).
+  void _showBubbleMessage(String message, {bool forced = false}) {
+    if (!mounted || (!widget.showBubble && !forced)) return;
     _bubbleHideTimer?.cancel();
     setState(() {
       _bubbleSeq++;
-      _bubbleMessage = messages[index];
-      // 위치도 함께 변주 — 겹침을 줄이려 머리 위(상단 밴드) 안에서만 움직인다.
-      _bubbleLeftFactor = 0.10 + _rng.nextDouble() * 0.40;
-      _bubbleTop = _rng.nextDouble() * 10;
+      _bubbleMessage = message;
+      _pickBubbleSlot();
     });
     _bubbleHideTimer = Timer(const Duration(milliseconds: 4500), () {
       if (!mounted) return;
@@ -437,10 +559,15 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       stage: widget.stage,
       size: widget.size,
       part: MochiCharacterPart.background,
+      heightFactor: widget.heightFactor,
+      clipRadius: widget.clipRadius,
     );
 
     // 말풍선이 활성화돼 있으면 위쪽 영역을 추가로 확보한다.
-    final topPad = widget.showBubble ? 56.0 : 0.0;
+    // (bubbleInBounds 면 씬 캔버스 안 하늘 영역에 띄우므로 추가 밴드 불필요)
+    final topPad =
+        (widget.showBubble && !widget.bubbleInBounds) ? 56.0 : 0.0;
+    final canvasHeight = widget.size * widget.heightFactor;
 
     final mochi = AnimatedBuilder(
       animation: Listenable.merge([_swayCtrl, _floatCtrl, _jumpCtrl]),
@@ -466,9 +593,22 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
                   expression: _emotion,
                   eyeOpenness: _eyeOpenness,
                   part: MochiCharacterPart.body,
+                  heightFactor: widget.heightFactor,
+                  clipRadius: widget.clipRadius,
                 ),
               ),
             ),
+            // 돌봄 연출 소품 — 공/구름/간식/비눗방울이 씬 안에서 살아 움직인다.
+            if (_careShow != null)
+              _CareShow(
+                key: ValueKey('care-${_careShow!.id}'),
+                action: _careShow!.action,
+                size: widget.size,
+                onDone: () {
+                  if (!mounted) return;
+                  setState(() => _careShow = null);
+                },
+              ),
             for (final p in List.of(_particles))
               _ParticleWidget(
                 key: ValueKey(p.id),
@@ -485,7 +625,7 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
       onLongPress: _onLongPress,
       child: SizedBox(
         width: widget.size,
-        height: widget.size + 24 + topPad,
+        height: canvasHeight + 24 + topPad,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -496,30 +636,38 @@ class _AnimatedMochiWidgetState extends State<AnimatedMochiWidget>
               bottom: 0,
               child: mochi,
             ),
-            if (widget.showBubble)
+            if (widget.showBubble || _bubbleMessage != null)
               Positioned(
-                top: _bubbleTop,
-                left: widget.size * _bubbleLeftFactor,
-                right: -8,
+                top: _bubbleSlot.top,
+                left: _bubbleSlot.left,
+                right: _bubbleSlot.right,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 260),
                   switchInCurve: Curves.easeOutBack,
                   switchOutCurve: Curves.easeIn,
                   transitionBuilder: (child, anim) {
+                    // 팝 스케일은 꼬리(캐릭터를 가리키는 지점)를 기준으로 커진다.
+                    final alignment = switch (_bubbleSlot.tail) {
+                      BubbleTailDirection.bottomLeft => Alignment.bottomLeft,
+                      BubbleTailDirection.bottomCenter =>
+                        Alignment.bottomCenter,
+                      BubbleTailDirection.bottomRight => Alignment.bottomRight,
+                    };
                     return FadeTransition(
                       opacity: anim,
                       child: ScaleTransition(
                         scale: Tween<double>(begin: 0.7, end: 1.0).animate(anim),
-                        alignment: Alignment.bottomLeft,
+                        alignment: alignment,
                         child: child,
                       ),
                     );
                   },
                   child: _bubbleMessage == null
                       ? const SizedBox.shrink(key: ValueKey('empty'))
-                      : _SpeechBubble(
+                      : CharacterSpeechBubble(
                           key: ValueKey('bubble-$_bubbleSeq'),
-                          message: _bubbleMessage!,
+                          text: _bubbleMessage!,
+                          tail: _bubbleSlot.tail,
                         ),
                 ),
               ),
@@ -627,94 +775,334 @@ class _ParticleWidgetState extends State<_ParticleWidget>
 }
 
 // ─────────────────────────────────────────────
-// 말풍선 — 모찌 머리 위에 떠 있는 코멘트
+// 돌봄 연출 — 액션별 스크립트 애니메이션 소품
 // ─────────────────────────────────────────────
 
-class _SpeechBubble extends StatelessWidget {
-  const _SpeechBubble({super.key, required this.message});
+class _CareShowData {
+  const _CareShowData({required this.id, required this.action});
+  final int id;
+  final MochiCareAction action;
+}
 
-  final String message;
+/// 돌봄 액션의 소품 연출. 이모지 소품이 씬 안에서 경로를 따라 움직인다:
+/// - 공놀이: 공이 왼쪽에서 굴러와 튀어오르고, 모찌가 차올려 오른쪽 하늘로 날아간다
+/// - 물주기: 구름이 머리 위로 흘러와 빗방울을 뿌리고 지나간다
+/// - 간식: 간식이 톡 떨어져 통통 튀고, 한 입씩 사라진다
+/// - 목욕: 비눗방울들이 아래에서 차올라 흔들리며 톡톡 터진다
+///
+/// 좌표계는 씬 상단 정사각형(폭 [size]) 기준 — 지면 y≈0.80·size, 모찌 중심
+/// x=0.5·size. 시퀀스가 끝나면 [onDone] 으로 자신을 제거한다.
+class _CareShow extends StatefulWidget {
+  const _CareShow({
+    super.key,
+    required this.action,
+    required this.size,
+    required this.onDone,
+  });
+
+  final MochiCareAction action;
+  final double size;
+  final VoidCallback onDone;
+
+  /// 소품이 모찌에 닿아 리액션(감정/점프/대사)을 시작할 시점.
+  static Duration reactDelay(MochiCareAction action) => switch (action) {
+        MochiCareAction.play => const Duration(milliseconds: 850),
+        MochiCareAction.snack => const Duration(milliseconds: 720),
+        MochiCareAction.water => const Duration(milliseconds: 800),
+        MochiCareAction.bubble => const Duration(milliseconds: 700),
+      };
+
+  /// 리액션 순간 터지는 파티클 이모지.
+  static String burstEmoji(MochiCareAction action) => switch (action) {
+        MochiCareAction.play => '⭐',
+        MochiCareAction.snack => '❤️',
+        MochiCareAction.water => '✨',
+        MochiCareAction.bubble => '✨',
+      };
+
+  static Duration _duration(MochiCareAction action) => switch (action) {
+        MochiCareAction.play => const Duration(milliseconds: 1700),
+        MochiCareAction.snack => const Duration(milliseconds: 1900),
+        MochiCareAction.water => const Duration(milliseconds: 2100),
+        MochiCareAction.bubble => const Duration(milliseconds: 2100),
+      };
+
+  @override
+  State<_CareShow> createState() => _CareShowState();
+}
+
+class _CareShowState extends State<_CareShow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: _CareShow._duration(widget.action),
+    )
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed) widget.onDone();
+      })
+      ..forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  /// [t] 를 [a, b] 구간에서 0→1 로 정규화. 구간 밖은 0/1 로 클램프.
+  static double _seg(double t, double a, double b) =>
+      ((t - a) / (b - a)).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = AppColors.primary.withValues(alpha: 0.22);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 168),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: borderColor, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+    final w = widget.size;
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        final t = _ctrl.value;
+        final props = switch (widget.action) {
+          MochiCareAction.play => _play(t, w),
+          MochiCareAction.snack => _snack(t, w),
+          MochiCareAction.water => _water(t, w),
+          MochiCareAction.bubble => _bubble(t, w),
+        };
+        return Stack(clipBehavior: Clip.none, children: props);
+      },
+    );
+  }
+
+  Widget _prop(
+    double x,
+    double y,
+    String emoji, {
+    double scale = 1.0,
+    double angle = 0.0,
+    double opacity = 1.0,
+    double fontSize = 30,
+  }) {
+    return Positioned(
+      left: x - fontSize / 2,
+      top: y - fontSize / 2,
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: Transform.rotate(
+          angle: angle,
+          child: Transform.scale(
+            scale: scale,
+            child: Text(emoji, style: TextStyle(fontSize: fontSize)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 공놀이 — 굴러오기(0~0.38) → 튀어오르기(0.38~0.52) → 슛(0.52~1).
+  List<Widget> _play(double t, double w) {
+    final ground = w * 0.80;
+    double x;
+    double y;
+    double angle;
+    var opacity = 1.0;
+    if (t < 0.38) {
+      final p = Curves.easeOut.transform(_seg(t, 0.0, 0.38));
+      x = -w * 0.12 + p * w * 0.48; // → 0.36w
+      // 굴러오며 낮게 두 번 통통.
+      y = ground - (math.sin(p * math.pi * 2).abs() * w * 0.05);
+      angle = p * math.pi * 3;
+    } else if (t < 0.52) {
+      final p = Curves.easeOut.transform(_seg(t, 0.38, 0.52));
+      x = w * 0.36 + p * w * 0.10;
+      y = ground - p * w * 0.16; // 모찌 발치로 살짝 떠오름
+      angle = math.pi * 3 + p * math.pi;
+    } else {
+      // 슛! 오른쪽 하늘로 포물선 비행 + 빠른 회전.
+      final p = Curves.easeIn.transform(_seg(t, 0.52, 1.0));
+      x = w * 0.46 + p * w * 0.72;
+      y = ground - w * 0.16 - math.sin(p * math.pi * 0.5) * w * 0.62;
+      angle = math.pi * 4 + p * math.pi * 5;
+      opacity = 1.0 - _seg(p, 0.85, 1.0);
+    }
+    // 슛 구간의 별 꼬리 — 공이 지나온 자리에 흐릿한 별이 남는다.
+    final trail = <Widget>[
+      if (t >= 0.52)
+        for (var i = 1; i <= 3; i++)
+          if (Curves.easeIn.transform(_seg(t, 0.52, 1.0)) - i * 0.10 > 0)
+            _prop(
+              w * 0.46 +
+                  (Curves.easeIn.transform(_seg(t, 0.52, 1.0)) - i * 0.10) *
+                      w *
+                      0.72,
+              ground -
+                  w * 0.16 -
+                  math.sin(
+                          (Curves.easeIn.transform(_seg(t, 0.52, 1.0)) -
+                                  i * 0.10) *
+                              math.pi *
+                              0.5) *
+                      w *
+                      0.62,
+              '⭐',
+              fontSize: 14,
+              opacity: (0.6 - i * 0.16) * opacity,
             ),
-            child: Text(
-              message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                height: 1.25,
-                color: AppColors.gray900,
+    ];
+    return [
+      ...trail,
+      // 지면 그림자 — 공 높이에 따라 작아진다.
+      if (opacity > 0)
+        Positioned(
+          left: x - 12,
+          top: ground + 8,
+          child: Opacity(
+            opacity: 0.18 * opacity * (1.0 - _seg(ground - y, 0, w * 0.5)),
+            child: Container(
+              width: 24,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
           ),
         ),
-        // 꼬리 — 말풍선 좌하단 살짝 안쪽에서 모찌 쪽을 가리킴
-        Padding(
-          padding: const EdgeInsets.only(left: 18),
-          child: CustomPaint(
-            size: const Size(14, 9),
-            painter: _BubbleTailPainter(borderColor: borderColor),
-          ),
+      _prop(x, y, '⚽', angle: angle, opacity: opacity, fontSize: 26),
+    ];
+  }
+
+  /// 간식 — 낙하(0~0.32) → 착지 바운스(0.32~0.45) → 한 입씩 냠냠(0.45~0.95).
+  List<Widget> _snack(double t, double w) {
+    final landY = w * 0.64; // 모찌 입가 근처
+    const x0 = 0.50;
+    if (t < 0.32) {
+      final p = Curves.easeIn.transform(_seg(t, 0.0, 0.32));
+      return [_prop(w * x0, -w * 0.06 + p * (landY + w * 0.06), '🍡')];
+    }
+    if (t < 0.45) {
+      final p = _seg(t, 0.32, 0.45);
+      final squash = 1.0 + math.sin(p * math.pi) * 0.18;
+      final hop = math.sin(p * math.pi) * w * 0.03;
+      return [_prop(w * x0, landY - hop, '🍡', scale: squash)];
+    }
+    // 세 입에 나눠 먹기 — 단계적으로 작아지며 좌우로 옴찔.
+    final p = _seg(t, 0.45, 0.95);
+    final bite = (p * 3).floor().clamp(0, 2);
+    final biteP = (p * 3 - bite).clamp(0.0, 1.0);
+    final scale = (1.0 - (bite + 1) * 0.3) + 0.3 * (1.0 - biteP);
+    final wiggle = math.sin(p * math.pi * 6) * w * 0.012;
+    final fade = 1.0 - _seg(p, 0.92, 1.0);
+    return [
+      _prop(w * x0 + wiggle, landY, '🍡',
+          scale: scale.clamp(0.0, 1.0), opacity: fade),
+      // 한 입 먹을 때마다 작은 하트가 뽀글 떠오른다.
+      if (biteP < 0.6)
+        _prop(
+          w * (x0 + 0.09) + wiggle,
+          landY - w * 0.06 - biteP * w * 0.14,
+          '❤️',
+          fontSize: 14,
+          opacity: (1.0 - biteP / 0.6) * fade,
         ),
-      ],
-    );
+    ];
+  }
+
+  /// 물주기 — 구름 등장(0~0.25) → 비 뿌리기(0.25~0.8) → 퇴장(0.8~1).
+  List<Widget> _water(double t, double w) {
+    final cloudY = w * 0.20;
+    double cloudX;
+    if (t < 0.25) {
+      cloudX = -w * 0.15 + Curves.easeOut.transform(_seg(t, 0, 0.25)) * w * 0.65;
+    } else if (t < 0.80) {
+      cloudX = w * 0.50 + math.sin(_seg(t, 0.25, 0.80) * math.pi * 2) * w * 0.03;
+    } else {
+      cloudX = w * 0.50 + Curves.easeIn.transform(_seg(t, 0.80, 1.0)) * w * 0.70;
+    }
+    final props = <Widget>[
+      _prop(cloudX, cloudY, '🌧️', fontSize: 40,
+          opacity: 1.0 - _seg(t, 0.92, 1.0)),
+    ];
+    // 빗방울 4줄 — 구름에서 모찌 정수리까지 시차 낙하.
+    for (var i = 0; i < 4; i++) {
+      final start = 0.28 + i * 0.11;
+      final p = _seg(t, start, start + 0.22);
+      if (p <= 0 || p >= 1) continue;
+      final dx = (i - 1.5) * w * 0.07;
+      props.add(_prop(
+        cloudX * 0.4 + w * 0.5 * 0.6 + dx, // 구름과 모찌 사이 보간 위치
+        cloudY + w * 0.06 + p * w * 0.30,
+        '💧',
+        fontSize: 16,
+        opacity: 1.0 - _seg(p, 0.7, 1.0),
+      ));
+    }
+    // 비가 갠 뒤 무지개 — 마지막에 스르륵 떠올라 마무리.
+    final rainbowP = _seg(t, 0.74, 0.90);
+    if (rainbowP > 0) {
+      props.add(_prop(
+        w * 0.66,
+        w * 0.34 - rainbowP * w * 0.04,
+        '🌈',
+        fontSize: 34,
+        scale: 0.6 + rainbowP * 0.4,
+        opacity: rainbowP * (1.0 - _seg(t, 0.94, 1.0)),
+      ));
+      props.add(_prop(
+        w * 0.38,
+        w * 0.44,
+        '✨',
+        fontSize: 16,
+        opacity: rainbowP * (1.0 - _seg(t, 0.92, 1.0)),
+      ));
+    }
+    return props;
+  }
+
+  /// 목욕 — 비눗방울 3개가 차올라 흔들리다 톡 터진다 (시차).
+  List<Widget> _bubble(double t, double w) {
+    final props = <Widget>[];
+    const xs = [0.30, 0.52, 0.70];
+    for (var i = 0; i < xs.length; i++) {
+      final start = i * 0.12;
+      final p = _seg(t, start, start + 0.66);
+      if (p <= 0) continue;
+      final rise = Curves.easeOut.transform(p);
+      final y = w * 0.82 - rise * w * 0.44;
+      final sway = math.sin(p * math.pi * 3 + i) * w * 0.035;
+      // 마지막 12% 구간에서 팝 — 커지며 사라지고 반짝이가 남는다.
+      final popP = _seg(p, 0.88, 1.0);
+      final scale = 0.7 + rise * 0.5 + popP * 0.6;
+      final opacity = 1.0 - popP;
+      props.add(_prop(
+        w * xs[i] + sway,
+        y,
+        '🫧',
+        scale: scale,
+        opacity: opacity,
+        fontSize: 24 + i * 4.0,
+      ));
+      if (popP > 0 && popP < 1) {
+        props.add(_prop(w * xs[i] + sway, y, '✨',
+            scale: 0.5 + popP * 0.7, opacity: 1.0 - popP, fontSize: 18));
+      }
+    }
+    return props;
   }
 }
 
-class _BubbleTailPainter extends CustomPainter {
-  _BubbleTailPainter({required this.borderColor});
+// ─────────────────────────────────────────────
+// 말풍선 슬롯 — 캐릭터 주변에서 말풍선이 뜨는 자리
+// ─────────────────────────────────────────────
 
-  final Color borderColor;
+class _BubbleSlot {
+  const _BubbleSlot({this.left, this.right, required this.top, required this.tail});
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fillPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width * 0.55, size.height)
-      ..lineTo(size.width, 0);
-
-    // 채움 — 본체와 이어지도록 위쪽은 닫지 않음.
-    final fillPath = Path.from(path)..close();
-    canvas.drawPath(fillPath, fillPaint);
-    // 위쪽(0~size.width 라인) 은 본체 border 와 겹치므로 그리지 않는다.
-    canvas.drawPath(path, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BubbleTailPainter old) =>
-      old.borderColor != borderColor;
+  /// left/right 중 하나만 설정 — 나머지 쪽은 내용 크기에 맞게 열어둔다.
+  final double? left;
+  final double? right;
+  final double top;
+  final BubbleTailDirection tail;
 }

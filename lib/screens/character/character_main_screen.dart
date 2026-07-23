@@ -28,6 +28,8 @@ import 'character_stage_tree_screen.dart';
 import 'character_shop_screen.dart';
 import 'character_dex_screen.dart';
 import 'character_intro_screen.dart';
+import 'explore_hub_screen.dart';
+import 'games/group_game_list_screen.dart';
 import 'quiz/character_quiz_play_screen.dart';
 import 'quiz/character_quiz_list_screen.dart';
 import '../exhibit/nickname_exhibit_screen.dart';
@@ -64,6 +66,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   // 사진 저장 해금 레벨 — 레벨 달성 시 1개씩 풀린다. 마지막(배경+모찌)이 가장 높은 레벨.
   static const int _kInfoCardLevel = 3;
   static const int _kCleanLevel = 6;
+
+  // 콘텐츠 해금 레벨 — 게임은 Lv.3, 우주 탐험은 Lv.5 부터.
+  static const int _kGameLevel = 3;
+  static const int _kExploreLevel = 5;
 
   @override
   void initState() {
@@ -208,6 +214,21 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
   Future<void> _openExhibit() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const NicknameExhibitScreen()),
+    );
+  }
+
+  Future<void> _openGames() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const GroupGameListScreen()),
+    );
+  }
+
+  Future<void> _openExplore() async {
+    final s = _state;
+    if (s == null) return;
+    // 탐험 허브 — 우주/해저 등 탐험 콘텐츠를 고르는 관문.
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => ExploreHubScreen(character: s)),
     );
   }
 
@@ -551,12 +572,10 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         children: [
           const SizedBox(height: 12),
-          Center(
-            child: MochiDikoStage(
-              state: s,
-              mochiController: _mochiCtrl,
-              onPet: _handlePet,
-            ),
+          MochiHomeScene(
+            state: s,
+            mochiController: _mochiCtrl,
+            onPet: _handlePet,
           ),
           const SizedBox(height: 6),
           Text(
@@ -572,13 +591,11 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
             ),
           ),
           _buildEquippedTitleChip(),
+          const SizedBox(height: 16),
+          // 레벨·단계·코인·EXP 를 한 장의 상태 카드로 — 흩어진 칩 3개(레벨/EXP/코인)
+          // 가 세로로 늘어지던 걸 상용 키우기 게임처럼 응집시킨다.
+          _StatusCard(state: s),
           const SizedBox(height: 20),
-          _LevelStageRow(state: s),
-          const SizedBox(height: 12),
-          _ExpProgress(state: s),
-          const SizedBox(height: 28),
-          _CoinChip(coin: s.coin),
-          const SizedBox(height: 24),
           if (s.canChallengeMaster) ...[
             _MasterGameCta(
               onTap: _openMasterGame,
@@ -647,6 +664,32 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
               ),
             ],
           ),
+          // 그룹원들이 한 폰으로 즐기는 미니게임 목록 진입 버튼 — Lv.3 해금.
+          const SizedBox(height: 12),
+          _GameCta(
+            locked: s.level < _kGameLevel,
+            requiredLevel: _kGameLevel,
+            onTap: s.level < _kGameLevel
+                ? () => showInfoDialog(
+                      context,
+                      '아직 잠겨 있어요',
+                      '모찌가 레벨 $_kGameLevel이 되면\n게임을 즐길 수 있어요!',
+                    )
+                : _openGames,
+          ),
+          // 모찌와 우주 탐험 — Lv.5 해금.
+          const SizedBox(height: 12),
+          _ExploreCta(
+            locked: s.level < _kExploreLevel,
+            requiredLevel: _kExploreLevel,
+            onTap: s.level < _kExploreLevel
+                ? () => showInfoDialog(
+                      context,
+                      '아직 잠겨 있어요',
+                      '모찌가 레벨 $_kExploreLevel이 되면\n우주 탐험을 떠날 수 있어요!',
+                    )
+                : _openExplore,
+          ),
           // 어드민이 허용한 사용자만 노출되는 역대 별명 전시관 진입 버튼.
           if (_exhibitAllowed) ...[
             const SizedBox(height: 12),
@@ -654,6 +697,143 @@ class _CharacterMainScreenState extends State<CharacterMainScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// 모찌 화면 하단의 그라디언트 CTA 공통 위젯 — 잠금 상태면 회색 톤 + Lv 해금 뱃지.
+class _GradientCta extends StatelessWidget {
+  const _GradientCta({
+    required this.emoji,
+    required this.label,
+    required this.colors,
+    required this.onTap,
+    this.locked = false,
+    this.requiredLevel,
+  });
+
+  final String emoji;
+  final String label;
+  final List<Color> colors;
+  final VoidCallback onTap;
+  final bool locked;
+  final int? requiredLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    final gradientColors =
+        locked ? const [Color(0xFFB0B7C3), Color(0xFF9AA3B2)] : colors;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: gradientColors.first.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Text(locked ? '🔒' : emoji,
+                  style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              if (locked && requiredLevel != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Lv.$requiredLevel 해금',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              else
+                const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// '게임하기' 진입 버튼 — 그룹원 미니게임 목록으로 (Lv.3 해금).
+class _GameCta extends StatelessWidget {
+  const _GameCta({
+    required this.onTap,
+    this.locked = false,
+    this.requiredLevel,
+  });
+  final VoidCallback onTap;
+  final bool locked;
+  final int? requiredLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GradientCta(
+      emoji: '🎮',
+      label: '게임하기',
+      colors: const [Color(0xFF45B7D1), Color(0xFF34D399)],
+      onTap: onTap,
+      locked: locked,
+      requiredLevel: requiredLevel,
+    );
+  }
+}
+
+/// '탐험하기' 진입 버튼 — 탐험 허브(우주/해저/…) 로 (Lv.5 해금).
+class _ExploreCta extends StatelessWidget {
+  const _ExploreCta({
+    required this.onTap,
+    this.locked = false,
+    this.requiredLevel,
+  });
+  final VoidCallback onTap;
+  final bool locked;
+  final int? requiredLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GradientCta(
+      emoji: '🧭',
+      label: '탐험하기',
+      colors: const [Color(0xFF4F46E5), Color(0xFF9333EA)],
+      onTap: onTap,
+      locked: locked,
+      requiredLevel: requiredLevel,
     );
   }
 }
@@ -898,202 +1078,218 @@ class _MiniTile extends StatelessWidget {
   }
 }
 
-class _LevelStageRow extends StatelessWidget {
-  const _LevelStageRow({required this.state});
+/// 상태 카드 — 레벨 배지·단계 이름·코인을 한 줄에, 아래에 EXP 진행 바.
+/// (레벨/EXP/코인 칩이 각각 떠 있던 이전 레이아웃을 응집)
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({required this.state});
   final CharacterState state;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(999),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.gray100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          child: Text(
-            'Lv. ${state.level}',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              color: AppColors.white,
-            ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Lv. ${state.level}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  state.stageDisplayName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppColors.gray900,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E2),
+                  borderRadius: BorderRadius.circular(999),
+                  border:
+                      Border.all(color: const Color(0xFFFCD34D), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 17,
+                      height: 17,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFCD34D),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'C',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${state.coin}',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: AppColors.gray900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          state.stageDisplayName,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-            color: AppColors.gray900,
-          ),
-        ),
-      ],
+          const SizedBox(height: 13),
+          _buildExpArea(),
+        ],
+      ),
     );
   }
-}
 
-class _ExpProgress extends StatelessWidget {
-  const _ExpProgress({required this.state});
-  final CharacterState state;
-
-  @override
-  Widget build(BuildContext context) {
-    // 레벨 20 도달했지만 아직 진화 시험을 통과하지 못한 상태 — 트로피 대신 시험 안내.
+  Widget _buildExpArea() {
+    // 레벨 20 도달했지만 아직 진화 시험을 통과하지 못한 상태 — 바 대신 시험 안내.
     if (state.maxLevelReached && state.stage != CharacterStage.master) {
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF7E2),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFFCD34D), width: 1),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('✨', style: TextStyle(fontSize: 15)),
-              SizedBox(width: 6),
-              Text(
-                'Lv.20 · 진화 시험에 도전하세요',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: AppColors.gray900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    final atMax = state.maxLevelReached;
-    if (atMax) {
-      // 마스터 — 추가 EXP 불가. 진행도 바 대신 트로피 배지로 마무리.
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFD700), Color(0xFFFFB347)],
-            ),
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFB347).withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('🏆', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 6),
-              Text(
-                '마스터 도달!',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  color: Colors.white,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return Column(
-      children: [
-        Container(
-          height: 10,
-          decoration: BoxDecoration(
-            color: AppColors.gray100,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: state.progress,
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'EXP ${state.exp} / ${state.expForNextLevel}',
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-            color: AppColors.gray700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CoinChip extends StatelessWidget {
-  const _CoinChip({required this.coin});
-  final int coin;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFFFF7E2),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFFCD34D), width: 1),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFCD34D),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'C',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
+            Text('✨', style: TextStyle(fontSize: 14)),
+            SizedBox(width: 6),
             Text(
-              '$coin 코인',
-              style: const TextStyle(
+              'Lv.20 · 진화 시험에 도전하세요',
+              style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontSize: 12.5,
                 color: AppColors.gray900,
               ),
             ),
           ],
         ),
-      ),
+      );
+    }
+    if (state.maxLevelReached) {
+      // 마스터 — 추가 EXP 불가. 진행도 바 대신 트로피 배지로 마무리.
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFFFB347)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('🏆', style: TextStyle(fontSize: 14)),
+            SizedBox(width: 6),
+            Text(
+              '마스터 도달!',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+                color: Colors.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            height: 10,
+            color: AppColors.gray100,
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: state.progress.clamp(0.0, 1.0),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFF9A86), AppColors.primary],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Text(
+              'EXP',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: 10.5,
+                letterSpacing: 0.5,
+                color: AppColors.gray400,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${state.exp} / ${state.expForNextLevel}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 11.5,
+                color: AppColors.gray600,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -1350,8 +1546,8 @@ class _MochiCaptureCard extends StatelessWidget {
   }
 }
 
-/// 배경 + 모찌만 — 글자 없이 모서리 둥글지 않게 꽉 채운 내보내기용.
-/// 스킨 색을 가득 찬 정사각형 배경으로 깔고, 그 위에 모찌 본체(투명 배경)만 얹는다.
+/// 배경 + 모찌만 — 글자 없이 꽉 채운 내보내기용. 장착된 배경 씬 위에 꾸민 모찌를
+/// 그대로 캡처한다 (squircle 바깥은 스킨 톤으로 채워 모서리 빈틈을 없앤다).
 class _MochiCleanCard extends StatelessWidget {
   const _MochiCleanCard({required this.state});
   final CharacterState state;
@@ -1368,7 +1564,6 @@ class _MochiCleanCard extends StatelessWidget {
         appearance: appearance,
         stage: state.stage,
         size: 360,
-        part: MochiCharacterPart.body,
       ),
     );
   }

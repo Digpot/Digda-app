@@ -41,11 +41,13 @@ class KoreaBasePainter extends CustomPainter {
   /// 포커스 버킷의 시그니처 색 — 그 도 경계선을 이 색으로 그린다.
   final Color? focusColor;
 
-  /// 비포커스 권역을 가라앉히는 슬레이트 베일.
-  final Paint _dimVeil = Paint()..color = const Color(0xCCEFF2F7);
+  /// 비포커스 권역을 가라앉히는 아이보리 베일(웜 톤).
+  final Paint _dimVeil = Paint()..color = const Color(0xCCF6F2EB);
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 배경은 깔끔한 흰 카드 그대로 둔다 — 슬레이트(푸른빛) 비네트를 깔았더니
+    // 지도 전체가 탁해 보인다는 피드백으로 제거(2026-07-17).
     canvas.save();
     canvas.translate(dx, dy);
     canvas.scale(scale);
@@ -91,12 +93,22 @@ class KoreaBasePainter extends CustomPainter {
     final warmPaint = Paint()..shader = warmShader;
     final coralPaint = Paint()..shader = coralShader;
     final softPaint = Paint()..color = KoreaMapTokens.coralSoft;
+    // 채색(코랄) 조각 전용 웜 글로스 — 좌상단에서 내려오는 옅은 흰 광택으로
+    // 채운 지역이 도자기처럼 반질하게 떠 보인다(전역 1개 공유, 한색 아님).
+    final coralGloss = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(w * 0.35, 0),
+        Offset(w * 0.55, h * 0.85),
+        const [Color(0x40FFFFFF), Color(0x00FFFFFF)],
+        const [0.0, 0.65],
+      );
     for (final r in data.regions) {
       final count = counts[r.key] ?? 0;
       final metro = data.keyMetro[r.key] == true;
       final threshold = metro ? 10 : 1;
+      final achieved = count >= threshold;
       final Paint p;
-      if (count >= threshold) {
+      if (achieved) {
         p = coralPaint; // 달성 → 코랄
       } else if (count > 0) {
         p = softPaint; // 진행 중(광역시 1~9) → 소프트
@@ -104,6 +116,7 @@ class KoreaBasePainter extends CustomPainter {
         p = warmPaint; // 미시작 → 웜
       }
       canvas.drawPath(r.path, p);
+      if (achieved) canvas.drawPath(r.path, coralGloss);
       // 탭 포커스 시 다른 버킷은 아이보리 베일로 덮어 가라앉힌다.
       if (focusGroup != null && data.keyFocusGroup[r.key] != focusGroup) {
         canvas.drawPath(r.path, _dimVeil);
@@ -166,9 +179,19 @@ class KoreaBasePainter extends CustomPainter {
     canvas.translate(0, 7);
     canvas.drawPath(nk.outline, Paint()..color = KoreaMapTokens.sideWall);
     canvas.restore();
-    // top face — 빈 지도와 같은 웜/슬레이트 + '예정'을 위해 흰 베일로 살짝 띄움.
+    // top face — 남한과 같은 웜 베이스 위에 안개 낀 듯한 흰 베일을 얹어
+    // "아직 잠긴 땅" 분위기를 만든다.
     canvas.drawPath(nk.outline, Paint()..shader = warm);
-    canvas.drawPath(nk.outline, Paint()..color = const Color(0x40FFFFFF));
+    final bounds = nk.bounds;
+    canvas.drawPath(
+      nk.outline,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          bounds.topCenter,
+          bounds.bottomCenter,
+          const [Color(0x8CFFFFFF), Color(0x33FFFFFF)],
+        ),
+    );
     // 시·군 분할선 — 실루엣 안쪽으로만.
     final grooveHi = Paint()
       ..style = PaintingStyle.stroke
@@ -184,6 +207,19 @@ class KoreaBasePainter extends CustomPainter {
       canvas.drawPath(d, grooveHi);
       canvas.drawPath(d, grooveLo);
     }
+    // 사선 해치 — "준비 중 구역" 시그널. 푸른빛 대신 웜 그레이로 은은하게.
+    final hatch = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = const Color(0x26A29488);
+    final span = bounds.width + bounds.height;
+    for (double o = 0; o < span; o += 30) {
+      canvas.drawLine(
+        Offset(bounds.left + o, bounds.top),
+        Offset(bounds.left, bounds.top + o),
+        hatch,
+      );
+    }
     canvas.restore();
     // 외곽선
     canvas.drawPath(nk.outline, grooveLo);
@@ -198,38 +234,73 @@ class KoreaBasePainter extends CustomPainter {
         text: text,
         style: TextStyle(
           fontFamily: 'Inter',
-          fontSize: 24,
+          fontSize: 21,
           fontWeight: FontWeight.w800,
           height: 1.0,
-          color: Color(0xFF5B6677),
+          letterSpacing: 0.5,
+          color: Color(0xFF6B6157),
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    const padH = 18.0;
+    // 자물쇠 점 아이콘 자리(원) + 텍스트를 담는 알약.
+    const dotR = 10.0;
+    const gap = 9.0;
+    const padH = 17.0;
     const padV = 11.0;
+    final contentW = dotR * 2 + gap + tp.width;
     final rect = Rect.fromCenter(
       center: center,
-      width: tp.width + padH * 2,
+      width: contentW + padH * 2,
       height: tp.height + padV * 2,
     );
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(22));
-    // 그림자 + 흰 알약
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(24));
+    // 그림자 + 흰 알약(위→아래로 아주 옅은 슬레이트 그라디언트)
     canvas.drawRRect(
       rrect.shift(const Offset(0, 3)),
       Paint()
-        ..color = const Color(0x33000000)
+        ..color = const Color(0x26000000)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
     );
-    canvas.drawRRect(rrect, Paint()..color = Colors.white);
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          rect.topCenter,
+          rect.bottomCenter,
+          const [Colors.white, Color(0xFFF7F3EC)],
+        ),
+    );
     canvas.drawRRect(
       rrect,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2
-        ..color = const Color(0xFFD7DEE8),
+        ..color = const Color(0xFFE4DCCE),
     );
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    // 자물쇠 느낌의 슬레이트 점 + 흰 열쇠구멍.
+    final dotC = Offset(rect.left + padH + dotR, center.dy);
+    canvas.drawCircle(
+      dotC,
+      dotR,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          dotC.translate(0, -dotR),
+          dotC.translate(0, dotR),
+          const [Color(0xFFBCAD97), Color(0xFF94836C)],
+        ),
+    );
+    canvas.drawCircle(
+        dotC.translate(0, -1.5), 2.2, Paint()..color = Colors.white);
+    canvas.drawRect(
+      Rect.fromCenter(
+          center: dotC.translate(0, 1.8), width: 2.4, height: 4.6),
+      Paint()..color = Colors.white,
+    );
+    tp.paint(
+      canvas,
+      Offset(rect.left + padH + dotR * 2 + gap, center.dy - tp.height / 2),
+    );
   }
 
   @override
@@ -392,10 +463,10 @@ class KoreaOverlayPainter extends CustomPainter {
       final double op = dimmed ? 0.34 : 1.0;
       // 가독성: 진한 잉크 글자 + 대비되는 외곽선(stroke)을 뒤에 깔아 또렷하게.
       final Color fill =
-          (onCoral ? Colors.white : const Color(0xFF334155))
+          (onCoral ? Colors.white : const Color(0xFF4A4238))
               .withValues(alpha: op);
       final Color outline =
-          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFF1F4F9))
+          (onCoral ? const Color(0xFFB23A2C) : const Color(0xFFF8F4ED))
               .withValues(alpha: op);
       final double strokeW = (fontSize * 0.30).clamp(1.4, 4.0);
 

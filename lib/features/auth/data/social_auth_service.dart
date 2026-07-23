@@ -35,31 +35,37 @@ class SocialAuthService {
   }
 
   Future<SocialCredential> _signInKakao() async {
-    try {
-      final installed = await kakao.isKakaoTalkInstalled();
-      final token = installed
-          ? await kakao.UserApi.instance.loginWithKakaoTalk()
-          : await kakao.UserApi.instance.loginWithKakaoAccount();
-      return SocialCredential(
+    // 카카오톡이 설치돼 있으면 앱-투-앱 로그인을 먼저 시도하고, 실패하면 카카오
+    // 계정(웹) 로그인으로 폴백한다. 예전엔 KakaoAuthException/KakaoClientException
+    // 만 폴백 대상으로 잡았는데, 카카오톡이 설치는 됐지만 로그인이 안 되는 단말
+    // (구버전 카카오톡·톡 미로그인·앱 키해시 미등록·앱 연결 실패 등)에선
+    // PlatformException 이 던져져 폴백에 걸리지 않고 그대로 실패했다. 이 때문에
+    // "어떤 폰에서는 되고 어떤 폰에서는 안 되는" 문제가 생겼다. 이제 사용자가
+    // 직접 '취소'한 경우를 제외한 모든 톡 로그인 실패를 계정 로그인으로 흡수한다.
+    final installed = await kakao.isKakaoTalkInstalled();
+    if (installed) {
+      try {
+        final token = await kakao.UserApi.instance.loginWithKakaoTalk();
+        return _kakaoCredential(token);
+      } catch (e) {
+        // 사용자가 카카오톡 로그인 화면에서 직접 '취소'를 누른 경우엔 계정
+        // 로그인으로 자동 재진입하지 않고 취소로 둔다.
+        if (e is PlatformException && e.code == 'CANCELED') {
+          rethrow;
+        }
+        // 그 외 모든 실패는 카카오 계정(웹) 로그인으로 폴백한다.
+        final token = await kakao.UserApi.instance.loginWithKakaoAccount();
+        return _kakaoCredential(token);
+      }
+    }
+    final token = await kakao.UserApi.instance.loginWithKakaoAccount();
+    return _kakaoCredential(token);
+  }
+
+  SocialCredential _kakaoCredential(kakao.OAuthToken token) => SocialCredential(
         provider: SocialProvider.kakao,
         accessToken: token.accessToken,
       );
-    } catch (e) {
-      // KakaoTalk 사용자가 취소했을 때 fallback for 카카오 계정.
-      if (e is kakao.KakaoAuthException || e is kakao.KakaoClientException) {
-        try {
-          final token = await kakao.UserApi.instance.loginWithKakaoAccount();
-          return SocialCredential(
-            provider: SocialProvider.kakao,
-            accessToken: token.accessToken,
-          );
-        } catch (_) {
-          rethrow;
-        }
-      }
-      rethrow;
-    }
-  }
 
   Future<SocialCredential> _signInNaver() async {
     try {
