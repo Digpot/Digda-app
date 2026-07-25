@@ -79,14 +79,16 @@ class NotificationSettings {
     required this.scheduleNotification,
     required this.diaryNotification,
     required this.commentNotification,
-    required this.marketingConsent,
+    required this.mochiNotification,
   });
 
   final bool pushEnabled;
   final bool scheduleNotification;
   final bool diaryNotification;
   final bool commentNotification;
-  final bool marketingConsent;
+
+  /// 모찌(캐릭터) 알림 — 게임을 제외한 캐릭터 관련(레벨업/디코/퀴즈) 알림.
+  final bool mochiNotification;
 
   factory NotificationSettings.fromJson(Map<String, dynamic> json) {
     return NotificationSettings(
@@ -94,7 +96,7 @@ class NotificationSettings {
       scheduleNotification: json['scheduleNotification'] as bool? ?? true,
       diaryNotification: json['diaryNotification'] as bool? ?? true,
       commentNotification: json['commentNotification'] as bool? ?? true,
-      marketingConsent: json['marketingConsent'] as bool? ?? false,
+      mochiNotification: json['mochiNotification'] as bool? ?? true,
     );
   }
 
@@ -103,7 +105,7 @@ class NotificationSettings {
         'scheduleNotification': scheduleNotification,
         'diaryNotification': diaryNotification,
         'commentNotification': commentNotification,
-        'marketingConsent': marketingConsent,
+        'mochiNotification': mochiNotification,
       };
 
   NotificationSettings copyWith({
@@ -111,14 +113,14 @@ class NotificationSettings {
     bool? scheduleNotification,
     bool? diaryNotification,
     bool? commentNotification,
-    bool? marketingConsent,
+    bool? mochiNotification,
   }) {
     return NotificationSettings(
       pushEnabled: pushEnabled ?? this.pushEnabled,
       scheduleNotification: scheduleNotification ?? this.scheduleNotification,
       diaryNotification: diaryNotification ?? this.diaryNotification,
       commentNotification: commentNotification ?? this.commentNotification,
-      marketingConsent: marketingConsent ?? this.marketingConsent,
+      mochiNotification: mochiNotification ?? this.mochiNotification,
     );
   }
 }
