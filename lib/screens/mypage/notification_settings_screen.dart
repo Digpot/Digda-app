@@ -62,6 +62,20 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     }
   }
 
+  /// 하단 벨 탭 — 전체 알림 일괄 on/off. [turnOn] true 면 모든 카테고리까지 채우고,
+  /// false 면 전체 푸시와 카테고리를 모두 끈다.
+  void _toggleAll(bool turnOn) {
+    final s = _settings;
+    if (s == null || _saving) return;
+    _update(NotificationSettings(
+      pushEnabled: turnOn,
+      scheduleNotification: turnOn,
+      diaryNotification: turnOn,
+      commentNotification: turnOn,
+      mochiNotification: turnOn,
+    ));
+  }
+
   String _messageOf(Object e, String fallback) {
     if (e is DioException && e.error is ApiException) {
       return (e.error as ApiException).message;
@@ -218,7 +232,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   const SizedBox(height: 16),
                   const _NotiTipCard(),
                   const Spacer(),
-                  const _NotiFooter(),
+                  _NotiFooter(
+                    allOn: s.pushEnabled,
+                    onTap: () => _toggleAll(!s.pushEnabled),
+                  ),
                   const SizedBox(height: 28),
                 ],
               ),
@@ -292,40 +309,72 @@ class _NotiTipCard extends StatelessWidget {
   }
 }
 
-/// 화면 하단 장식 푸터 — 남는 공간을 채워 허전함을 없앤다.
+/// 화면 하단 벨 — 탭하면 전체 알림을 한 번에 켜고/끈다(남는 공간도 채운다).
 class _NotiFooter extends StatelessWidget {
-  const _NotiFooter();
+  const _NotiFooter({required this.allOn, required this.onTap});
+
+  final bool allOn;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: AppColors.gray50,
-              shape: BoxShape.circle,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: allOn
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : AppColors.gray50,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: allOn
+                      ? AppColors.primary.withValues(alpha: 0.4)
+                      : AppColors.gray200,
+                  width: 1.4,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                allOn
+                    ? Icons.notifications_active_rounded
+                    : Icons.notifications_off_rounded,
+                size: 28,
+                color: allOn ? AppColors.primary : AppColors.gray400,
+              ),
             ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.notifications_active_outlined,
-                size: 26, color: AppColors.gray300),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            '필요한 알림만 켜고\n디그팟을 편하게 즐겨요 🐾',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              height: 1.5,
-              color: AppColors.gray400,
+            const SizedBox(height: 12),
+            Text(
+              allOn ? '탭하면 모든 알림을 꺼요' : '탭하면 모든 알림을 켜요',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+                color: allOn ? AppColors.primary : AppColors.gray500,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            const Text(
+              '필요한 알림만 켜고 디그팟을 편하게 즐겨요 🐾',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+                height: 1.4,
+                color: AppColors.gray400,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
