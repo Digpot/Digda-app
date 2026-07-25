@@ -23,6 +23,7 @@ import '../features/app_config/data/app_config_repository.dart';
 import '../features/report/data/report_repository.dart';
 import '../features/block/data/block_repository.dart';
 import '../features/inquiry/data/inquiry_repository.dart';
+import '../features/feedback/data/feedback_repository.dart';
 import '../features/omok/data/omok_repository.dart';
 import '../features/minigame/data/minigame_repository.dart';
 import '../features/alkkagi/data/alkkagi_repository.dart';
@@ -53,6 +54,7 @@ class Di {
   static late final ReportRepository reportRepository;
   static late final BlockRepository blockRepository;
   static late final InquiryRepository inquiryRepository;
+  static late final FeedbackRepository feedbackRepository;
   static late final OmokRepository omokRepository;
   static late final MinigameRepository minigameRepository;
   static late final AlkkagiRepository alkkagiRepository;
@@ -84,6 +86,7 @@ class Di {
     reportRepository = ReportRepository(apiClient: apiClient);
     blockRepository = BlockRepository(apiClient: apiClient);
     inquiryRepository = InquiryRepository(apiClient: apiClient);
+    feedbackRepository = FeedbackRepository(apiClient: apiClient);
     omokRepository = OmokRepository(apiClient: apiClient);
     minigameRepository = MinigameRepository(apiClient: apiClient);
     alkkagiRepository = AlkkagiRepository(apiClient: apiClient);

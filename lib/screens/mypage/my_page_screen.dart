@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/di.dart';
 import '../../theme/colors.dart';
 import '../onboarding/code_input_screen.dart';
+import '../feedback/feedback_form_screen.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/notification_bell_icon.dart';
 import '../../features/user/models/user_models.dart';
@@ -185,6 +186,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         onTap: () => _openPrivacyPolicy(context),
                       ),
                       _menuRow(
+                        icon: Icons.favorite_rounded,
+                        iconColor: AppColors.primary,
+                        label: '피드백 받기',
+                        onTap: () => _openFeedbackForm(context),
+                      ),
+                      if (_appConfig.showFeedback)
+                        _menuRow(
+                          icon: Icons.code_rounded,
+                          iconColor: AppColors.gray500,
+                          label: '개발자 소개',
+                          onTap: () => _openDeveloperIntro(context),
+                        ),
+                      _menuRow(
                         icon: Icons.info_rounded,
                         iconColor: AppColors.gray400,
                         label: '앱 정보',
@@ -199,13 +213,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                         ),
                       ),
-                      if (_appConfig.showFeedback)
-                        _menuRow(
-                          icon: Icons.favorite_rounded,
-                          iconColor: AppColors.primary,
-                          label: '피드백 받기',
-                          onTap: () => _openFeedback(context),
-                        ),
                     ]),
                   ],
                 ),
@@ -225,10 +232,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  Future<void> _openFeedback(BuildContext context) async {
+  /// 앱 자체 피드백 폼으로 이동.
+  void _openFeedbackForm(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const FeedbackFormScreen()),
+    );
+  }
+
+  /// 개발자 소개 — 어드민이 설정한 외부 링크(app_config.feedbackUrl 재활용)로 이동.
+  Future<void> _openDeveloperIntro(BuildContext context) async {
     final url = _appConfig.feedbackUrl.trim();
     if (url.isEmpty) {
-      showInfoDialog(context, '피드백 받기', '피드백 폼을 준비 중이에요. 곧 열릴 예정입니다!');
+      showInfoDialog(context, '개발자 소개', '개발자 소개 페이지를 준비 중이에요. 곧 열릴 예정입니다!');
       return;
     }
     final uri = Uri.parse(url);
