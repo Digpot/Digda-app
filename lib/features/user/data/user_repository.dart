@@ -80,7 +80,7 @@ class UserRepository {
         scheduleNotification: true,
         diaryNotification: true,
         commentNotification: true,
-        marketingConsent: false,
+        mochiNotification: true,
       );
 
   PrivacySettings _defaultPrivacySettings() => PrivacySettings(
