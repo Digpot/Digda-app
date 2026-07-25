@@ -186,6 +186,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         onTap: () => _openPrivacyPolicy(context),
                       ),
                       _menuRow(
+                        icon: Icons.favorite_rounded,
+                        iconColor: AppColors.primary,
+                        label: '피드백 받기',
+                        onTap: () => _openFeedbackForm(context),
+                      ),
+                      if (_appConfig.showFeedback)
+                        _menuRow(
+                          icon: Icons.code_rounded,
+                          iconColor: AppColors.gray500,
+                          label: '개발자 소개',
+                          onTap: () => _openDeveloperIntro(context),
+                        ),
+                      _menuRow(
                         icon: Icons.info_rounded,
                         iconColor: AppColors.gray400,
                         label: '앱 정보',
@@ -200,19 +213,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                         ),
                       ),
-                      _menuRow(
-                        icon: Icons.favorite_rounded,
-                        iconColor: AppColors.primary,
-                        label: '피드백 받기',
-                        onTap: () => _openFeedbackForm(context),
-                      ),
-                      if (_appConfig.showFeedback)
-                        _menuRow(
-                          icon: Icons.code_rounded,
-                          iconColor: AppColors.gray500,
-                          label: '개발자 소개',
-                          onTap: () => _openDeveloperIntro(context),
-                        ),
                     ]),
                   ],
                 ),

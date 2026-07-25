@@ -136,76 +136,195 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       );
     }
     final s = _settings!;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          _GlobalToggle(
-            value: s.pushEnabled,
-            onChanged: (v) => _update(s.copyWith(pushEnabled: v)),
-          ),
-          const SizedBox(height: 24),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              '카테고리별 알림',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                fontSize: 13,
-                color: AppColors.gray400,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  _GlobalToggle(
+                    value: s.pushEnabled,
+                    onChanged: (v) => _update(s.copyWith(pushEnabled: v)),
+                  ),
+                  const SizedBox(height: 24),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      '카테고리별 알림',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
+                        color: AppColors.gray400,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.gray50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _CategoryRow(
+                          title: '일정 알림',
+                          subtitle: '새 일정 생성 / 일정 변경 알림',
+                          icon: Icons.event_note_outlined,
+                          enabled: s.pushEnabled,
+                          value: s.scheduleNotification,
+                          onChanged: (v) =>
+                              _update(s.copyWith(scheduleNotification: v)),
+                        ),
+                        const Divider(color: AppColors.gray100, height: 1, indent: 16, endIndent: 16),
+                        _CategoryRow(
+                          title: '일기 알림',
+                          subtitle: '구성원이 새 일기를 작성했을 때',
+                          icon: Icons.book_outlined,
+                          enabled: s.pushEnabled,
+                          value: s.diaryNotification,
+                          onChanged: (v) =>
+                              _update(s.copyWith(diaryNotification: v)),
+                        ),
+                        const Divider(color: AppColors.gray100, height: 1, indent: 16, endIndent: 16),
+                        _CategoryRow(
+                          title: '댓글 알림',
+                          subtitle: '내 일기/일정에 새 댓글이 달렸을 때',
+                          icon: Icons.chat_bubble_outline,
+                          enabled: s.pushEnabled,
+                          value: s.commentNotification,
+                          onChanged: (v) =>
+                              _update(s.copyWith(commentNotification: v)),
+                        ),
+                        const Divider(color: AppColors.gray100, height: 1, indent: 16, endIndent: 16),
+                        _CategoryRow(
+                          title: '모찌 알림',
+                          subtitle: '모찌 레벨업, 조력자 등장, 퀴즈 등 (게임 제외)',
+                          icon: Icons.pets_outlined,
+                          enabled: s.pushEnabled,
+                          value: s.mochiNotification,
+                          onChanged: (v) =>
+                              _update(s.copyWith(mochiNotification: v)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const _NotiTipCard(),
+                  const Spacer(),
+                  const _NotiFooter(),
+                  const SizedBox(height: 28),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 10),
+        );
+      },
+    );
+  }
+}
+
+/// 하단 여백을 채우는 안내 카드 — 시스템 알림 설정 관련 팁.
+class _NotiTipCard extends StatelessWidget {
+  const _NotiTipCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: AppColors.gray50,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.lightbulb_outline,
+                size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CategoryRow(
-                  title: '일정 알림',
-                  subtitle: '새 일정 생성 / 일정 변경 알림',
-                  icon: Icons.event_note_outlined,
-                  enabled: s.pushEnabled,
-                  value: s.scheduleNotification,
-                  onChanged: (v) => _update(s.copyWith(scheduleNotification: v)),
+                Text(
+                  '알림이 안 온다면?',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.gray900,
+                  ),
                 ),
-                const Divider(color: AppColors.gray100, height: 1, indent: 16, endIndent: 16),
-                _CategoryRow(
-                  title: '일기 알림',
-                  subtitle: '구성원이 새 일기를 작성했을 때',
-                  icon: Icons.book_outlined,
-                  enabled: s.pushEnabled,
-                  value: s.diaryNotification,
-                  onChanged: (v) => _update(s.copyWith(diaryNotification: v)),
-                ),
-                const Divider(color: AppColors.gray100, height: 1, indent: 16, endIndent: 16),
-                _CategoryRow(
-                  title: '댓글 알림',
-                  subtitle: '내 일기/일정에 새 댓글이 달렸을 때',
-                  icon: Icons.chat_bubble_outline,
-                  enabled: s.pushEnabled,
-                  value: s.commentNotification,
-                  onChanged: (v) => _update(s.copyWith(commentNotification: v)),
-                ),
-                const Divider(color: AppColors.gray100, height: 1, indent: 16, endIndent: 16),
-                _CategoryRow(
-                  title: '모찌 알림',
-                  subtitle: '모찌 레벨업, 조력자 등장, 퀴즈 등 (게임 제외)',
-                  icon: Icons.pets_outlined,
-                  enabled: s.pushEnabled,
-                  value: s.mochiNotification,
-                  onChanged: (v) => _update(s.copyWith(mochiNotification: v)),
+                SizedBox(height: 4),
+                Text(
+                  '휴대폰 시스템 설정에서 디그팟 알림이 꺼져 있으면 위 설정과 관계없이 알림이 오지 않을 수 있어요.',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12.5,
+                    height: 1.5,
+                    color: AppColors.gray600,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+}
+
+/// 화면 하단 장식 푸터 — 남는 공간을 채워 허전함을 없앤다.
+class _NotiFooter extends StatelessWidget {
+  const _NotiFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.gray50,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.notifications_active_outlined,
+                size: 26, color: AppColors.gray300),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '필요한 알림만 켜고\n디그팟을 편하게 즐겨요 🐾',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              height: 1.5,
+              color: AppColors.gray400,
+            ),
+          ),
         ],
       ),
     );
