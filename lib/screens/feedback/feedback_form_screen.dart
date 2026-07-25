@@ -130,7 +130,7 @@ class _FeedbackFormScreenState extends State<FeedbackFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.gray50,
+      backgroundColor: AppColors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,28 +401,15 @@ class _FeedbackFormScreenState extends State<FeedbackFormScreen> {
     );
   }
 
-  /// 개별 문항 카드 — 흰 배경 + 부드러운 그림자.
+  /// 개별 문항 — 흰 배경에 맞춰 카드 없이 라벨 + 입력 컨트롤로 깔끔하게.
   Widget _buildCard(FeedbackQuestion q, Widget child) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.gray100),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.gray900.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildQuestionLabel(q),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           child,
         ],
       ),
