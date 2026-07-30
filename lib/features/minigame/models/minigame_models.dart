@@ -78,6 +78,7 @@ class CatchmindPlayer {
     required this.declined,
     required this.score,
     required this.isHost,
+    this.forfeited = false,
   });
 
   final String userId;
@@ -87,6 +88,9 @@ class CatchmindPlayer {
   final int score;
   final bool isHost;
 
+  /// 진행 중 기권 — 점수는 남지만 출제 순서/추리에서 빠진다.
+  final bool forfeited;
+
   factory CatchmindPlayer.fromJson(Map<String, dynamic> json) =>
       CatchmindPlayer(
         userId: json['userId'].toString(),
@@ -95,6 +99,7 @@ class CatchmindPlayer {
         declined: json['declined'] as bool? ?? false,
         score: (json['score'] as num?)?.toInt() ?? 0,
         isHost: json['isHost'] as bool? ?? false,
+        forfeited: json['forfeited'] as bool? ?? false,
       );
 }
 
@@ -174,6 +179,12 @@ class CatchmindGame {
 
   List<CatchmindPlayer> get joinedPlayers =>
       players.where((p) => p.joined).toList();
+
+  /// 아직 게임에 남아 있는 참가자 — 기권자 제외.
+  List<CatchmindPlayer> get activePlayers =>
+      players.where((p) => p.joined && !p.forfeited).toList();
+
+  bool hasForfeited(String userId) => playerOf(userId)?.forfeited ?? false;
 
   CatchmindPlayer? playerOf(String userId) {
     for (final p in players) {

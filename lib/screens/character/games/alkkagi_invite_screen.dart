@@ -6,6 +6,7 @@ import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'game_ui_common.dart';
 import 'alkkagi_formation.dart';
 import 'alkkagi_game_screen.dart';
 
@@ -110,7 +111,7 @@ class _AlkkagiInviteScreenState extends State<AlkkagiInviteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: gameSurface,
       body: SafeArea(
         child: Column(
           children: [
@@ -188,9 +189,10 @@ class _AlkkagiInviteScreenState extends State<AlkkagiInviteScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.gray100),
+        boxShadow: gameSoftShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +336,7 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.gray50,
+      color: AppColors.white,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),

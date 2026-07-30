@@ -19,6 +19,7 @@ class OmokSocketSession {
     required this.accessToken,
     required this.onEvent,
     this.onConnected,
+    this.onDisconnected,
     this.onError,
   });
 
@@ -28,10 +29,16 @@ class OmokSocketSession {
 
   /// (재)연결·구독 완료 시 — 호출자는 REST 로 스냅샷을 다시 받아 놓친 수를 메꾼다.
   final void Function()? onConnected;
+
+  /// 끊김 알림 — 화면이 "연결 끊김" 배너를 띄울 수 있게.
+  final void Function()? onDisconnected;
   final void Function(Object error)? onError;
 
   StompClient? _client;
   bool _disposed = false;
+
+  /// 지금 STOMP 세션이 살아 있는지.
+  bool get connected => _client?.connected ?? false;
 
   static String get _wsUrl {
     final base = Env.apiBaseUrl;
@@ -65,9 +72,20 @@ class OmokSocketSession {
           );
           onConnected?.call();
         },
-        onWebSocketError: (error) => onError?.call(error),
-        onStompError: (frame) =>
-            onError?.call(frame.body ?? 'STOMP error'),
+        onDisconnect: (_) {
+          if (!_disposed) onDisconnected?.call();
+        },
+        onWebSocketDone: () {
+          if (!_disposed) onDisconnected?.call();
+        },
+        onWebSocketError: (error) {
+          if (!_disposed) onDisconnected?.call();
+          onError?.call(error);
+        },
+        onStompError: (frame) {
+          if (!_disposed) onDisconnected?.call();
+          onError?.call(frame.body ?? 'STOMP error');
+        },
       ),
     );
     _client = client;
