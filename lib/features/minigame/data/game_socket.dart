@@ -17,6 +17,7 @@ class GameSocketSession {
     required this.accessToken,
     required this.onJson,
     this.onConnected,
+    this.onDisconnected,
     this.onError,
   });
 
@@ -24,10 +25,17 @@ class GameSocketSession {
   final String accessToken;
   final void Function(Map<String, dynamic> json) onJson;
   final void Function()? onConnected;
+
+  /// 끊김(또는 CONNECT 실패) 알림 — 화면이 "연결 끊김" 배너를 띄울 수 있게.
+  /// 실시간 이벤트가 유일한 진실 출처라, 끊긴 걸 모르면 화면이 멈춘 것처럼 보인다.
+  final void Function()? onDisconnected;
   final void Function(Object error)? onError;
 
   StompClient? _client;
   bool _disposed = false;
+
+  /// 지금 STOMP 세션이 살아 있는지 — 화면 배너/전송 가능 여부 판단에 쓴다.
+  bool get connected => _client?.connected ?? false;
 
   static String get _wsUrl {
     final base = Env.apiBaseUrl;
@@ -60,19 +68,35 @@ class GameSocketSession {
           );
           onConnected?.call();
         },
-        onWebSocketError: (error) => onError?.call(error),
-        onStompError: (frame) => onError?.call(frame.body ?? 'STOMP error'),
+        onDisconnect: (_) {
+          if (!_disposed) onDisconnected?.call();
+        },
+        onWebSocketDone: () {
+          if (!_disposed) onDisconnected?.call();
+        },
+        onWebSocketError: (error) {
+          if (!_disposed) onDisconnected?.call();
+          onError?.call(error);
+        },
+        onStompError: (frame) {
+          if (!_disposed) onDisconnected?.call();
+          onError?.call(frame.body ?? 'STOMP error');
+        },
       ),
     );
     _client = client;
     client.activate();
   }
 
-  void send(String destination, [Map<String, dynamic>? body]) {
-    _client?.send(
+  /// 전송. 세션이 끊겨 있으면 false — 호출자가 사용자에게 알릴 수 있다.
+  bool send(String destination, [Map<String, dynamic>? body]) {
+    final client = _client;
+    if (client == null || !client.connected) return false;
+    client.send(
       destination: destination,
       body: body == null ? null : jsonEncode(body),
     );
+    return true;
   }
 
   void dispose() {
