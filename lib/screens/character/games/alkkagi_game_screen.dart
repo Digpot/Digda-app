@@ -14,6 +14,7 @@ import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
 import 'alkkagi_formation.dart';
+import 'game_ui_common.dart';
 
 /// 실시간 알까기 대국 화면.
 ///
@@ -76,6 +77,9 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
   bool _actionPending = false;
   bool _resultShown = false;
   GameSocketSession? _socket;
+
+  /// 실시간 연결 상태 — 끊기면 배너로 알린다(상대 차례가 안 오는 것처럼 보이는 걸 막는다).
+  bool _connected = false;
 
   // ── 로컬 시뮬 상태 ────────────────────────────────────────────────
   final Map<int, _SimStone> _sim = {};
@@ -168,7 +172,12 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
       onJson: (json) => _onEvent(AlkkagiEvent.fromJson(json)),
       // (재)연결 직후 스냅샷 재동기화 — 연결 사이에 놓친 수를 메꾼다.
       onConnected: () {
-        if (mounted && !_simulating) _refresh();
+        if (!mounted) return;
+        setState(() => _connected = true);
+        if (!_simulating) _refresh();
+      },
+      onDisconnected: () {
+        if (mounted) setState(() => _connected = false);
       },
     );
     _socket = socket;
@@ -613,7 +622,21 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
         body: SafeArea(
           child: Column(
             children: [
-              BackHeader(title: '알까기', onBack: _onExit, dark: true),
+              BackHeader(
+                title: '알까기',
+                onBack: _onExit,
+                dark: true,
+                actions: [
+                  // 기권은 모든 게임에서 같은 자리(헤더 우측)에 둔다.
+                  if (_game?.status == AlkkagiStatus.active)
+                    GameForfeitAction(
+                      onPressed: _confirmForfeit,
+                      dark: true,
+                    ),
+                ],
+              ),
+              if (_game?.status == AlkkagiStatus.active)
+                GameConnectionBanner(connected: _connected),
               Expanded(child: _buildBody()),
               const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
             ],
@@ -896,22 +919,7 @@ class _AlkkagiGameScreenState extends State<AlkkagiGameScreen>
             ),
           ),
         if (!finished)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: TextButton.icon(
-              onPressed: _confirmForfeit,
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: const Text('기권'),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white54,
-                textStyle: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          )
+          const SizedBox(height: 10)
         else
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),

@@ -11,6 +11,7 @@ import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'game_ui_common.dart';
 
 /// 실시간 오목 대국 화면 — 초대 수락 전(invitee)/대기(inviter)/대국/결과를
 /// 한 화면에서 상태로 전환한다.
@@ -35,6 +36,9 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
   bool _actionPending = false;
   bool _resultShown = false;
   OmokSocketSession? _socket;
+
+  /// 실시간 연결 상태 — 끊기면 배너로 알린다(상대 착수가 안 오는 것처럼 보이는 걸 막는다).
+  bool _connected = false;
 
   /// 착수 확인 대기 좌표 — 탭하면 바로 두지 않고 반투명 미리보기 돌을 놓고
   /// 확인을 받는다(작은 화면 오터치 방지). 같은 칸 재탭 = 확정.
@@ -126,7 +130,12 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
       onEvent: _onEvent,
       // (재)연결 직후 스냅샷 재동기화 — 연결 사이에 놓친 수를 메꾼다.
       onConnected: () {
-        if (mounted) _refresh();
+        if (!mounted) return;
+        setState(() => _connected = true);
+        _refresh();
+      },
+      onDisconnected: () {
+        if (mounted) setState(() => _connected = false);
       },
     );
     _socket = socket;
@@ -365,11 +374,21 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
         if (!didPop) _onExit();
       },
       child: Scaffold(
-        backgroundColor: AppColors.white,
+        backgroundColor: gameSurface,
         body: SafeArea(
           child: Column(
             children: [
-              BackHeader(title: '오목', onBack: _onExit),
+              BackHeader(
+                title: '오목',
+                onBack: _onExit,
+                actions: [
+                  // 기권은 모든 게임에서 같은 자리(헤더 우측)에 둔다.
+                  if (_game?.status == OmokStatus.active)
+                    GameForfeitAction(onPressed: _confirmForfeit),
+                ],
+              ),
+              if (_game?.status == OmokStatus.active)
+                GameConnectionBanner(connected: _connected),
               Expanded(child: _buildBody()),
               // 배너 광고 — 대국 화면 하단 고정(미로드 시 공간 0).
               const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
@@ -647,22 +666,7 @@ class _OmokGameScreenState extends State<OmokGameScreen> {
                     ),
         const Spacer(),
         if (!finished)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: TextButton.icon(
-              onPressed: _confirmForfeit,
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: const Text('기권'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.gray600,
-                textStyle: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          )
+          const SizedBox(height: 12)
         else
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
