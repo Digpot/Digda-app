@@ -11,6 +11,7 @@ import '../../../theme/colors.dart';
 import '../../../widgets/ad_banner.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'game_ui_common.dart';
 
 /// 실시간 탭배틀 — 각자 폰에서 15초 동안 연타, 서버가 심판.
 ///
@@ -34,6 +35,9 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
   bool _actionPending = false;
   bool _resultShown = false;
   GameSocketSession? _socket;
+
+  /// 실시간 연결 상태 — 끊기면 배너로 알린다(상대 점수가 멈춰 보이는 걸 막는다).
+  bool _connected = false;
 
   /// 내 탭 수 — 로컬이 진실(내 화면), 서버 보고는 주기적.
   int _myTaps = 0;
@@ -107,11 +111,38 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
       accessToken: token,
       onJson: (json) => _onEvent(TapBattleEvent.fromJson(json)),
       onConnected: () {
-        if (mounted) _refresh();
+        if (!mounted) return;
+        setState(() => _connected = true);
+        _refresh();
+      },
+      onDisconnected: () {
+        if (mounted) setState(() => _connected = false);
       },
     );
     _socket = socket;
     socket.connect();
+  }
+
+  /// STOMP 전송 — 끊겨 있으면 조용히 실패하지 않고 사용자에게 알린다.
+  bool _send(String path, [Map<String, dynamic>? body]) {
+    final ok =
+        _socket?.send('/app/tapbattle/${widget.gameId}/$path', body) ?? false;
+    if (!ok && mounted) {
+      showErrorDialog(context, '실시간 연결이 끊겼어요.\n연결이 돌아오면 다시 시도해 주세요.');
+    }
+    return ok;
+  }
+
+  /// 기권 — 서버가 상대 승리로 즉시 종료한다.
+  void _confirmForfeit() {
+    showConfirmDialog(
+      context,
+      title: '기권할까요?',
+      message: '기권하면 상대의 승리로 대결이 끝나요.',
+      confirmLabel: '기권',
+      confirmColor: AppColors.primaryDark,
+      onConfirm: () => _send('forfeit'),
+    );
   }
 
   void _onEvent(TapBattleEvent event) {
@@ -207,7 +238,7 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
           message: '지금 나가면 기권 처리돼요.',
           confirmLabel: '나가기',
           onConfirm: () {
-            _socket?.send('/app/tapbattle/${widget.gameId}/forfeit');
+            _send('forfeit');
             Navigator.of(context).pop();
           },
         );
@@ -279,17 +310,25 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final active = _game?.status == TapBattleStatus.active;
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _onExit();
       },
       child: Scaffold(
-        backgroundColor: AppColors.white,
+        backgroundColor: gameSurface,
         body: SafeArea(
           child: Column(
             children: [
-              BackHeader(title: '탭배틀', onBack: _onExit),
+              BackHeader(
+                title: '탭배틀',
+                onBack: _onExit,
+                actions: [
+                  if (active) GameForfeitAction(onPressed: _confirmForfeit),
+                ],
+              ),
+              if (active) GameConnectionBanner(connected: _connected),
               Expanded(child: _buildBody()),
               // 배너 광고 — 대결 화면 하단 고정(미로드 시 공간 0).
               const AdBanner(padding: EdgeInsets.only(top: 4, bottom: 4)),
@@ -362,60 +401,26 @@ class _TapBattleScreenState extends State<TapBattleScreen> {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: _actionPending
-                          ? null
-                          : () => _restAction(
-                                () => Di.minigameRepository
-                                    .declineTapBattle(widget.gameId),
-                                popAfter: true,
-                              ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.gray700,
-                        side: const BorderSide(color: AppColors.gray200),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
-                        '거절',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
+                  child: GameGhostButton(
+                    label: '거절',
+                    onPressed: _actionPending
+                        ? null
+                        : () => _restAction(
+                              () => Di.minigameRepository
+                                  .declineTapBattle(widget.gameId),
+                              popAfter: true,
+                            ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _actionPending
-                          ? null
-                          : () => _restAction(() => Di.minigameRepository
-                              .acceptTapBattle(widget.gameId)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Text(
-                        _actionPending ? '수락 중...' : '수락',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
+                  child: GamePrimaryButton(
+                    label: '수락',
+                    busy: _actionPending,
+                    onPressed: _actionPending
+                        ? null
+                        : () => _restAction(() => Di.minigameRepository
+                            .acceptTapBattle(widget.gameId)),
                   ),
                 ),
               ],

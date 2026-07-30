@@ -6,6 +6,7 @@ import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'game_ui_common.dart';
 import 'word_chain_game_screen.dart';
 
 /// 끝말잇기 초대 — 그룹 멤버(나 제외) 여럿을 골라 방을 만든다.
@@ -93,7 +94,7 @@ class _WordChainInviteScreenState extends State<WordChainInviteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: gameSurface,
       body: SafeArea(
         child: Column(
           children: [
@@ -140,7 +141,7 @@ class _WordChainInviteScreenState extends State<WordChainInviteScreen> {
                 decoration: BoxDecoration(
                   color: o == _turnSeconds
                       ? AppColors.primary
-                      : AppColors.gray50,
+                      : AppColors.white,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: o == _turnSeconds
@@ -170,33 +171,15 @@ class _WordChainInviteScreenState extends State<WordChainInviteScreen> {
   Widget _buildBottomBar() {
     final count = _selected.length;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
       child: SizedBox(
         width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
+        child: GamePrimaryButton(
+          busy: _creating,
           onPressed: (count == 0 || _creating) ? null : _create,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            disabledBackgroundColor: AppColors.gray200,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          child: Text(
-            _creating
-                ? '방 만드는 중...'
-                : count == 0
-                    ? '초대할 그룹원을 골라주세요'
-                    : '$count명 초대하고 방 만들기',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
+          label: count == 0
+              ? '초대할 그룹원을 골라주세요'
+              : '$count명 초대하고 방 만들기',
         ),
       ),
     );
@@ -305,7 +288,7 @@ class _SelectableMemberTile extends StatelessWidget {
     return Material(
       color: selected
           ? AppColors.primary.withValues(alpha: 0.06)
-          : AppColors.gray50,
+          : AppColors.white,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),

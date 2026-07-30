@@ -9,6 +9,7 @@ import 'alkkagi_game_screen.dart';
 import 'alkkagi_invite_screen.dart';
 import 'catchmind_game_screen.dart';
 import 'catchmind_invite_screen.dart';
+import 'game_ui_common.dart';
 import 'word_chain_invite_screen.dart';
 import 'word_chain_game_screen.dart';
 import 'omok_game_screen.dart';
@@ -104,7 +105,7 @@ class _GroupGameListScreenState extends State<GroupGameListScreen> {
     final invites = summary?.invites ?? const <GameInviteItem>[];
     final active = summary?.active ?? const <GameInviteItem>[];
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: gameSurface,
       body: SafeArea(
         child: Column(
           children: [
@@ -319,9 +320,11 @@ class _InviteCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.06),
+            color: Color.alphaBlend(
+                accent.withValues(alpha: 0.07), AppColors.white),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: accent.withValues(alpha: 0.35)),
+            boxShadow: gameSoftShadow,
           ),
           child: Row(
             children: [
@@ -401,9 +404,10 @@ class _GameCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.gray50,
+            color: AppColors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.gray100),
+            boxShadow: gameSoftShadow,
           ),
           child: Row(
             children: [
