@@ -42,20 +42,82 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
   late DateTime _visibleMonth; // 항상 해당 월 1일
   bool _submitting = false;
 
+  /// 날짜별 기존 일정 색 — 숫자 아래 점으로 찍어 "그날 이미 뭐가 있는지" 보여준다.
+  /// 하루에 여러 일정이면 색이 여럿, 같은 색은 한 번만.
+  final Map<DateTime, List<Color>> _existing = {};
+
+  /// 이미 조회한 달(yyyy-MM) — 앞뒤로 왔다 갔다 해도 다시 부르지 않는다.
+  final Set<String> _loadedMonths = {};
+
   @override
   void initState() {
     super.initState();
     final start = widget.schedule.startDate;
     _visibleMonth = DateTime(start.year, start.month, 1);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _loadExisting(_visibleMonth));
   }
 
-  Color get _accent {
-    final cleaned = widget.schedule.color.replaceAll('#', '');
+  static Color _parseColor(String hex, Color fallback) {
+    final cleaned = hex.replaceAll('#', '');
     final value = int.tryParse('FF$cleaned', radix: 16);
-    return value != null ? Color(value) : AppColors.primary;
+    return value != null ? Color(value) : fallback;
   }
+
+  Color get _accent => _parseColor(widget.schedule.color, AppColors.primary);
 
   DateTime _dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  String _monthKey(DateTime month) =>
+      '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+  /// 보이는 6주(42칸) 범위의 기존 일정을 받아 날짜별 색으로 접어 둔다.
+  /// 실패하면 점만 안 보일 뿐 복사 자체엔 지장이 없으므로 조용히 넘어간다.
+  Future<void> _loadExisting(DateTime month) async {
+    final key = _monthKey(month);
+    if (_loadedMonths.contains(key)) return;
+    final groupId = Di.activeGroup.groupRoomId;
+    if (groupId == null) return;
+    _loadedMonths.add(key);
+    final gridStart = _gridStartOf(month);
+    try {
+      final schedules = await Di.scheduleRepository.list(
+        groupId,
+        startDate: gridStart,
+        endDate: gridStart.add(const Duration(days: 41)),
+      );
+      if (!mounted) return;
+      setState(() {
+        for (final s in schedules) {
+          if (s.hidden) continue;
+          final color = _parseColor(s.color, AppColors.gray400);
+          // 기간 일정은 걸쳐 있는 날마다 점을 찍는다.
+          var day = _dayKey(s.startDate);
+          final last = _dayKey(s.endDate);
+          for (var guard = 0; !day.isAfter(last) && guard < 400; guard++) {
+            final colors = _existing.putIfAbsent(day, () => []);
+            if (!colors.contains(color)) colors.add(color);
+            day = DateTime(day.year, day.month, day.day + 1);
+          }
+        }
+      });
+    } catch (_) {
+      // 다음에 이 달을 다시 열면 재시도할 수 있게 표식을 되돌린다.
+      _loadedMonths.remove(key);
+    }
+  }
+
+  /// 일요일 시작 6주 그리드의 첫 칸 날짜.
+  DateTime _gridStartOf(DateTime month) {
+    final first = DateTime(month.year, month.month, 1);
+    return first.subtract(Duration(days: first.weekday % 7));
+  }
+
+  void _goMonth(int delta) {
+    final next = DateTime(_visibleMonth.year, _visibleMonth.month + delta, 1);
+    setState(() => _visibleMonth = next);
+    _loadExisting(next);
+  }
 
   bool _isSelected(DateTime day) => _selected.contains(_dayKey(day));
 
@@ -174,7 +236,7 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
           const SizedBox(height: 6),
           Text(
             _selected.isEmpty
-                ? '일정을 복사할 날짜를 골라 주세요'
+                ? '일정을 복사할 날짜를 골라 주세요 · 숫자 아래 점은 그날 이미 있는 일정이에요'
                 : '${_selected.length}개 날짜 선택 · 최대 ${ScheduleCopySheet.maxDates}개',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -257,10 +319,7 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() {
-            _visibleMonth =
-                DateTime(_visibleMonth.year, _visibleMonth.month - 1, 1);
-          }),
+          onTap: () => _goMonth(-1),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             width: 32,
@@ -288,10 +347,7 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
         ),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() {
-            _visibleMonth =
-                DateTime(_visibleMonth.year, _visibleMonth.month + 1, 1);
-          }),
+          onTap: () => _goMonth(1),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             width: 32,
@@ -332,9 +388,7 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
 
   Widget _buildDayGrid() {
     // 일요일 시작 6주(42칸) 고정 — 사진처럼 앞뒤 달 날짜도 노출·선택 가능.
-    final first = _visibleMonth;
-    final leading = first.weekday % 7; // 일=0, 월=1 ...
-    final gridStart = first.subtract(Duration(days: leading));
+    final gridStart = _gridStartOf(_visibleMonth);
     final today = _dayKey(DateTime.now());
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -363,43 +417,74 @@ class _ScheduleCopySheetState extends State<ScheduleCopySheet> {
   }
 
   Widget _buildDayCell(DateTime day, DateTime today) {
+    final key = _dayKey(day);
     final selected = _isSelected(day);
-    final isToday = _dayKey(day) == today;
+    final isToday = key == today;
     final inMonth = day.month == _visibleMonth.month;
     final accent = _accent;
+    // 그날 이미 있는 일정들의 색 — 최대 3개까지만 점으로 보여준다.
+    final existing = _existing[key] ?? const <Color>[];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _toggle(day),
-      child: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            // 선택 = 일정 색으로 꽉 찬 원, 오늘 = 옅은 일정 색 원.
-            color: selected
-                ? accent
-                : isToday
-                    ? accent.withValues(alpha: 0.14)
-                    : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            '${day.day}',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: selected || isToday
-                  ? FontWeight.w700
-                  : FontWeight.w500,
-              fontSize: 16,
+      // 작은 화면에서 줄 높이가 모자라도 넘치지 않게 통째로 줄인다.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              // 선택 = 일정 색으로 꽉 찬 원, 오늘 = 옅은 일정 색 원.
               color: selected
-                  ? Colors.white
-                  : inMonth
-                      ? AppColors.gray900
-                      : AppColors.gray400,
+                  ? accent
+                  : isToday
+                      ? accent.withValues(alpha: 0.14)
+                      : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${day.day}',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight:
+                    selected || isToday ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 16,
+                color: selected
+                    ? Colors.white
+                    : inMonth
+                        ? AppColors.gray900
+                        : AppColors.gray400,
+              ),
             ),
           ),
+          const SizedBox(height: 3),
+          // 점 자리는 일정이 없어도 비워 둔다 — 있고 없고에 따라 숫자가 튀지 않게.
+          SizedBox(
+            height: 6,
+            child: existing.isEmpty
+                ? null
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (final c in existing.take(3))
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                          decoration: BoxDecoration(
+                            color: inMonth ? c : c.withValues(alpha: 0.45),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
         ),
       ),
     );

@@ -6,6 +6,7 @@ import '../../../features/membership/models/membership_models.dart';
 import '../../../theme/colors.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/back_header.dart';
+import 'game_ui_common.dart';
 import 'tap_battle_screen.dart';
 
 /// 탭배틀 상대 고르기 — 그룹 멤버(나 제외) 1명을 초대한다.
@@ -99,7 +100,7 @@ class _TapBattleInviteScreenState extends State<TapBattleInviteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: gameSurface,
       body: SafeArea(
         child: Column(
           children: [
@@ -205,7 +206,7 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.gray50,
+      color: AppColors.white,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
