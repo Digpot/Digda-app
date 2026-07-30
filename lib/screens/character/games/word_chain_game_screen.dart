@@ -36,6 +36,9 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
   bool _resultShown = false;
   GameSocketSession? _socket;
 
+  /// 실시간 연결 상태 — 끊기면 배너로 알린다(턴이 안 오는 것처럼 보이는 걸 막는다).
+  bool _connected = false;
+
   final TextEditingController _wordCtrl = TextEditingController();
   final ScrollController _feedScroll = ScrollController();
   final FocusNode _inputFocus = FocusNode();
@@ -113,11 +116,26 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
       accessToken: token,
       onJson: (json) => _onEvent(WordChainEvent.fromJson(json)),
       onConnected: () {
-        if (mounted) _refresh();
+        if (!mounted) return;
+        setState(() => _connected = true);
+        _refresh();
+      },
+      onDisconnected: () {
+        if (mounted) setState(() => _connected = false);
       },
     );
     _socket = socket;
     socket.connect();
+  }
+
+  /// STOMP 전송 — 끊겨 있으면 조용히 실패하지 않고 사용자에게 알린다.
+  bool _send(String path, [Map<String, dynamic>? body]) {
+    final ok =
+        _socket?.send('/app/wordchain/${widget.gameId}/$path', body) ?? false;
+    if (!ok && mounted) {
+      showErrorDialog(context, '실시간 연결이 끊겼어요.\n연결이 돌아오면 다시 시도해 주세요.');
+    }
+    return ok;
   }
 
   void _onEvent(WordChainEvent event) {
@@ -212,13 +230,22 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
     if (word.isEmpty) return;
     final game = _game;
     if (game == null || !game.isMyTurn(_myId)) return;
+    if (!_send('word', {'word': word})) return;
     _wordCtrl.clear();
-    _socket?.send(
-      '/app/wordchain/${widget.gameId}/word',
-      {'word': word},
-    );
     // 내 턴 동안 연속 입력을 위해 포커스 유지.
     _inputFocus.requestFocus();
+  }
+
+  /// 기권 — 서버는 탈락 처리하고, 화면은 남아 남은 대결을 구경한다.
+  void _confirmForfeit() {
+    showConfirmDialog(
+      context,
+      title: '기권할까요?',
+      message: '기권하면 탈락 처리되고, 남은 대결은 구경만 할 수 있어요.',
+      confirmLabel: '기권',
+      confirmColor: AppColors.primaryDark,
+      onConfirm: () => _send('forfeit'),
+    );
   }
 
   void _onExit() {
@@ -252,7 +279,7 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
             message: '지금 나가면 탈락 처리돼요.',
             confirmLabel: '나가기',
             onConfirm: () {
-              _socket?.send('/app/wordchain/${widget.gameId}/forfeit');
+              _send('forfeit');
               Navigator.of(context).pop();
             },
           );
@@ -321,18 +348,32 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final game = _game;
+    final me = game?.playerOf(_myId);
+    final canForfeit = game?.status == WordChainStatus.active &&
+        me != null &&
+        me.joined &&
+        !me.eliminated;
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _onExit();
       },
       child: Scaffold(
-        backgroundColor: AppColors.white,
+        backgroundColor: gameSurface,
         resizeToAvoidBottomInset: true,
         body: SafeArea(
           child: Column(
             children: [
-              BackHeader(title: '끝말잇기', onBack: _onExit),
+              BackHeader(
+                title: '끝말잇기',
+                onBack: _onExit,
+                actions: [
+                  if (canForfeit) GameForfeitAction(onPressed: _confirmForfeit),
+                ],
+              ),
+              if (game?.status == WordChainStatus.active)
+                GameConnectionBanner(connected: _connected),
               Expanded(child: _buildBody()),
               // 배너 광고 — 키보드가 올라오면 입력을 가리지 않게 숨긴다.
               if (MediaQuery.of(context).viewInsets.bottom == 0)
@@ -382,172 +423,66 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
     final amInvitedNotJoined = me != null && !me.joined;
     return Column(
       children: [
-        const SizedBox(height: 8),
-        const Text('🔤', style: TextStyle(fontSize: 40)),
-        const SizedBox(height: 8),
-        Text(
-          '${game.hostName}님의 끝말잇기',
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: AppColors.gray900,
-          ),
+        GameLobbyIntro(
+          emoji: '🔤',
+          title: '${game.hostName}님의 끝말잇기',
+          subtitle: '참가 $joinedCount명 · 2명 이상 모이면 시작할 수 있어요',
+          rule: '턴당 ${game.turnSeconds}초 · 시간 초과 = 탈락 · 최후의 1인이 우승!',
         ),
-        const SizedBox(height: 4),
-        Text(
-          '참가 $joinedCount명 · 2명 이상 모이면 시작할 수 있어요',
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w500,
-            fontSize: 12.5,
-            color: AppColors.gray500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            '턴당 ${game.turnSeconds}초 · 시간 초과 = 탈락 · 최후의 1인이 우승!',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
             itemCount: game.players.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, i) {
               final p = game.players[i];
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: p.joined
-                      ? AppColors.primary.withValues(alpha: 0.04)
-                      : AppColors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: p.joined ? AppColors.primary : AppColors.gray100,
-                    width: p.joined ? 1.4 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    GamePlayerAvatar(name: p.name, dimmed: p.declined),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        p.userId == _myId ? '${p.name} (나)' : p.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                          color: AppColors.gray900,
-                        ),
-                      ),
-                    ),
-                    if (p.isHost)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Text('👑', style: TextStyle(fontSize: 14)),
-                      ),
-                    Text(
-                      p.joined
-                          ? '참가 완료'
-                          : p.declined
-                              ? '거절'
-                              : '대기 중...',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: p.joined
-                            ? AppColors.primary
-                            : p.declined
-                                ? AppColors.gray400
-                                : AppColors.gray500,
-                      ),
-                    ),
-                  ],
-                ),
+              return GameRosterTile(
+                name: p.name,
+                isMe: p.userId == _myId,
+                isHost: p.isHost,
+                joined: p.joined,
+                dimmed: p.declined,
+                statusLabel: p.joined
+                    ? '참가 완료'
+                    : p.declined
+                        ? '거절'
+                        : '대기 중...',
+                statusColor: p.joined
+                    ? AppColors.primary
+                    : p.declined
+                        ? AppColors.gray400
+                        : AppColors.gray500,
               );
             },
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
           child: isHost
               ? Row(
                   children: [
                     Expanded(
-                      child: SizedBox(
-                        height: 52,
-                        child: OutlinedButton(
-                          onPressed: _actionPending
-                              ? null
-                              : () => _lobbyAction(
-                                    () => Di.minigameRepository
-                                        .cancelWordChain(widget.gameId),
-                                    popAfter: true,
-                                  ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.gray700,
-                            side: const BorderSide(color: AppColors.gray200),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: const Text(
-                            '방 없애기',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
+                      child: GameGhostButton(
+                        label: '방 없애기',
+                        onPressed: _actionPending
+                            ? null
+                            : () => _lobbyAction(
+                                  () => Di.minigameRepository
+                                      .cancelWordChain(widget.gameId),
+                                  popAfter: true,
+                                ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       flex: 2,
-                      child: SizedBox(
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: (joinedCount < 2 || _actionPending)
-                              ? null
-                              : () => _lobbyAction(() => Di.minigameRepository
-                                  .startWordChain(widget.gameId)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            disabledBackgroundColor: AppColors.gray200,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: Text(
-                            joinedCount < 2 ? '참가를 기다리는 중...' : '게임 시작!',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
+                      child: GamePrimaryButton(
+                        label: joinedCount < 2 ? '참가를 기다리는 중...' : '게임 시작!',
+                        onPressed: (joinedCount < 2 || _actionPending)
+                            ? null
+                            : () => _lobbyAction(() => Di.minigameRepository
+                                .startWordChain(widget.gameId)),
                       ),
                     ),
                   ],
@@ -556,62 +491,25 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
                   ? Row(
                       children: [
                         Expanded(
-                          child: SizedBox(
-                            height: 52,
-                            child: OutlinedButton(
-                              onPressed: _actionPending
-                                  ? null
-                                  : () => _lobbyAction(
-                                        () => Di.minigameRepository
-                                            .declineWordChain(widget.gameId),
-                                        popAfter: true,
-                                      ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.gray700,
-                                side:
-                                    const BorderSide(color: AppColors.gray200),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: const Text(
-                                '거절',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
+                          child: GameGhostButton(
+                            label: '거절',
+                            onPressed: _actionPending
+                                ? null
+                                : () => _lobbyAction(
+                                      () => Di.minigameRepository
+                                          .declineWordChain(widget.gameId),
+                                      popAfter: true,
+                                    ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: SizedBox(
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: _actionPending
-                                  ? null
-                                  : () => _lobbyAction(() => Di
-                                      .minigameRepository
-                                      .joinWordChain(widget.gameId)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: const Text(
-                                '참가하기',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
+                          child: GamePrimaryButton(
+                            label: '참가하기',
+                            onPressed: _actionPending
+                                ? null
+                                : () => _lobbyAction(() => Di.minigameRepository
+                                    .joinWordChain(widget.gameId)),
                           ),
                         ),
                       ],
@@ -667,28 +565,12 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
           ),
         if (finished)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
             child: SizedBox(
               width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
+              child: GamePrimaryButton(
+                label: '나가기',
                 onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  '나가기',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
               ),
             ),
           )
@@ -719,10 +601,12 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
         ? ''
         : game.playerOf(game.currentTurnUserId!)?.name ?? '';
     final myTurn = game.isMyTurn(_myId);
-    final urgent = _remainingSec <= 5;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: GameCard(
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        accent: myTurn ? AppColors.primary : null,
+        child: Row(
         children: [
           // 이어야 할 글자 — 큼직한 원.
           Container(
@@ -787,25 +671,9 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
             ),
           ),
           if (!finished)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-              decoration: BoxDecoration(
-                color:
-                    urgent ? const Color(0xFFFFE9E9) : AppColors.gray50,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '⏱ $_remainingSec',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  color: urgent ? AppColors.primary : AppColors.gray700,
-                ),
-              ),
-            ),
+            GameCountdownPill(seconds: _remainingSec, urgentAt: 5, suffix: '초'),
         ],
+        ),
       ),
     );
   }
@@ -970,10 +838,24 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
                   color: AppColors.gray400,
                 ),
                 filled: true,
-                fillColor: myTurn ? AppColors.gray50 : AppColors.gray100,
+                fillColor: myTurn ? AppColors.white : AppColors.gray100,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                    horizontal: 16, vertical: 13),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide(
+                    color: myTurn ? AppColors.primary : AppColors.gray100,
+                  ),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: const BorderSide(color: AppColors.gray100),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: const BorderSide(color: AppColors.primary),
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
                   borderSide: BorderSide.none,
@@ -991,12 +873,22 @@ class _WordChainGameScreenState extends State<WordChainGameScreen> {
           GestureDetector(
             onTap: myTurn ? _submitWord : null,
             child: Container(
-              width: 42,
-              height: 42,
+              width: 44,
+              height: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: myTurn ? AppColors.primary : AppColors.gray200,
+                gradient: myTurn ? gamePrimaryGradient : null,
+                color: myTurn ? null : AppColors.gray200,
                 shape: BoxShape.circle,
+                boxShadow: myTurn
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.30),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
               child: const Icon(Icons.send_rounded,
                   size: 20, color: Colors.white),
