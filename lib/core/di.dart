@@ -10,6 +10,7 @@ import '../features/group_room/state/active_group_session.dart';
 import '../features/invite/data/invite_repository.dart';
 import '../features/membership/data/membership_repository.dart';
 import '../features/schedule/data/schedule_repository.dart';
+import '../features/ledger/data/ledger_repository.dart';
 import '../features/diary/data/diary_repository.dart';
 import '../features/comment/data/comment_repository.dart';
 import '../features/todo/data/todo_repository.dart';
@@ -41,6 +42,7 @@ class Di {
   static late final InviteRepository inviteRepository;
   static late final MembershipRepository membershipRepository;
   static late final ScheduleRepository scheduleRepository;
+  static late final LedgerRepository ledgerRepository;
   static late final DiaryRepository diaryRepository;
   static late final CommentRepository commentRepository;
   static late final TodoRepository todoRepository;
@@ -72,7 +74,12 @@ class Di {
     groupRoomRepository = GroupRoomRepository(apiClient: apiClient);
     inviteRepository = InviteRepository(apiClient: apiClient);
     membershipRepository = MembershipRepository(apiClient: apiClient);
-    scheduleRepository = ScheduleRepository(apiClient: apiClient);
+    // 일정 쓰기가 가계부 월 요약 캐시까지 버려야 해서 ledger 를 먼저 만든다.
+    ledgerRepository = LedgerRepository(apiClient: apiClient);
+    scheduleRepository = ScheduleRepository(
+      apiClient: apiClient,
+      ledgerRepository: ledgerRepository,
+    );
     diaryRepository = DiaryRepository(apiClient: apiClient);
     commentRepository = CommentRepository(apiClient: apiClient);
     todoRepository = TodoRepository(apiClient: apiClient);

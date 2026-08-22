@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../core/di.dart';
 import '../../core/network/error_message.dart';
 import '../../features/membership/models/membership_models.dart';
+import '../../features/ledger/models/ledger_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/expense_editor.dart';
 import '../../widgets/primary_button.dart';
 
 class AddScheduleScreen extends StatefulWidget {
@@ -29,6 +31,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
   List<Membership> _members = const [];
   final Set<String> _selectedIds = <String>{};
+
+  /// 그룹 가계부 — 이 일정에서 쓴 돈. 일정과 함께 한 번에 저장된다.
+  List<ExpenseWrite> _expenses = const [];
 
   final List<Color> _colorOptions = [
     AppColors.primary,
@@ -106,6 +111,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
           _endTime = _parseTime(s.endTime!) ?? _endTime;
         }
         initialIds = s.participants.map((p) => p.id).toList();
+        // 기존 지출을 편집 폼에 그대로 올린다. 저장 시 이 목록으로 통째로 교체되므로,
+        // 여기서 안 채우면 일정 제목만 고쳐도 금액이 전부 날아간다.
+        _expenses = s.expenses.map(ExpenseWrite.fromExpense).toList();
       }
 
       if (!mounted) return;
@@ -165,6 +173,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         startTime: _allDay ? null : _formatTime24(_startTime),
         endTime: _allDay ? null : _formatTime24(_endTime),
         participantIds: _selectedIds.toList(),
+        // 항상 보낸다(빈 목록 포함) — 편집에서 금액을 전부 지운 경우가 서버에
+        // '변경 없음'으로 읽히면 지운 금액이 되살아난다.
+        expenses: _expenses,
       );
       if (_isEdit) {
         await Di.scheduleRepository.update(
@@ -428,6 +439,39 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          _buildSectionLabel('금액'),
+                          const SizedBox(width: 6),
+                          const Text(
+                            '선택',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: AppColors.gray400,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_expenses.isNotEmpty)
+                            Text(
+                              '${_expenses.length}건',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: AppColors.gray500,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ExpenseListEditor(
+                        expenses: _expenses,
+                        members: _members,
+                        onChanged: (list) => setState(() => _expenses = list),
                       ),
                       const SizedBox(height: 40),
                     ],
