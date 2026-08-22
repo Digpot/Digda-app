@@ -1,11 +1,20 @@
 import '../../../core/network/api_client.dart';
+import '../../ledger/data/ledger_repository.dart';
 import '../models/schedule_models.dart';
 
 /// 6번 도메인(Schedule) 의 5개 엔드포인트를 래핑.
 class ScheduleRepository {
-  ScheduleRepository({required ApiClient apiClient}) : _api = apiClient;
+  ScheduleRepository({
+    required ApiClient apiClient,
+    LedgerRepository? ledgerRepository,
+  })  : _api = apiClient,
+        _ledger = ledgerRepository;
 
   final ApiClient _api;
+
+  /// 가계부 금액은 일정에 매달려 있어서, 일정을 쓰면 월 요약도 같이 낡는다.
+  /// 일정 쓰기 한 곳에서 함께 무효화해 "저장했는데 총액이 그대로"를 막는다.
+  final LedgerRepository? _ledger;
 
   /// 기간 목록 캐시 — 'groupId|start|end' → 일정 목록. 쓰기(생성/수정/삭제) 시 전체 무효화.
   final Map<String, List<Schedule>> _listCache = {};
@@ -56,7 +65,7 @@ class ScheduleRepository {
       '/group-rooms/$groupRoomId/schedules',
       body: body.toJson(),
     );
-    _listCache.clear();
+    _invalidateAfterWrite();
     return Schedule.fromJson(res.data!);
   }
 
@@ -71,7 +80,7 @@ class ScheduleRepository {
       '/group-rooms/$groupRoomId/schedules/$scheduleId/copy',
       body: {'dates': dates.map(_date).toList()},
     );
-    _listCache.clear();
+    _invalidateAfterWrite();
     return (res.data!['schedules'] as List? ?? [])
         .map((e) => Schedule.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -87,7 +96,7 @@ class ScheduleRepository {
       '/group-rooms/$groupRoomId/schedules/$scheduleId',
       body: body.toJson(),
     );
-    _listCache.clear();
+    _invalidateAfterWrite();
     return Schedule.fromJson(res.data!);
   }
 
@@ -96,9 +105,15 @@ class ScheduleRepository {
     await _api.delete<void>(
       '/group-rooms/$groupRoomId/schedules/$scheduleId',
     );
+    _invalidateAfterWrite();
+  }
+
+  /// 일정 쓰기 후 — 일정 목록과 가계부 월 요약을 함께 버린다.
+  void _invalidateAfterWrite() {
     _listCache.clear();
+    _ledger?.invalidateCaches();
   }
 
   /// 신고/차단/숨김으로 일정 가시성이 바뀐 뒤 목록을 강제 갱신하기 위한 공개 진입점.
-  void invalidateCaches() => _listCache.clear();
+  void invalidateCaches() => _invalidateAfterWrite();
 }

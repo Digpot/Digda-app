@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
+import '../../core/format/money.dart';
 import '../../core/maintenance_gate.dart';
 import '../../core/network/error_message.dart';
 import '../../core/notification_router.dart';
 import '../../features/app_config/models/app_config.dart';
 import '../../features/diary/models/diary_models.dart';
 import '../../features/group_room/models/group_room_models.dart';
+import '../../features/ledger/models/ledger_models.dart';
 import '../../features/notification/models/notification_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
@@ -63,6 +65,10 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
   /// 앱 운영 설정(대공지 등). best-effort 로 받아 배너 노출에 사용.
   AppConfig _appConfig = AppConfig.empty;
 
+  /// 이번 달 그룹 가계부 요약. 실패하거나 아직 안 왔으면 null 이고, 그동안 카드는
+  /// 0원으로 그려진다(홈 전체를 막지 않는 부가 정보).
+  LedgerSummary? _ledger;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +85,20 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
         MaintenanceGate.show(appNavigatorKey, cfg.maintenanceMessage);
       }
     } catch (_) {/* 설정 조회 실패는 화면에 영향 없음 */}
+  }
+
+  /// 이번 달 가계부 요약. 실패해도 홈은 그대로 그린다(카드만 0원으로 남음).
+  Future<void> _loadLedger(String groupRoomId) async {
+    final now = DateTime.now();
+    try {
+      final summary = await Di.ledgerRepository.monthly(
+        groupRoomId,
+        year: now.year,
+        month: now.month,
+        forceRefresh: true,
+      );
+      if (mounted) setState(() => _ledger = summary);
+    } catch (_) {/* 가계부 조회 실패는 홈 전체를 막지 않는다 */}
   }
 
   /// 차단 목록을 받아 그룹원 표시에서 '차단됨' 마킹에 쓴다. 실패는 무시(마킹만 빠짐).
@@ -108,6 +128,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     });
     _loadAppConfig(); // 대공지 배너 (best-effort, 비동기)
     _loadBlockedUsers(); // 차단 목록 (best-effort, 비동기)
+    _loadLedger(activeId); // 이번 달 가계부 (best-effort, 비동기)
 
     // 이용 제한 상태를 최신으로 — 제한되면 곧바로 안내 화면으로 막는다.
     try {
@@ -654,6 +675,11 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             onNextEvent: () => _go('/schedule'),
             onMembers: () => _openMemberSheet(group),
           ),
+          const SizedBox(height: 16),
+          _LedgerCard(
+            summary: _ledger,
+            onTap: () => _goThenReload('/ledger'),
+          ),
           const SizedBox(height: 24),
           const _SectionTitle('빠른 작업'),
           const SizedBox(height: 12),
@@ -676,6 +702,16 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
             title: '일정 관리',
             subtitle: '우리 모임 일정을 한눈에',
             onTap: () => _go('/schedule'),
+          ),
+          const SizedBox(height: 12),
+          FeatureCard(
+            icon: Icons.account_balance_wallet_outlined,
+            iconBgColor: AppColors.ledgerEtc.withValues(alpha: 0.22),
+            iconColor: const Color(0xFF2F9A76),
+            cardBgColor: AppColors.ledgerEtc.withValues(alpha: 0.07),
+            title: '우리 가계부',
+            subtitle: '일정에 쓴 돈을 한눈에',
+            onTap: () => _goThenReload('/ledger'),
           ),
           const SizedBox(height: 12),
           FeatureCard(
@@ -1443,6 +1479,104 @@ class _NextEventTile extends StatelessWidget {
     final period = h < 12 ? '오전' : '오후';
     final h12 = h % 12 == 0 ? 12 : h % 12;
     return m > 0 ? '$period $h12시 $m분' : '$period $h12시';
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  ③-2 이번 달 가계부
+// ────────────────────────────────────────────────────────────
+
+/// 홈에서 보는 가계부 한 줄 — 이번 달 총액과 건수만.
+///
+/// 분류·사람별 집계는 전체 가계부 화면 몫이다. 홈은 "이번 달 얼마 썼지" 한 가지
+/// 질문에만 답하고, 나머지는 눌러서 들어가게 한다.
+class _LedgerCard extends StatelessWidget {
+  const _LedgerCard({required this.summary, required this.onTap});
+
+  final LedgerSummary? summary;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = summary?.totalAmount ?? 0;
+    final count = summary?.entryCount ?? 0;
+    final month = DateTime.now().month;
+    return Material(
+      color: AppColors.ledgerSurface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.gray100),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.account_balance_wallet_outlined,
+                    size: 22, color: AppColors.primary),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$month월에 우리가 쓴 돈',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: AppColors.gray500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        count == 0 ? '아직 기록 없음' : formatWon(total),
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w800,
+                          fontSize: count == 0 ? 16 : 22,
+                          height: 1.1,
+                          color: count == 0
+                              ? AppColors.gray400
+                              : AppColors.ledgerInk,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (count > 0)
+                Text(
+                  '$count건',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
+                ),
+              const Icon(Icons.chevron_right,
+                  size: 20, color: AppColors.gray400),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -12,6 +12,7 @@ import 'screens/group/transfer_owner_screen.dart';
 import 'screens/schedule/schedule_calendar_screen.dart';
 import 'screens/schedule/schedule_detail_screen.dart';
 import 'screens/schedule/add_schedule_screen.dart';
+import 'screens/ledger/ledger_screen.dart';
 import 'screens/diary/diary_calendar_screen.dart';
 import 'screens/diary/diary_day_list_screen.dart';
 import 'screens/diary/diary_detail_screen.dart';
@@ -100,6 +101,9 @@ class AppRouter {
       case '/add-schedule':
         return MaterialPageRoute(
             settings: settings, builder: (_) => const AddScheduleScreen());
+      case '/ledger':
+        return MaterialPageRoute(
+            settings: settings, builder: (_) => const LedgerScreen());
       case '/diary':
         return _tabRoute(const DiaryCalendarScreen(), settings);
       case '/diary-day':
