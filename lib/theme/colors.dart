@@ -45,6 +45,17 @@ class AppColors {
   static const Color eventPurple = Color(0xFFA78BFA);     // 보라 일정
   static const Color eventHoliday = Color(0xFFEF4444);    // 공휴일 레드 (사용자 빨강과 구분되는 순수 레드)
 
+  // Ledger (그룹 가계부) — 분류별 색.
+  // 일정 색(사용자가 고르는 원색 5종)과 섞이지 않도록 채도를 한 단계 낮춘 계열로 잡았다.
+  // 같은 화면에 일정 막대와 지출 그래프가 함께 뜨기 때문.
+  static const Color ledgerFood = Color(0xFFFF8A5B);      // 식비 — 주황
+  static const Color ledgerTransport = Color(0xFF5B9BF8); // 교통 — 파랑
+  static const Color ledgerLodging = Color(0xFF9B7BF5);   // 숙박 — 보라
+  static const Color ledgerShopping = Color(0xFFF2649B);  // 쇼핑 — 핑크
+  static const Color ledgerEtc = Color(0xFF6BCFA6);       // 기타 — 민트
+  static const Color ledgerInk = Color(0xFF10151E);       // 총액 숫자 — 본문보다 진한 잉크
+  static const Color ledgerSurface = Color(0xFFF7F8FA);   // 가계부 카드 배경
+
   // Schedule Category Colors (연한 파스텔)
   static const Color categoryRed = Color(0xFFFFB3B3);     // 연한 빨강
   static const Color categoryPurple = Color(0xFFD4C4FF);  // 연한 보라

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:world_holidays/world_holidays.dart';
 import '../../core/di.dart';
+import '../../core/format/money.dart';
 import '../../core/network/error_message.dart';
 import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
@@ -40,6 +41,9 @@ class _Schedule {
   /// 타임라인 좌측 시간 레일 라벨 — '종일' 또는 '오전 7시'.
   final String railLabel;
 
+  /// 그룹 가계부 — 이 일정에 달린 지출 합계(원). 가계부 모드 셀과 카드 금액 배지에 쓴다.
+  final int expenseTotal;
+
   const _Schedule({
     this.id,
     required this.title,
@@ -55,7 +59,10 @@ class _Schedule {
     this.hiddenReason,
     this.sortMinutes = -1,
     this.railLabel = '종일',
+    this.expenseTotal = 0,
   }) : end = end ?? start;
+
+  bool get hasExpense => expenseTotal > 0;
 
   /// 'HH:mm[:ss]' → '오전 9시', '오후 2시 30분' 같은 한글 표기.
   static String _toKorean(String hhmm) {
@@ -119,6 +126,7 @@ class _Schedule {
       allDay: s.allDay,
       sortMinutes: sortMinutes,
       railLabel: railLabel,
+      expenseTotal: s.expenseTotal,
     );
   }
 
@@ -152,6 +160,10 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
 
   /// 뷰 모드(월/주/일).
   _CalView _view = _CalView.month;
+
+  /// 가계부 모드 — 켜면 달력 칸이 일정 막대 대신 그날 쓴 금액을 보여준다.
+  /// (일정과 금액을 같이 띄우면 한 칸에 다섯 줄이 들어가 둘 다 안 읽힌다)
+  bool _ledgerMode = false;
 
   /// 공휴일 맵: 날짜(utc normalized) → 공휴일명
   final Map<DateTime, String> _holidays = {};
@@ -485,6 +497,38 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return _displaySchedules.where((s) => s.coversDay(day)).toList();
   }
 
+  // ─── 가계부 ──────────────────────────────────────────────────────────────────
+
+  /// 지출을 어느 날에 셀지 — **일정의 시작일**. 기간 일정의 금액이 날마다 중복으로
+  /// 잡히지 않게, 그리고 서버 월 집계(GroupLedgerResponse)와 같은 기준이 되도록.
+  int _dayExpenseTotal(DateTime day) {
+    return _schedules
+        .where((s) => s.hasExpense && s.isStartDay(day))
+        .fold(0, (sum, s) => sum + s.expenseTotal);
+  }
+
+  /// 지금 보고 있는 달의 총 지출.
+  ///
+  /// 멤버 필터가 켜져 있으면 걸러진 목록(`_schedules`)을 그대로 합산한다 —
+  /// 화면에 안 보이는 금액이 총액에만 들어가면 숫자가 안 맞는 것처럼 보인다.
+  /// 그래서 필터 상태에 따라 전체 가계부 화면의 월 총액과 다를 수 있다.
+  int get _monthExpenseTotal {
+    return _schedules
+        .where((s) =>
+            s.hasExpense &&
+            s.start.year == _focusedDay.year &&
+            s.start.month == _focusedDay.month)
+        .fold(0, (sum, s) => sum + s.expenseTotal);
+  }
+
+  void _toggleLedgerMode() {
+    setState(() {
+      _ledgerMode = !_ledgerMode;
+      // 켤 때 선택 강조를 풀어 금액 칸이 파란 원에 가려지지 않게 한다.
+      if (_ledgerMode) _selectedDay = null;
+    });
+  }
+
   /// eventLoader용 (TableCalendar에 전달)
   List<dynamic> _eventLoader(DateTime day) {
     return _getSchedulesForDay(day);
@@ -645,15 +689,54 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               ),
             ),
           const SizedBox(height: 2),
-          // 행별 이벤트 pill — 모든 셀이 동일한 3행 구조라 같은 레인의 멀티데이
-          // 막대가 인접 셀과 정확히 같은 높이에서 맞닿는다. 빈 행은 placeholder.
-          for (int row = 0; row < maxEvents; row++)
-            rowToSchedule[row] != null
-                ? _buildMonthEventPill(day, rowToSchedule[row]!, cellWidth)
-                : const SizedBox(height: 18),
-          // 오버플로우: 4번째부터 숨기고 "…"로 남은 개수 표시
-          if (hasOverflow) _buildMorePill(hiddenCount),
+          // 가계부 모드 — 일정 막대를 전부 걷어내고 그날 쓴 금액만 남긴다.
+          if (_ledgerMode)
+            _buildDayAmount(day, isOutside: isOutside)
+          else ...[
+            // 행별 이벤트 pill — 모든 셀이 동일한 3행 구조라 같은 레인의 멀티데이
+            // 막대가 인접 셀과 정확히 같은 높이에서 맞닿는다. 빈 행은 placeholder.
+            for (int row = 0; row < maxEvents; row++)
+              rowToSchedule[row] != null
+                  ? _buildMonthEventPill(day, rowToSchedule[row]!, cellWidth)
+                  : const SizedBox(height: 18),
+            // 오버플로우: 4번째부터 숨기고 "…"로 남은 개수 표시
+            if (hasOverflow) _buildMorePill(hiddenCount),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// 가계부 모드의 날짜 칸 내용 — 그날 쓴 금액 칩. 지출이 없는 날은 비워 둔다.
+  ///
+  /// 칸 폭이 화면의 7분의 1이라 원 단위를 그대로 쓰면 무조건 잘린다.
+  /// 그래서 만/억으로 줄인 표기(formatAmountCompact)를 쓰고, 정확한 금액은
+  /// 날짜를 눌러 여는 상세 시트에서 보여준다.
+  Widget _buildDayAmount(DateTime day, {required bool isOutside}) {
+    if (isOutside) return const SizedBox(height: 18);
+    final amount = _dayExpenseTotal(day);
+    if (amount == 0) return const SizedBox(height: 18);
+    return Container(
+      height: 18,
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          formatAmountCompact(amount),
+          maxLines: 1,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w800,
+            fontSize: 11,
+            color: AppColors.primary,
+          ),
+        ),
       ),
     );
   }
@@ -934,6 +1017,47 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     if (id == null) return;
     await Navigator.of(context).pushNamed('/schedule-detail', arguments: id);
     _loadSchedules();
+  }
+
+  /// '오늘' 옆 가계부 토글.
+  ///
+  /// 켜지면 칩이 그대로 이번 달 총 지출 표시로 바뀐다 — 버튼과 금액을 따로 두면
+  /// 좁은 줄에 요소가 하나 더 늘고, "이 버튼을 켜서 나온 숫자"라는 연결도 흐려진다.
+  /// 금액은 축약 표기(만/억)를 쓴다. 정확한 값은 전체 가계부 화면에서 본다.
+  Widget _buildLedgerToggle() {
+    final on = _ledgerMode;
+    final total = on ? _monthExpenseTotal : 0;
+    return Material(
+      color: on ? AppColors.primary : AppColors.gray50,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: _toggleLedgerMode,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 15,
+                color: on ? AppColors.white : AppColors.gray600,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                on ? '${formatAmountCompact(total)}원' : '가계부',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: on ? AppColors.white : AppColors.gray600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // ─── 뷰 토글 (월/주) ─────────────────────────────────────────────────────────
@@ -1217,6 +1341,63 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
       );
     }
 
+    // 가계부 모드 — 월 뷰와 같은 규칙으로 레인 대신 금액 한 줄만 그린다.
+    if (_ledgerMode) {
+      final weekTotal =
+          days.fold<int>(0, (sum, d) => sum + _dayExpenseTotal(d));
+      return Column(
+        children: [
+          Row(children: days.map(header).toList()),
+          const SizedBox(height: 6),
+          const Divider(height: 1, color: AppColors.gray100),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final d in days)
+                SizedBox(
+                  width: cellWidth,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _showDayDetail(d),
+                    child: _buildDayAmount(d, isOutside: false),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '이번 주에 쓴 돈',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    formatWon(weekTotal),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 26,
+                      color: AppColors.ledgerInk,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         Row(children: days.map(header).toList()),
@@ -1460,6 +1641,16 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
+                  // 전체 가계부 — 이번 달만 보는 캘린더와 달리 그룹 누적까지 본다.
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/ledger'),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 22,
+                      color: AppColors.gray700,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   const NotificationBellIcon(),
                   const SizedBox(width: 16),
                   GestureDetector(
@@ -1492,15 +1683,21 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () => _showMonthPicker(),
-                    child: Text(
-                      '${_focusedDay.year}년 ${_focusedDay.month}월',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                        color: AppColors.gray900,
+                  // 가계부 모드에서는 우측에 금액 칩이 하나 더 붙는다.
+                  // 좁은 기기에서 이 줄이 넘치지 않도록 월 라벨이 먼저 줄어들게 한다.
+                  Flexible(
+                    child: GestureDetector(
+                      onTap: () => _showMonthPicker(),
+                      child: Text(
+                        '${_focusedDay.year}년 ${_focusedDay.month}월',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: AppColors.gray900,
+                        ),
                       ),
                     ),
                   ),
@@ -1539,6 +1736,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  _buildLedgerToggle(),
                 ],
               ),
             ),
@@ -1960,6 +2159,27 @@ class _DayDetailBottomSheet extends StatelessWidget {
                       color: AppColors.gray900,
                     ),
                   ),
+                  // 지출이 있으면 카드에서 바로 보이게 — 상세까지 들어가지 않아도
+                  // "이 일정에 돈이 얼마 붙어 있는지"를 알 수 있어야 한다.
+                  if (schedule.hasExpense) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet_outlined,
+                            size: 13, color: AppColors.gray500),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatWon(schedule.expenseTotal),
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppColors.ledgerInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
