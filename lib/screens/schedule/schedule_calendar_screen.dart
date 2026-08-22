@@ -1670,51 +1670,60 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
               child: Row(
                 children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _changeMonth(DateTime(
-                      _focusedDay.year,
-                      _focusedDay.month - 1,
-                    )),
-                    child: const Icon(
-                      Icons.chevron_left,
-                      size: 22,
-                      color: AppColors.gray500,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  // 가계부 모드에서는 우측에 금액 칩이 하나 더 붙는다.
-                  // 좁은 기기에서 이 줄이 넘치지 않도록 월 라벨이 먼저 줄어들게 한다.
-                  Flexible(
-                    child: GestureDetector(
-                      onTap: () => _showMonthPicker(),
-                      child: Text(
-                        '${_focusedDay.year}년 ${_focusedDay.month}월',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          color: AppColors.gray900,
+                  // 월 이동 묶음을 Expanded 로 감싸 남는 가로 공간을 통째로 가져간다.
+                  // Spacer 와 나란히 두면 둘 다 flex=1 이라 여유 공간을 반씩 나눠 갖고,
+                  // 그 절반이 라벨 폭보다 좁아지면 "2026년 …" 으로 잘려버린다.
+                  Expanded(
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _changeMonth(DateTime(
+                            _focusedDay.year,
+                            _focusedDay.month - 1,
+                          )),
+                          child: const Icon(
+                            Icons.chevron_left,
+                            size: 22,
+                            color: AppColors.gray500,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        // 가계부 모드에선 우측에 금액 칩이 하나 더 붙는다. 좁은 기기에서
+                        // 이 줄이 넘치지 않도록, 정말 자리가 없을 때만 라벨이 줄어든다.
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: () => _showMonthPicker(),
+                            child: Text(
+                              '${_focusedDay.year}년 ${_focusedDay.month}월',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                                color: AppColors.gray900,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _changeMonth(DateTime(
+                            _focusedDay.year,
+                            _focusedDay.month + 1,
+                          )),
+                          child: const Icon(
+                            Icons.chevron_right,
+                            size: 22,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _changeMonth(DateTime(
-                      _focusedDay.year,
-                      _focusedDay.month + 1,
-                    )),
-                    child: const Icon(
-                      Icons.chevron_right,
-                      size: 22,
-                      color: AppColors.gray500,
-                    ),
-                  ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Material(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(999),
