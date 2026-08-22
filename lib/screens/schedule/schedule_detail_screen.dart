@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../core/di.dart';
+import '../../core/format/money.dart';
 import '../../core/network/error_message.dart';
 import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/report/models/report_models.dart';
+import '../../features/ledger/models/ledger_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/ledger_style.dart';
 import '../../widgets/report_block_actions.dart';
 import 'schedule_copy_sheet.dart';
 
@@ -451,15 +454,18 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             child: Icon(Icons.event, size: 36, color: accent),
           ),
           const SizedBox(height: 12),
-          Text(
-            schedule.title,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
-              color: accent,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              schedule.title,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: accent,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
@@ -475,55 +481,216 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               color: AppColors.gray900,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
+          // 시간·참가자는 한 카드로 묶는다. 예전에는 아이콘 줄 두 개가 배경 없이
+          // 떠 있어 아래 지출 카드와 위계가 안 잡혔다.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.gray50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  _buildInfoRow(
+                    icon: Icons.schedule,
+                    text: timeLabel,
+                  ),
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: schedule.participants.isEmpty
+                        ? null
+                        : () => _showParticipantPopup(schedule.participants),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.person_outline,
+                          size: 20,
+                          color: AppColors.gray400,
+                        ),
+                        const SizedBox(width: 14),
+                        if (schedule.participants.isEmpty)
+                          const Text(
+                            '참가자 없음',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w400,
+                              fontSize: 15,
+                              color: AppColors.gray500,
+                            ),
+                          )
+                        else
+                          Expanded(child: _buildParticipantAvatars(schedule)),
+                        if (schedule.participants.isNotEmpty)
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 18,
+                            color: AppColors.gray400,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildExpenseSection(schedule),
+          const SizedBox(height: 24),
+          _buildComments(detail),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  /// 이 일정에 쓴 돈. 지출이 없으면 '금액 추가' 유도 카드를 대신 보여준다
+  /// (빈 섹션을 통째로 숨기면 가계부 기능이 있다는 걸 알 방법이 없다).
+  Widget _buildExpenseSection(Schedule schedule) {
+    final expenses = schedule.expenses;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        decoration: BoxDecoration(
+          color: AppColors.ledgerSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gray100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                _buildInfoRow(
-                  icon: Icons.schedule,
-                  text: timeLabel,
+                const Icon(Icons.account_balance_wallet_outlined,
+                    size: 18, color: AppColors.gray600),
+                const SizedBox(width: 8),
+                const Text(
+                  '이 일정에 쓴 돈',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.gray700,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: schedule.participants.isEmpty
-                      ? null
-                      : () => _showParticipantPopup(schedule.participants),
-                  child: Row(
+                const Spacer(),
+                Text(
+                  formatWon(schedule.expenseTotal),
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: AppColors.ledgerInk,
+                  ),
+                ),
+              ],
+            ),
+            if (expenses.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 8),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _onEditTap,
+                  child: const Row(
                     children: [
-                      const Icon(
-                        Icons.person_outline,
-                        size: 20,
-                        color: AppColors.gray400,
-                      ),
-                      const SizedBox(width: 14),
-                      if (schedule.participants.isEmpty)
-                        const Text(
-                          '참가자 없음',
+                      Expanded(
+                        child: Text(
+                          '아직 기록된 금액이 없어요',
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w400,
-                            fontSize: 15,
+                            fontSize: 13,
                             color: AppColors.gray500,
                           ),
-                        )
-                      else
-                        Expanded(child: _buildParticipantAvatars(schedule)),
-                      if (schedule.participants.isNotEmpty)
-                        const Icon(
-                          Icons.chevron_right,
-                          size: 18,
-                          color: AppColors.gray400,
                         ),
+                      ),
+                      Text(
+                        '금액 추가',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Icon(Icons.chevron_right,
+                          size: 16, color: AppColors.primary),
                     ],
+                  ),
+                ),
+              )
+            else ...[
+              const SizedBox(height: 12),
+              for (final e in expenses) _buildExpenseRow(e),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpenseRow(ScheduleExpense expense) {
+    final memo = expense.memo?.trim();
+    final payerName = expense.payer?.name;
+    final subtitle = [
+      expense.categoryLabel,
+      // payer 가 없는 건 '미지정' 이거나 낸 사람이 탈퇴한 경우. 둘 다 사람 이름을
+      // 지어내지 않고 분류만 보여준다.
+      if (payerName != null) '$payerName 결제',
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          CategoryBadge(category: expense.category, size: 34),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (memo != null && memo.isNotEmpty)
+                      ? memo
+                      : expense.categoryLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
+                    color: AppColors.gray500,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 28),
-          _buildComments(detail),
-          const SizedBox(height: 16),
+          const SizedBox(width: 8),
+          Text(
+            formatWon(expense.amount),
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: AppColors.ledgerInk,
+            ),
+          ),
         ],
       ),
     );
