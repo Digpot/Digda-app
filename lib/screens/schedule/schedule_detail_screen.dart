@@ -6,10 +6,12 @@ import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
 import '../../features/report/models/report_models.dart';
 import '../../features/ledger/models/ledger_models.dart';
+import '../../features/membership/models/membership_models.dart';
 import '../../features/schedule/models/schedule_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/expense_editor.dart';
 import '../../widgets/ledger_style.dart';
 import '../../widgets/report_block_actions.dart';
 import 'schedule_copy_sheet.dart';
@@ -30,6 +32,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   String? _scheduleId;
   final TextEditingController _commentController = TextEditingController();
 
+  /// 금액 저장 중 — 같은 금액이 두 번 들어가지 않게 막는다.
+  bool _savingExpense = false;
+
+  /// 금액 시트의 '누가 냈나요' 선택지. 처음 시트를 열 때 한 번만 받아 둔다.
+  List<Membership>? _members;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -46,7 +54,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  /// [silent] 면 로딩 스피너로 화면을 갈아치우지 않고 조용히 다시 받아온다.
+  /// 금액을 하나 추가한 뒤처럼, 화면이 이미 떠 있는 상태에서 숫자만 갱신할 때 쓴다.
+  Future<void> _load({bool silent = false}) async {
     final groupId = Di.activeGroup.groupRoomId;
     final scheduleId = _scheduleId;
     if (groupId == null || scheduleId == null) {
@@ -57,7 +67,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       return;
     }
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _errorMessage = null;
     });
     try {
@@ -76,6 +86,53 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     }
   }
 
+
+  /// 일정 상세에서 금액을 바로 추가한다. 여기서 저장하면 **그 자리에서 서버에 반영**된다
+  /// — 일정 수정 화면처럼 '수정 완료'를 한 번 더 누를 필요가 없다.
+  ///
+  /// 일정 수정(PUT)이 아니라 지출 단건 추가 API 를 쓰는 이유: PUT 의 expenses 는 전체
+  /// 교체라, 이 화면이 들고 있지 않은(그 사이 다른 멤버가 넣은) 금액을 덮어 지운다.
+  Future<void> _onAddExpenseTap() async {
+    if (_savingExpense) return;
+    final groupId = Di.activeGroup.groupRoomId;
+    final scheduleId = _scheduleId;
+    if (groupId == null || scheduleId == null) return;
+
+    final members = await _loadMembersForPicker(groupId);
+    if (!mounted) return;
+
+    final written = await showExpenseEditSheet(context, members: members);
+    if (written == null || !mounted) return;
+
+    setState(() => _savingExpense = true);
+    try {
+      await Di.scheduleRepository.addExpense(groupId, scheduleId, written);
+      if (!mounted) return;
+      await _load(silent: true);
+      if (!mounted) return;
+      setState(() => _savingExpense = false);
+      showAppSnackBar(context, '금액을 추가했어요');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingExpense = false);
+      showErrorDialog(context, errorMessageOf(e));
+    }
+  }
+
+  /// '누가 냈나요' 선택지에 쓸 그룹원. 상세 화면은 평소 구성원 목록이 필요 없으니
+  /// 금액 시트를 열 때 한 번만 받아 들고 있는다. 실패해도 금액 입력 자체는 막지 않는다
+  /// (낸 사람은 선택 항목이라 비워둔 채로 저장할 수 있다).
+  Future<List<Membership>> _loadMembersForPicker(String groupId) async {
+    final cached = _members;
+    if (cached != null) return cached;
+    try {
+      final members = await Di.membershipRepository.list(groupId);
+      _members = members;
+      return members;
+    } catch (_) {
+      return const [];
+    }
+  }
   Future<void> _onEditTap() async {
     setState(() => _showMenu = false);
     await Navigator.of(context)
@@ -549,53 +606,65 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
 
   /// 이 일정에 쓴 돈. 지출이 없으면 '금액 추가' 유도 카드를 대신 보여준다
   /// (빈 섹션을 통째로 숨기면 가계부 기능이 있다는 걸 알 방법이 없다).
+  ///
+  /// 카드 어디를 눌러도 금액 추가 시트가 열리고, 거기서 저장하면 **바로 서버에 반영**된다.
+  /// 예전엔 금액 하나 적으려고 일정 수정 화면까지 들어갔다 나와야 했다.
   Widget _buildExpenseSection(Schedule schedule) {
     final expenses = schedule.expenses;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        decoration: BoxDecoration(
-          color: AppColors.ledgerSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.gray100),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.account_balance_wallet_outlined,
-                    size: 18, color: AppColors.gray600),
-                const SizedBox(width: 8),
-                const Text(
-                  '이 일정에 쓴 돈',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.gray700,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _onAddExpenseTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          decoration: BoxDecoration(
+            color: AppColors.ledgerSurface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.gray100),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined,
+                      size: 18, color: AppColors.gray600),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '이 일정에 쓴 돈',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.gray700,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  formatWon(schedule.expenseTotal),
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    color: AppColors.ledgerInk,
-                  ),
-                ),
-              ],
-            ),
-            if (expenses.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 8),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _onEditTap,
-                  child: const Row(
+                  const Spacer(),
+                  // 저장 중엔 금액 자리에 스피너를 둔다 — 총액이 곧 바뀔 자리라
+                  // 다른 데 띄우면 무엇을 기다리는지 알 수 없다.
+                  if (_savingExpense)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Text(
+                      formatWon(schedule.expenseTotal),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: AppColors.ledgerInk,
+                      ),
+                    ),
+                ],
+              ),
+              if (expenses.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10, bottom: 8),
+                  child: Row(
                     children: [
                       Expanded(
                         child: Text(
@@ -608,26 +677,25 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                           ),
                         ),
                       ),
-                      Text(
-                        '금액 추가',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      Icon(Icons.chevron_right,
-                          size: 16, color: AppColors.primary),
+                      _AddExpenseHint(),
                     ],
                   ),
+                )
+              else ...[
+                const SizedBox(height: 12),
+                for (final e in expenses) _buildExpenseRow(e),
+                // 목록이 있을 때도 추가 입구를 남긴다 — 칸을 눌러도 열리지만,
+                // 눌러도 되는 자리라는 걸 보여주는 표시가 하나는 있어야 한다.
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [_AddExpenseHint()],
+                  ),
                 ),
-              )
-            else ...[
-              const SizedBox(height: 12),
-              for (final e in expenses) _buildExpenseRow(e),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1326,6 +1394,30 @@ class _ScheduleCommentActionSheet extends StatelessWidget {
               color: AppColors.primary),
         ],
       ),
+    );
+  }
+}
+
+/// '금액 추가' 라벨 — 카드 전체가 탭 대상이라 이건 표시일 뿐, 자체 탭 처리는 없다.
+class _AddExpenseHint extends StatelessWidget {
+  const _AddExpenseHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '금액 추가',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: AppColors.primary,
+          ),
+        ),
+        Icon(Icons.chevron_right, size: 16, color: AppColors.primary),
+      ],
     );
   }
 }

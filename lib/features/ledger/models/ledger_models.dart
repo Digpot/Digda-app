@@ -109,6 +109,8 @@ class LedgerSummary {
     required this.members,
     required this.schedules,
     required this.daily,
+    this.firstEntryMonth,
+    this.lastEntryMonth,
   });
 
   final int year;
@@ -125,6 +127,13 @@ class LedgerSummary {
   final List<LedgerMemberStat> members;
   final List<LedgerScheduleStat> schedules;
   final List<LedgerDailyStat> daily;
+
+  /// 가계부에 기록이 남아 있는 첫 달 / 마지막 달 (일(day)은 1 로 고정). 기록이 없으면 null.
+  ///
+  /// 월 이동 범위를 여기서 잡는다 — "미래 달은 못 본다" 같은 규칙을 앱에 박아두면
+  /// 다음 달 여행비를 미리 적어둔 그룹이 정작 자기가 쓴 달을 보지 못한다.
+  final DateTime? firstEntryMonth;
+  final DateTime? lastEntryMonth;
 
   bool get isEmpty => entryCount == 0;
 
@@ -161,7 +170,21 @@ class LedgerSummary {
       members: parse('members', LedgerMemberStat.fromJson),
       schedules: parse('schedules', LedgerScheduleStat.fromJson),
       daily: parse('daily', LedgerDailyStat.fromJson),
+      firstEntryMonth: _parseMonth(json['firstEntryMonth'] as String?),
+      lastEntryMonth: _parseMonth(json['lastEntryMonth'] as String?),
     );
+  }
+
+  /// `yyyy-MM` → 그 달의 1일. 서버가 못 주거나 형식이 어긋나면 null 로 떨어뜨려
+  /// 화면이 이번 달만 보여주는 쪽으로 안전하게 물러난다.
+  static DateTime? _parseMonth(String? value) {
+    if (value == null) return null;
+    final parts = value.split('-');
+    if (parts.length < 2) return null;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    if (year == null || month == null || month < 1 || month > 12) return null;
+    return DateTime(year, month);
   }
 }
 
