@@ -478,7 +478,10 @@ class _AmountField extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
-              autofocus: true,
+              // 자동 포커스를 주지 않는다 — 시트가 열리자마자 키보드가 올라오면
+              // 화면이 통째로 밀려 올라가 분류·낸 사람이 가려진다. 금액 칸을
+              // 직접 눌러야 키보드가 뜬다.
+              autofocus: false,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               textAlign: TextAlign.right,

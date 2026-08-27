@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import '../../ledger/data/ledger_repository.dart';
+import '../../ledger/models/ledger_models.dart';
 import '../models/schedule_models.dart';
 
 /// 6번 도메인(Schedule) 의 5개 엔드포인트를 래핑.
@@ -98,6 +99,30 @@ class ScheduleRepository {
     );
     _invalidateAfterWrite();
     return Schedule.fromJson(res.data!);
+  }
+
+  /// 일정에 지출 **한 건만** 추가 — 일정 수정을 거치지 않고 그 자리에서 저장한다.
+  ///
+  /// 일정 수정(PUT)의 `expenses` 는 전체 교체라, 지출 목록 전부를 편집 상태로 들고 있지
+  /// 않은 화면(일정 상세)에서 쓰면 그 사이 다른 멤버가 넣은 금액을 덮어 지운다.
+  /// 그래서 서버에 덧붙이기 전용 엔드포인트를 따로 뒀다.
+  ///
+  /// 가계부 도메인이지만 여기(ScheduleRepository)에 두는 이유: 이 쓰기는 일정 목록
+  /// 캐시(칸에 뜨는 금액)와 가계부 월 요약을 **둘 다** 낡게 만든다. 무효화를 한 곳에서
+  /// 하려면 둘을 모두 아는 쪽에 있어야 한다.
+  Future<List<ScheduleExpense>> addExpense(
+    String groupRoomId,
+    String scheduleId,
+    ExpenseWrite expense,
+  ) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/group-rooms/$groupRoomId/schedules/$scheduleId/expenses',
+      body: expense.toJson(),
+    );
+    _invalidateAfterWrite();
+    return (res.data!['expenses'] as List? ?? [])
+        .map((e) => ScheduleExpense.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// 6-5. 일정 삭제.
