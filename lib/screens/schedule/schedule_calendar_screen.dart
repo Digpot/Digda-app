@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:world_holidays/world_holidays.dart';
 import '../../core/di.dart';
 import '../../core/format/money.dart';
+import '../../core/holiday/korean_holidays.dart';
 import '../../core/network/error_message.dart';
 import '../../features/block/models/block_models.dart';
 import '../../features/common/models/common_models.dart';
@@ -12,6 +12,7 @@ import '../../theme/colors.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/month_picker_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
 
 /// 일정 캘린더 뷰 모드 — 월/주.
@@ -165,9 +166,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   /// (일정과 금액을 같이 띄우면 한 칸에 다섯 줄이 들어가 둘 다 안 읽힌다)
   bool _ledgerMode = false;
 
-  /// 공휴일 맵: 날짜(utc normalized) → 공휴일명
-  final Map<DateTime, String> _holidays = {};
-
   /// 멤버 필터 — 그룹 구성원 목록과 선택된 userId 집합(빈 집합 = 전체).
   List<Membership> _members = [];
   final Set<String> _memberFilter = {};
@@ -178,7 +176,6 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _loadHolidays();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadMembers();
       _loadSchedules();
@@ -297,63 +294,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     if (!sameMonth) _loadSchedules();
   }
 
-  Future<void> _loadHolidays() async {
-    final wh = WorldHolidays();
-    // 2024~2026 한국 공휴일 로드
-    final holidays = await wh.getHolidays('KR');
-    if (!mounted) return;
-    setState(() {
-      for (final h in holidays) {
-        // national만 (기념일 제외, 법정 공휴일만)
-        if (h.type == HolidayType.national) {
-          final key = DateTime.utc(h.date.year, h.date.month, h.date.day);
-          _holidays[key] =
-              _resolveHolidayName(h.date.month, h.date.day, h.descriptionKo, h.name);
-        }
-      }
-      // 공휴일도 일반 일정과 동일하게 레인에 배치되도록 의사 일정으로 만든 뒤 재계산.
-      _rebuildHolidaySchedules();
-      _computeLaneAssignments();
-    });
-  }
-
-  static final RegExp _hangul = RegExp(r'[가-힣]');
-
-  /// 고정 양력 공휴일 표기 — world_holidays 가 한글명을 안 주거나 영문/날짜 문자열을
-  /// 주는 경우(예: "2026")를 막기 위해 우리 표기를 우선한다.
-  static const Map<String, String> _solarHolidayNames = {
-    '1-1': '신정',
-    '3-1': '삼일절',
-    '5-5': '어린이날',
-    '6-6': '현충일',
-    '8-15': '광복절',
-    '10-3': '개천절',
-    '10-9': '한글날',
-    '12-25': '성탄절',
-  };
-
-  /// 공휴일명 정제 — 고정 양력은 우리 표기, 그 외에는 한글이 포함된 값만 사용.
-  /// name(고유 명칭)을 descriptionKo 보다 우선한다: descriptionKo 는 "2026 지방선거"처럼
-  /// 연도가 붙어 있어 좁은 캘린더 칸에서 "2026"만 잘려 보였다. 또 앞쪽 연도/숫자/공백 등
-  /// 비한글 접두어를 떼어내 "2026 지방선거" → "지방선거" 로 정리하고, 한글이 전혀 없으면
-  /// '공휴일' 로 폴백해 날짜/영문/숫자 같은 이상 텍스트를 차단한다.
-  String _resolveHolidayName(int month, int day, String? ko, String fallback) {
-    final fixed = _solarHolidayNames['$month-$day'];
-    if (fixed != null) return fixed;
-    for (final cand in [fallback, ko]) {
-      if (cand != null && _hangul.hasMatch(cand)) {
-        final cleaned = cand.replaceFirst(RegExp(r'^[^가-힣]+'), '').trim();
-        if (cleaned.isNotEmpty) return cleaned;
-      }
-    }
-    return '공휴일';
-  }
-
-  /// 공휴일 이름
-  String? _getHolidayName(DateTime day) {
-    final key = DateTime.utc(day.year, day.month, day.day);
-    return _holidays[key];
-  }
+  /// 공휴일 이름. [KoreanHolidays] 가 연도별로 계산해 캐시하므로 미리 불러둘 게 없다.
+  String? _getHolidayName(DateTime day) => KoreanHolidays.nameOf(day);
 
   // 일정 데이터 — API 로드 결과로 채워짐
   List<_Schedule> _schedules = [];
@@ -370,17 +312,16 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     final gridStart = _weekSunday(first);
     final gridEnd = gridStart.add(const Duration(days: 41));
     final list = <_Schedule>[];
-    _holidays.forEach((date, name) {
-      if (!date.isBefore(gridStart) && !date.isAfter(gridEnd)) {
-        list.add(_Schedule(
-          title: name,
-          color: AppColors.eventHoliday,
-          start: date,
-          createdAt: DateTime.utc(2000), // 정렬 안정용 고정값
-          allDay: true,
-          isHoliday: true,
-        ));
-      }
+    // 그리드가 연말·연초에 걸치면 두 해의 공휴일이 함께 필요하다.
+    KoreanHolidays.inRange(gridStart, gridEnd).forEach((date, name) {
+      list.add(_Schedule(
+        title: name,
+        color: AppColors.eventHoliday,
+        start: date,
+        createdAt: DateTime.utc(2000), // 정렬 안정용 고정값
+        allDay: true,
+        isHoliday: true,
+      ));
     });
     _holidaySchedules = list;
   }
@@ -534,25 +475,17 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     return _getSchedulesForDay(day);
   }
 
+  /// 제목 탭 → 달 선택 시트. 가계부와 같은 시트를 쓴다.
+  ///
+  /// 일정은 '기록 있는 달'이라는 개념이 없으므로 제한 없이 2020~2030 을 전부 연다
+  /// (예전 `showDatePicker` 의 firstDate~lastDate 와 같은 범위).
   void _showMonthPicker() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _focusedDay,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030, 12, 31),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.gray900,
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final picked = await showMonthPickerSheet(
+      context,
+      selected: _focusedDay,
+      firstYear: 2020,
+      lastYear: 2030,
+      title: '어느 달로 갈까요',
     );
     if (picked != null) {
       _changeMonth(picked);
