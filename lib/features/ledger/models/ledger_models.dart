@@ -109,6 +109,7 @@ class LedgerSummary {
     required this.members,
     required this.schedules,
     required this.daily,
+    this.entryMonths = const {},
     this.firstEntryMonth,
     this.lastEntryMonth,
   });
@@ -128,9 +129,15 @@ class LedgerSummary {
   final List<LedgerScheduleStat> schedules;
   final List<LedgerDailyStat> daily;
 
-  /// 가계부에 기록이 남아 있는 첫 달 / 마지막 달 (일(day)은 1 로 고정). 기록이 없으면 null.
+  /// 가계부에 기록이 남아 있는 달 전부 (각 원소는 그 달 1일). 기록이 없으면 빈 집합.
   ///
-  /// 월 이동 범위를 여기서 잡는다 — "미래 달은 못 본다" 같은 규칙을 앱에 박아두면
+  /// 달 선택 화면이 "고를 수 있는 달"을 이걸로 정한다. 첫 달~마지막 달만 알면 그 사이의
+  /// 한 푼도 안 쓴 달까지 눌리게 되고, 눌러 봐야 빈 화면이다.
+  final Set<DateTime> entryMonths;
+
+  /// [entryMonths] 의 양 끝 (일(day)은 1 로 고정). 기록이 없으면 null.
+  ///
+  /// 화살표로 넘길 수 있는 바깥 경계다 — "미래 달은 못 본다" 같은 규칙을 앱에 박아두면
   /// 다음 달 여행비를 미리 적어둔 그룹이 정작 자기가 쓴 달을 보지 못한다.
   final DateTime? firstEntryMonth;
   final DateTime? lastEntryMonth;
@@ -170,6 +177,10 @@ class LedgerSummary {
       members: parse('members', LedgerMemberStat.fromJson),
       schedules: parse('schedules', LedgerScheduleStat.fromJson),
       daily: parse('daily', LedgerDailyStat.fromJson),
+      entryMonths: (json['entryMonths'] as List? ?? [])
+          .map((e) => _parseMonth(e as String?))
+          .whereType<DateTime>()
+          .toSet(),
       firstEntryMonth: _parseMonth(json['firstEntryMonth'] as String?),
       lastEntryMonth: _parseMonth(json['lastEntryMonth'] as String?),
     );
