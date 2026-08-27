@@ -29,6 +29,11 @@ class _LedgerScreenState extends State<LedgerScreen> {
   bool _loading = true;
   String? _errorMessage;
 
+  /// 이동할 수 있는 달의 양 끝. 서버가 내려준 기록 범위와 '이번 달'의 합집합이라
+  /// 기록이 하나도 없는 새 그룹도 이번 달은 열어볼 수 있다. 응답을 받기 전엔 이번 달만.
+  DateTime _minMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _maxMonth = DateTime(DateTime.now().year, DateTime.now().month);
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +64,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
       setState(() {
         _summary = summary;
         _loading = false;
+        _applyMonthBounds(summary);
       });
     } catch (e) {
       if (!mounted) return;
@@ -70,17 +76,71 @@ class _LedgerScreenState extends State<LedgerScreen> {
   }
 
   void _changeMonth(int delta) {
+    final next = DateTime(_month.year, _month.month + delta);
+    if (next.isBefore(_minMonth) || next.isAfter(_maxMonth)) return;
+    _goToMonth(next);
+  }
+
+  void _goToMonth(DateTime month) {
+    if (month.year == _month.year && month.month == _month.month) return;
     setState(() {
-      _month = DateTime(_month.year, _month.month + delta);
+      _month = DateTime(month.year, month.month);
       // 달을 넘기는 동안 이전 달 숫자가 남아 있으면 잘못된 값을 읽게 되므로 비운다.
       _summary = null;
     });
     _load();
   }
 
-  bool get _isCurrentMonth {
+  /// 이동 가능 범위 = 서버가 알려준 기록 범위 ∪ 이번 달 ∪ 지금 보고 있는 달.
+  ///
+  /// 보고 있는 달을 범위에 넣는 이유: 마지막 지출을 지워 범위가 줄어들어도 지금 화면이
+  /// 범위 밖으로 밀려나 양쪽 화살표가 다 죽는 상태가 되지 않게 하기 위함.
+  void _applyMonthBounds(LedgerSummary summary) {
     final now = DateTime.now();
-    return _month.year == now.year && _month.month == now.month;
+    final thisMonth = DateTime(now.year, now.month);
+
+    var min = thisMonth;
+    var max = thisMonth;
+    for (final candidate in [
+      summary.firstEntryMonth,
+      summary.lastEntryMonth,
+      _month,
+    ]) {
+      if (candidate == null) continue;
+      if (candidate.isBefore(min)) min = candidate;
+      if (candidate.isAfter(max)) max = candidate;
+    }
+    _minMonth = min;
+    _maxMonth = max;
+  }
+
+  /// 달 선택 팝업 — 일정·일기 화면과 같은 다이얼로그. 연도부터 고르게 열어
+  /// 몇 년 치를 화살표로 넘기지 않아도 되게 한다.
+  Future<void> _showMonthPicker() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _month,
+      firstDate: _minMonth,
+      // 마지막 달은 '말일'까지 열어야 그 달 전체가 선택 가능해진다.
+      lastDate: DateTime(_maxMonth.year, _maxMonth.month + 1, 0),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: '볼 달을 선택하세요',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: AppColors.white,
+              surface: AppColors.white,
+              onSurface: AppColors.gray900,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked == null) return;
+    _goToMonth(picked);
   }
 
   @override
@@ -141,37 +201,59 @@ class _LedgerScreenState extends State<LedgerScreen> {
   }
 
   Widget _buildMonthNav() {
+    final canGoBack = _month.isAfter(_minMonth);
+    final canGoForward = _month.isBefore(_maxMonth);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Row(
         children: [
-          _navArrow(Icons.chevron_left, () => _changeMonth(-1)),
+          // 범위 끝에서도 화살표 자리는 비워두지 않는다 — 자리가 사라지면 라벨이
+          // 좌우로 움직여 달을 넘길 때마다 글자가 흔들린다.
+          _navArrow(
+            Icons.chevron_left,
+            canGoBack ? () => _changeMonth(-1) : null,
+          ),
           const SizedBox(width: 6),
-          Text(
-            '${_month.year}년 ${_month.month}월',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: AppColors.gray900,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _showMonthPicker,
+            child: Row(
+              children: [
+                Text(
+                  '${_month.year}년 ${_month.month}월',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.expand_more,
+                    size: 20, color: AppColors.gray500),
+              ],
             ),
           ),
           const SizedBox(width: 6),
-          // 미래 달로는 넘기지 않는다 — 아직 쓰지 않은 달의 빈 화면은 볼 이유가 없다.
-          if (!_isCurrentMonth)
-            _navArrow(Icons.chevron_right, () => _changeMonth(1))
-          else
-            const SizedBox(width: 22),
+          _navArrow(
+            Icons.chevron_right,
+            canGoForward ? () => _changeMonth(1) : null,
+          ),
         ],
       ),
     );
   }
 
-  Widget _navArrow(IconData icon, VoidCallback onTap) {
+  /// 비활성 화살표는 흐리게 두되 자리는 지킨다.
+  Widget _navArrow(IconData icon, VoidCallback? onTap) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Icon(icon, size: 22, color: AppColors.gray500),
+      child: Icon(
+        icon,
+        size: 22,
+        color: onTap == null ? AppColors.gray200 : AppColors.gray500,
+      ),
     );
   }
 

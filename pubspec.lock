@@ -1298,14 +1298,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.15.0"
-  world_holidays:
-    dependency: "direct main"
-    description:
-      name: world_holidays
-      sha256: "51665ba8b97761d85b2317080b8760911373d8c366f38e6c8f5950bd57537706"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.1"
   xdg_directories:
     dependency: transitive
     description:
