@@ -10,6 +10,7 @@ import '../map/korea_map_screen.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/month_picker_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
 import '../../widgets/retrying_network_image.dart';
 
@@ -1049,25 +1050,17 @@ class _DiaryCalendarScreenState extends State<DiaryCalendarScreen> {
   }
 
   // ─── Month picker (제목 탭) ──────────────────────────────────────────────────
+  /// 제목 탭 → 달 선택 시트. 가계부·일정과 같은 시트를 쓴다.
+  ///
+  /// 일기는 '기록 있는 달'이라는 개념이 없으므로 제한 없이 2020~2030 을 전부 연다
+  /// (예전 `showDatePicker` 의 firstDate~lastDate 와 같은 범위).
   void _showMonthPicker() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _focusedDay,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030, 12, 31),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.gray900,
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final picked = await showMonthPickerSheet(
+      context,
+      selected: _focusedDay,
+      firstYear: 2020,
+      lastYear: 2030,
+      title: '어느 달로 갈까요',
     );
     if (picked != null) {
       setState(() {
