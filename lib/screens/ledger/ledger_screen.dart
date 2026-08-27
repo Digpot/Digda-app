@@ -7,6 +7,7 @@ import '../../core/network/error_message.dart';
 import '../../features/ledger/models/ledger_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/ledger_style.dart';
+import '../../widgets/month_picker_sheet.dart';
 import '../../widgets/notification_bell_icon.dart';
 
 /// 그룹 가계부 전체 화면 — 한 달치 지출을 총액 · 분류 · 사람 · 일정 · 날짜의
@@ -29,10 +30,11 @@ class _LedgerScreenState extends State<LedgerScreen> {
   bool _loading = true;
   String? _errorMessage;
 
-  /// 이동할 수 있는 달의 양 끝. 서버가 내려준 기록 범위와 '이번 달'의 합집합이라
-  /// 기록이 하나도 없는 새 그룹도 이번 달은 열어볼 수 있다. 응답을 받기 전엔 이번 달만.
-  DateTime _minMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  DateTime _maxMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  /// 고를 수 있는 달 (각 원소는 그 달 1일). 서버가 내려준 '기록 있는 달' 목록과
+  /// 이번 달의 합집합이다. 응답을 받기 전엔 이번 달 하나뿐.
+  Set<DateTime> _selectableMonths = {
+    DateTime(DateTime.now().year, DateTime.now().month),
+  };
 
   @override
   void initState() {
@@ -75,10 +77,19 @@ class _LedgerScreenState extends State<LedgerScreen> {
     }
   }
 
-  void _changeMonth(int delta) {
-    final next = DateTime(_month.year, _month.month + delta);
-    if (next.isBefore(_minMonth) || next.isAfter(_maxMonth)) return;
-    _goToMonth(next);
+  /// [delta] 방향으로 **고를 수 있는** 다음 달. 없으면 null(화살표가 죽는다).
+  ///
+  /// 한 달씩 세지 않고 기록이 있는 달로 건너뛴다. 3월과 11월에만 썼다면 3월에서 오른쪽
+  /// 화살표 한 번에 11월로 간다 — 그 사이 여덟 번은 눌러 봐야 전부 빈 화면이다.
+  DateTime? _adjacentSelectableMonth(int delta) {
+    final sorted = _selectableMonths.toList()..sort();
+    final index = sorted.indexWhere(
+      (m) => m.year == _month.year && m.month == _month.month,
+    );
+    if (index < 0) return null;
+    final target = index + delta;
+    if (target < 0 || target >= sorted.length) return null;
+    return sorted[target];
   }
 
   void _goToMonth(DateTime month) {
@@ -91,53 +102,26 @@ class _LedgerScreenState extends State<LedgerScreen> {
     _load();
   }
 
-  /// 이동 가능 범위 = 서버가 알려준 기록 범위 ∪ 이번 달 ∪ 지금 보고 있는 달.
+  /// 고를 수 있는 달 = 서버가 알려준 기록 있는 달 ∪ 이번 달 ∪ 지금 보고 있는 달.
   ///
-  /// 보고 있는 달을 범위에 넣는 이유: 마지막 지출을 지워 범위가 줄어들어도 지금 화면이
-  /// 범위 밖으로 밀려나 양쪽 화살표가 다 죽는 상태가 되지 않게 하기 위함.
+  /// 이번 달을 넣는 이유: 기록이 하나도 없는 새 그룹도 자기 화면은 열어볼 수 있어야 한다.
+  /// 보고 있는 달을 넣는 이유: 마지막 지출을 지워 목록이 줄어들어도 지금 화면이 목록
+  /// 밖으로 밀려나 양쪽 화살표가 다 죽는 상태가 되지 않게.
   void _applyMonthBounds(LedgerSummary summary) {
     final now = DateTime.now();
-    final thisMonth = DateTime(now.year, now.month);
-
-    var min = thisMonth;
-    var max = thisMonth;
-    for (final candidate in [
-      summary.firstEntryMonth,
-      summary.lastEntryMonth,
-      _month,
-    ]) {
-      if (candidate == null) continue;
-      if (candidate.isBefore(min)) min = candidate;
-      if (candidate.isAfter(max)) max = candidate;
-    }
-    _minMonth = min;
-    _maxMonth = max;
+    _selectableMonths = {
+      ...summary.entryMonths,
+      DateTime(now.year, now.month),
+      DateTime(_month.year, _month.month),
+    };
   }
 
-  /// 달 선택 팝업 — 일정·일기 화면과 같은 다이얼로그. 연도부터 고르게 열어
-  /// 몇 년 치를 화살표로 넘기지 않아도 되게 한다.
+  /// 달 선택 시트 — 기록이 없는 달은 흐리게 두고 눌러도 넘어가지 않는다.
   Future<void> _showMonthPicker() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _month,
-      firstDate: _minMonth,
-      // 마지막 달은 '말일'까지 열어야 그 달 전체가 선택 가능해진다.
-      lastDate: DateTime(_maxMonth.year, _maxMonth.month + 1, 0),
-      initialDatePickerMode: DatePickerMode.year,
-      helpText: '볼 달을 선택하세요',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.gray900,
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final picked = await showMonthPickerSheet(
+      context,
+      selected: _month,
+      selectableMonths: _selectableMonths,
     );
     if (picked == null) return;
     _goToMonth(picked);
@@ -200,59 +184,87 @@ class _LedgerScreenState extends State<LedgerScreen> {
     );
   }
 
+  /// 달 이동 줄. 화살표는 44×44 원형 버튼이고, 가운데 달 이름은 눌러서 여는 알약이다.
+  ///
+  /// 예전엔 22px 아이콘 하나가 곧 탭 영역이라 손가락으로 맞히기 어려웠다.
+  /// 44 는 눌러야 할 것을 눌리게 하는 최소치다.
   Widget _buildMonthNav() {
-    final canGoBack = _month.isAfter(_minMonth);
-    final canGoForward = _month.isBefore(_maxMonth);
+    final prev = _adjacentSelectableMonth(-1);
+    final next = _adjacentSelectableMonth(1);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 범위 끝에서도 화살표 자리는 비워두지 않는다 — 자리가 사라지면 라벨이
           // 좌우로 움직여 달을 넘길 때마다 글자가 흔들린다.
-          _navArrow(
-            Icons.chevron_left,
-            canGoBack ? () => _changeMonth(-1) : null,
+          _NavArrow(
+            icon: Icons.chevron_left_rounded,
+            onTap: prev == null ? null : () => _goToMonth(prev),
           ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _showMonthPicker,
-            child: Row(
-              children: [
-                Text(
-                  '${_month.year}년 ${_month.month}월',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: AppColors.gray900,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.expand_more,
-                    size: 20, color: AppColors.gray500),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          _navArrow(
-            Icons.chevron_right,
-            canGoForward ? () => _changeMonth(1) : null,
+          Expanded(child: _buildMonthLabel()),
+          _NavArrow(
+            icon: Icons.chevron_right_rounded,
+            onTap: next == null ? null : () => _goToMonth(next),
           ),
         ],
       ),
     );
   }
 
-  /// 비활성 화살표는 흐리게 두되 자리는 지킨다.
-  Widget _navArrow(IconData icon, VoidCallback? onTap) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Icon(
-        icon,
-        size: 22,
-        color: onTap == null ? AppColors.gray200 : AppColors.gray500,
+  Widget _buildMonthLabel() {
+    final now = DateTime.now();
+    final isThisMonth = _month.year == now.year && _month.month == now.month;
+    return Center(
+      child: Material(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: _showMonthPicker,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 12, 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${_month.year}년 ${_month.month}월',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 19,
+                    color: AppColors.gray900,
+                  ),
+                ),
+                // 화살표로 몇 달을 건너뛰다 보면 지금 보는 게 이번 달인지 헷갈린다.
+                // 이번 달일 때만 작은 배지로 짚어준다.
+                if (isThisMonth) ...[
+                  const SizedBox(width: 7),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      '이번 달',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                const Icon(Icons.expand_more_rounded,
+                    size: 20, color: AppColors.gray600),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1121,6 +1133,40 @@ class _EmptyLedger extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 달 이동 화살표 — 44×44 원형 버튼.
+///
+/// 예전엔 아이콘 하나(22px)가 그대로 탭 영역이라 손가락으로 맞히기 어려웠다.
+/// 끝에 닿아 눌리지 않을 때도 자리는 그대로 지킨다 — 자리가 사라지면 가운데 달 이름이
+/// 좌우로 움직여 달을 넘길 때마다 글자가 흔들린다.
+class _NavArrow extends StatelessWidget {
+  const _NavArrow({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: enabled ? AppColors.gray50 : Colors.transparent,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            icon,
+            size: 26,
+            color: enabled ? AppColors.gray800 : AppColors.gray200,
+          ),
+        ),
       ),
     );
   }
