@@ -83,6 +83,19 @@ class _PreviewScreenState extends State<_PreviewScreen> {
     setState(() => _month = picked);
   }
 
+  /// 일정·일기가 쓰는 모드 — 모든 달을 고를 수 있어 점·범례가 없다.
+  Future<void> _openFreePicker() async {
+    final picked = await showMonthPickerSheet(
+      context,
+      selected: _month,
+      firstYear: 2020,
+      lastYear: 2030,
+      title: '어느 달로 갈까요',
+    );
+    if (picked == null) return;
+    setState(() => _month = picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     final prev = _adjacent(-1);
@@ -280,6 +293,27 @@ class _PreviewScreenState extends State<_PreviewScreen> {
             fontSize: 13,
             height: 1.6,
             color: AppColors.gray600,
+          ),
+        ),
+        const SizedBox(height: 24),
+        // 같은 시트의 다른 모드 — 일정·일기가 쓰는 '모든 달' 버전.
+        OutlinedButton(
+          onPressed: _openFreePicker,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.gray700,
+            side: const BorderSide(color: AppColors.gray200),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: const Text(
+            '일정·일기 모드로 열기 (모든 달 선택 가능)',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
           ),
         ),
       ],
