@@ -10,10 +10,12 @@ name: iOS Build
 #   - App Store Connect API 키로 인증서/프로파일 자동 발급·서명 → TestFlight 업로드.
 #   - 아래 시크릿이 없으면 testflight 잡은 조용히 건너뛴다(빌드는 그대로 통과).
 
+# ios 브랜치 push 에서만 돈다. pull_request 트리거도 걸어 뒀더니 ios 로 보내는
+# PR 의 head 브랜치(merge/dev-into-ios-*)에서 한 번, 머지 후 ios push 에서 또 한 번
+# 총 두 번 돌았다. 15분짜리 macOS 잡을 같은 커밋으로 두 번 태울 이유가 없다.
+# 수동 실행은 workflow_dispatch 로 남겨 둔다.
 on:
   push:
-    branches: [ios]
-  pull_request:
     branches: [ios]
   workflow_dispatch:
 
