@@ -9,7 +9,10 @@ import '../theme/colors.dart';
 /// - 읽지 않은 알림이 있으면 우측 상단에 카운트 숫자 배지 (1-99+) 노출.
 /// - 카운트 0 일 땐 배지를 숨겨 시각 노이즈를 줄인다.
 class NotificationBellIcon extends StatefulWidget {
-  const NotificationBellIcon({super.key});
+  const NotificationBellIcon({super.key, this.color = AppColors.gray700});
+
+  /// 벨 아이콘 색. 그룹 홈처럼 진한 배경 위에 얹을 땐 흰색을 넘긴다.
+  final Color color;
 
   @override
   State<NotificationBellIcon> createState() => _NotificationBellIconState();
@@ -46,10 +49,10 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.notifications_outlined,
               size: 24,
-              color: AppColors.gray700,
+              color: widget.color,
             ),
             if (_unreadCount > 0)
               Positioned(
