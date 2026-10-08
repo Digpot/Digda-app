@@ -8,8 +8,12 @@ class Env {
 
   static Future<void> load() => dotenv.load(fileName: '.env');
 
-  static String get apiBaseUrl =>
-      dotenv.maybeGet('API_BASE_URL') ?? 'https://api.digda.kro.kr';
+  /// 서버 주소는 코드에 적지 않는다(공개 레포). 로컬은 .env, CI 는 API_BASE_URL 시크릿.
+  static String get apiBaseUrl {
+    final url = dotenv.maybeGet('API_BASE_URL')?.trim() ?? '';
+    assert(url.isNotEmpty, '.env 에 API_BASE_URL 이 없습니다.');
+    return url;
+  }
 
   static String get kakaoNativeAppKey =>
       dotenv.maybeGet('KAKAO_NATIVE_APP_KEY') ?? '';
