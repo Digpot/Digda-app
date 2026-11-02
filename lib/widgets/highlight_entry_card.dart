@@ -45,61 +45,56 @@ class _HighlightEntryCardState extends State<HighlightEntryCard> {
         onTap: () => Navigator.of(context)
             .pushNamed('/highlight', arguments: {'month': item.month}),
         child: Container(
-          height: 92,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2A1B2E), Color(0xFF4A2C4A)],
-            ),
+            color: const Color(0xFFFFF4EE),
+            borderRadius: BorderRadius.circular(20),
           ),
-          clipBehavior: Clip.antiAlias,
           child: Row(
             children: [
-              if (item.coverImageUrl != null)
-                SizedBox(
-                  width: 92,
-                  height: 92,
-                  child: RetryingNetworkImage(url: item.coverImageUrl!),
-                )
-              else
-                const SizedBox(
-                  width: 92,
-                  child: Center(child: Text('📖', style: TextStyle(fontSize: 30))),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: item.coverImageUrl != null
+                      ? RetryingNetworkImage(url: item.coverImageUrl!)
+                      : Container(
+                          color: const Color(0xFFFFE2D6),
+                          alignment: Alignment.center,
+                          child:
+                              const Text('📖', style: TextStyle(fontSize: 26)),
+                        ),
                 ),
+              ),
+              const SizedBox(width: 14),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${item.monthValue}월의 디그팟 하이라이트',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: Colors.white,
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${item.monthValue}월의 하이라이트',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.gray900,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${item.totalDiaryCount}편의 추억을 돌아봐요',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${item.totalDiaryCount}편의 추억을 돌아봐요',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: AppColors.gray600,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(right: 14),
-                child: Icon(Icons.chevron_right_rounded,
-                    color: AppColors.primary),
-              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.primary),
             ],
           ),
         ),
