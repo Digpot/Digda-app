@@ -42,7 +42,9 @@ class CommentEntity {
   final String id;
   final String text;
   final UserSummary createdBy;
-  final DateTime createdAt;
+
+  /// 작성일시. 아주 오래된 댓글은 서버에 값이 없을 수 있어 nullable — null 이면 화면에서 시각을 숨긴다.
+  final DateTime? createdAt;
 
   /// 대댓글이면 부모 댓글 id. 최상위 댓글은 null (댓글→대댓글 1단계만 지원).
   final String? parentId;
@@ -62,7 +64,9 @@ class CommentEntity {
       text: json['text'] as String? ?? '',
       createdBy:
           UserSummary.fromJson(json['createdBy'] as Map<String, dynamic>),
-      createdAt: _parseServerTime(json['createdAt'] as String),
+      createdAt: (json['createdAt'] as String?) == null
+          ? null
+          : _parseServerTime(json['createdAt'] as String),
       parentId: json['parentId']?.toString(),
       hidden: json['hidden'] as bool? ?? false,
       hiddenReason: json['hiddenReason'] as String?,

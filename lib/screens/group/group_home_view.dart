@@ -7,6 +7,7 @@ import '../../features/ledger/models/ledger_models.dart';
 import '../../features/notification/models/notification_models.dart';
 import '../../theme/colors.dart';
 import '../../widgets/notice_banner.dart';
+import '../../widgets/highlight_entry_card.dart';
 import '../../widgets/notification_bell_icon.dart';
 
 /// 그룹 홈의 **표현 계층**. 데이터 로딩·다이얼로그는 `GroupHomeScreen` 이 맡고,
@@ -173,6 +174,7 @@ class _GroupHomeViewState extends State<GroupHomeView>
               ),
               const SizedBox(height: 22),
             ],
+            const HighlightEntryCard(),
             _rise(
               2,
               Padding(

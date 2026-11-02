@@ -107,6 +107,18 @@ class NotificationRouter {
       }
     }
 
+    // 월간 하이라이트 — 그룹 홈 위에 하이라이트 화면을 올린다. relatedId = yyyyMM.
+    if (relatedType == 'HIGHLIGHT') {
+      final ym = _stringOf(data['relatedId']);
+      final month = (ym != null && ym.length == 6)
+          ? '${ym.substring(0, 4)}-${ym.substring(4)}'
+          : null;
+      nav.pushNamedAndRemoveUntil('/group-home', (r) => false,
+          arguments: {'name': name});
+      nav.pushNamed('/highlight', arguments: {'month': month});
+      return;
+    }
+
     // 섹션 화면을 스택 최상위로 세팅(하단 탭으로 다른 화면 이동 가능).
     nav.pushNamedAndRemoveUntil(section, (r) => false,
         arguments: {'name': name});
