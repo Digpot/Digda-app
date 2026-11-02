@@ -14,6 +14,7 @@ import 'screens/schedule/schedule_detail_screen.dart';
 import 'screens/schedule/add_schedule_screen.dart';
 import 'screens/ledger/ledger_screen.dart';
 import 'screens/diary/diary_calendar_screen.dart';
+import 'screens/highlight/highlight_screen.dart';
 import 'screens/diary/diary_day_list_screen.dart';
 import 'screens/diary/diary_detail_screen.dart';
 import 'screens/diary/write_diary_screen.dart';
@@ -106,6 +107,12 @@ class AppRouter {
             settings: settings, builder: (_) => const LedgerScreen());
       case '/diary':
         return _tabRoute(const DiaryCalendarScreen(), settings);
+      case '/highlight':
+        final hlArgs = settings.arguments;
+        final hlMonth = hlArgs is Map<String, dynamic> ? hlArgs['month'] as String? : null;
+        return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => HighlightScreen(initialMonth: hlMonth));
       case '/diary-day':
         // 인당 하루 1편 체제 — 캘린더 날짜 탭 시 그날의 일기 목록으로 진입.
         final dayArg = settings.arguments;
