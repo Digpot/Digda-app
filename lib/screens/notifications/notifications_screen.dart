@@ -277,6 +277,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // 모찌(캐릭터/퀴즈) — 코랄/핑크/골드 계열로 모찌 패밀리 통일
     'mochi_levelup':
         _IconSkin(Icons.auto_awesome_rounded, Color(0xFFFFF1F2), Color(0xFFE11D48)),
+    'monthly_highlight':
+        _IconSkin(Icons.auto_stories_rounded, Color(0xFFF3E8FF), Color(0xFF7C3AED)),
     'diko_unlocked':
         _IconSkin(Icons.celebration_rounded, Color(0xFFFFE4E6), Color(0xFFBE185D)),
     'quiz_created':

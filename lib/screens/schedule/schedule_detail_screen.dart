@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../core/di.dart';
 import '../../core/format/money.dart';
 import '../../core/network/error_message.dart';
@@ -343,13 +344,11 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     return '${d.year}년 ${d.month}월 ${d.day}일 (${weekdays[d.weekday - 1]})';
   }
 
-  String _formatCommentTime(DateTime t) {
-    final local = t.toLocal();
-    final h = local.hour;
-    final m = local.minute;
-    final period = h < 12 ? '오전' : '오후';
-    final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-    return '$period $hour12:${m.toString().padLeft(2, '0')}';
+  /// 댓글 작성 시각 — 당일 여부와 무관하게 항상 날짜를 붙인 통일 형식(예: 2026.11.02 14:32).
+  /// 작성일시가 없는 오래된 댓글은 빈 문자열(날짜를 임의로 만들지 않는다).
+  String _formatCommentTime(DateTime? t) {
+    if (t == null) return '';
+    return DateFormat('yyyy.MM.dd HH:mm').format(t.toLocal());
   }
 
   @override
