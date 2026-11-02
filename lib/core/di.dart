@@ -12,6 +12,7 @@ import '../features/membership/data/membership_repository.dart';
 import '../features/schedule/data/schedule_repository.dart';
 import '../features/ledger/data/ledger_repository.dart';
 import '../features/diary/data/diary_repository.dart';
+import '../features/highlight/data/highlight_repository.dart';
 import '../features/comment/data/comment_repository.dart';
 import '../features/todo/data/todo_repository.dart';
 import '../features/notification/data/notification_repository.dart';
@@ -44,6 +45,7 @@ class Di {
   static late final ScheduleRepository scheduleRepository;
   static late final LedgerRepository ledgerRepository;
   static late final DiaryRepository diaryRepository;
+  static late final HighlightRepository highlightRepository;
   static late final CommentRepository commentRepository;
   static late final TodoRepository todoRepository;
   static late final NotificationRepository notificationRepository;
@@ -81,6 +83,7 @@ class Di {
       ledgerRepository: ledgerRepository,
     );
     diaryRepository = DiaryRepository(apiClient: apiClient);
+    highlightRepository = HighlightRepository(apiClient: apiClient);
     commentRepository = CommentRepository(apiClient: apiClient);
     todoRepository = TodoRepository(apiClient: apiClient);
     notificationRepository = NotificationRepository(apiClient: apiClient);
