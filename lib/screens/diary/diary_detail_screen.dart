@@ -1435,7 +1435,9 @@ class _CommentRow extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    _relativeTime(comment.createdAt),
+                    comment.createdAt == null
+                        ? ''
+                        : _relativeTime(comment.createdAt!),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w500,
