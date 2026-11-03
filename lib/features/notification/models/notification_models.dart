@@ -95,6 +95,7 @@ class NotificationType {
   static const String dikoUnlocked = 'diko_unlocked';
   static const String gameInvite = 'game_invite';
   static const String announcement = 'announcement';
+  static const String monthlyHighlight = 'monthly_highlight';
 
   /// 모찌 캐릭터/퀴즈/게임 관련. 알림 필터 칩 동작 + 모찌 화면 헤더 카운트 산정용.
   static const Set<String> mochiTypes = {
