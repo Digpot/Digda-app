@@ -22,7 +22,7 @@
 ### 1단계 — 컴파일 검증(지금 바로 가능, Apple 계정 불필요)
 | Secret | 설명 |
 |---|---|
-| `API_BASE_URL` | 예) `https://api.digda.kro.kr` |
+| `API_BASE_URL` | 서버 주소 (https://…). 공개 레포라 실제 값은 여기 적지 않는다 |
 | `KAKAO_NATIVE_APP_KEY` | 카카오 네이티브 앱 키 |
 | `KAKAO_JAVASCRIPT_APP_KEY` | 카카오 JS 키 |
 | `KAKAO_REST_API_KEY` | 카카오 REST 키(장소 검색) |
